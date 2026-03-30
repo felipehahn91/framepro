@@ -4,11 +4,12 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
-  Trash2, Plus, UserPlus, MessageCircle, Link as LinkIcon, 
+  Trash2, Plus, UserPlus, MessageCircle, Diamond, Link as LinkIcon, 
   Upload, Loader2, Copy, ExternalLink, X, ArrowUp, ArrowDown, UserMinus
 } from "lucide-react";
 import { toast } from "sonner";
 import LeadImportModal from "@/components/LeadImportModal";
+import OpportunityDetailModal from "@/components/OpportunityDetailModal";
 
 // --- Tipos ---
 interface Pipeline { id: string; name: string; }
@@ -53,6 +54,10 @@ export default function Oportunidades() {
   const [activeTab, setActiveTab] = useState<'opp' | 'link'>('opp');
   const [isNewColOpen, setIsNewColOpen] = useState(false);
   const [newColName, setNewColName] = useState("");
+
+  // Modal de Detalhes da Oportunidade
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedOppToView, setSelectedOppToView] = useState<Opportunity | null>(null);
 
   // Formulário Modal
   const [formData, setFormData] = useState({
@@ -158,7 +163,8 @@ export default function Oportunidades() {
   };
 
   // Reordenar Setas Cima/Baixo
-  const moveCard = (oppId: string, colId: string, direction: 'up' | 'down') => {
+  const moveCard = (e: React.MouseEvent, oppId: string, colId: string, direction: 'up' | 'down') => {
+    e.stopPropagation(); // Evita abrir o modal ao clicar na seta
     setOpportunities(prev => {
       const oppsInCol = prev.filter(o => o.column_id === colId);
       const otherOpps = prev.filter(o => o.column_id !== colId);
@@ -208,7 +214,8 @@ export default function Oportunidades() {
   };
 
   // Ações nos Cards
-  const handleToggleClient = async (opp: Opportunity) => {
+  const handleToggleClient = async (e: React.MouseEvent, opp: Opportunity) => {
+    e.stopPropagation(); // Evita abrir o modal
     try {
       const newStatus = !opp.is_client;
       await supabase.from('opportunities').update({ is_client: newStatus }).eq('id', opp.id);
@@ -219,7 +226,8 @@ export default function Oportunidades() {
     }
   };
 
-  const handleCadencia = (opp: Opportunity) => {
+  const handleCadencia = (e: React.MouseEvent, opp: Opportunity) => {
+    e.stopPropagation(); // Evita abrir o modal
     const phone = opp.phone;
     if (!phone) return toast.error("Este lead não possui telefone cadastrado.");
     const cleanPhone = phone.replace(/\D/g, '');
@@ -231,6 +239,29 @@ export default function Oportunidades() {
     await supabase.from('columns').delete().eq('id', colId);
     setColumns(prev => prev.filter(c => c.id !== colId));
     toast.success("Coluna deletada.");
+  };
+
+  const handleDeleteOpp = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (!confirm("Deletar oportunidade?")) return;
+    setOpportunities(prev => prev.filter(o => o.id !== id));
+    await supabase.from('opportunities').delete().eq('id', id);
+    toast.success("Deletado.");
+  };
+
+  // Funções do Modal de Detalhes
+  const handleCardClick = (opp: Opportunity) => {
+    setSelectedOppToView(opp);
+    setIsDetailModalOpen(true);
+  };
+
+  const handleSaveDetailModal = (updatedOpp: Opportunity) => {
+    setOpportunities(prev => prev.map(o => o.id === updatedOpp.id ? updatedOpp : o));
+  };
+
+  const handleDeleteDetailModal = (id: string) => {
+    setOpportunities(prev => prev.filter(o => o.id !== id));
+    setSelectedOpps(prev => prev.filter(selectedId => selectedId !== id));
   };
 
   // Criação
@@ -399,7 +430,8 @@ export default function Oportunidades() {
                                       {(provided, snapshot) => (
                                         <div
                                           ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
-                                          className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all relative group"
+                                          onClick={() => handleCardClick(opp)}
+                                          className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all relative group cursor-pointer"
                                           style={{ ...provided.draggableProps.style, opacity: snapshot.isDragging ? 0.9 : 1 }}
                                         >
                                           {/* Card Header: Checkbox + Name + Arrows */}
@@ -409,15 +441,16 @@ export default function Oportunidades() {
                                                 type="checkbox" 
                                                 checked={selectedOpps.includes(opp.id)}
                                                 onChange={() => toggleSelection(opp.id)}
+                                                onClick={(e) => e.stopPropagation()}
                                                 className="w-4 h-4 rounded-full border-gray-300 text-orange-400 focus:ring-orange-400 cursor-pointer"
                                               />
                                               <span className="font-semibold text-gray-900 text-sm">{opp.name}</span>
                                             </div>
                                             <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                              <button onClick={() => moveCard(opp.id, col.id, 'up')} disabled={oppIndex === 0} className="text-gray-400 hover:text-gray-700 disabled:opacity-30">
+                                              <button onClick={(e) => moveCard(e, opp.id, col.id, 'up')} disabled={oppIndex === 0} className="text-gray-400 hover:text-gray-700 disabled:opacity-30">
                                                 <ArrowUp className="w-3 h-3" />
                                               </button>
-                                              <button onClick={() => moveCard(opp.id, col.id, 'down')} disabled={oppIndex === colOpps.length - 1} className="text-gray-400 hover:text-gray-700 disabled:opacity-30">
+                                              <button onClick={(e) => moveCard(e, opp.id, col.id, 'down')} disabled={oppIndex === colOpps.length - 1} className="text-gray-400 hover:text-gray-700 disabled:opacity-30">
                                                 <ArrowDown className="w-3 h-3" />
                                               </button>
                                             </div>
@@ -435,14 +468,14 @@ export default function Oportunidades() {
                                           {/* Card Footer: Buttons */}
                                           <div className="flex gap-2">
                                             <button 
-                                              onClick={() => handleToggleClient(opp)}
+                                              onClick={(e) => handleToggleClient(e, opp)}
                                               className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md border text-[11px] font-semibold transition-colors ${opp.is_client ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}
                                             >
                                               {opp.is_client ? <UserMinus className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
                                               {opp.is_client ? '-Cliente' : '+Cliente'}
                                             </button>
                                             <button 
-                                              onClick={() => handleCadencia(opp)}
+                                              onClick={(e) => handleCadencia(e, opp)}
                                               className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md border border-gray-200 text-gray-700 text-[11px] font-semibold hover:bg-gray-50 transition-colors"
                                             >
                                               <MessageCircle className="w-3.5 h-3.5 text-green-500" />
@@ -511,6 +544,15 @@ export default function Oportunidades() {
         columns={columns} 
         userId={user?.id} 
         onImportSuccess={fetchData}
+      />
+
+      {/* Modal de Detalhes da Oportunidade */}
+      <OpportunityDetailModal 
+        isOpen={isDetailModalOpen} 
+        onClose={() => setIsDetailModalOpen(false)} 
+        opportunity={selectedOppToView} 
+        onSave={handleSaveDetailModal}
+        onDelete={handleDeleteDetailModal}
       />
 
       {/* MODAL: Adicionar ao Pipeline */}
@@ -621,7 +663,7 @@ export default function Oportunidades() {
                           type="checkbox" className="hidden" 
                           checked={formFields[key as keyof typeof formFields]}
                           onChange={(e) => {
-                            if (['email', 'phone', 'instagram'].includes(key)) return;
+                            if (['email', 'phone', 'instagram'].includes(key)) return; // Bloqueados conforme imagem
                             setFormFields({...formFields, [key]: e.target.checked})
                           }}
                         />
@@ -637,6 +679,7 @@ export default function Oportunidades() {
                         className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
                         placeholder="Ex: 5511999999999"
                       />
+                      <p className="text-[11px] text-gray-500 mt-1">Número que receberá a mensagem do cliente</p>
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-1.5">Texto da Mensagem</label>
@@ -645,6 +688,7 @@ export default function Oportunidades() {
                         className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
                         placeholder="Ex: Olá, gostaria de um orçamento"
                       />
+                      <p className="text-[11px] text-gray-500 mt-1">Texto pré-definido para o WhatsApp</p>
                     </div>
                   </div>
                 </div>
@@ -663,7 +707,7 @@ export default function Oportunidades() {
         </div>
       )}
 
-      {/* Modal Nova Coluna */}
+      {/* Modal Nova Coluna Simples */}
       {isNewColOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsNewColOpen(false)} />
