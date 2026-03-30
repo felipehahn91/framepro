@@ -8,7 +8,8 @@ import "react-quill-new/dist/quill.snow.css";
 import { 
   ArrowLeft, Save, Loader2, Image as ImageIcon, Type, DollarSign, 
   Trash2, Plus, FileUp, Settings, Link as LinkIcon, ArrowUp, ArrowDown,
-  LayoutTemplate, Video, Minus, Columns, ChevronDown, Palette, AlignLeft, X, Layers
+  LayoutTemplate, Video, Minus, Columns, ChevronDown, Palette, AlignLeft, X, Layers,
+  UploadCloud
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -318,6 +319,63 @@ export default function OrcamentoEditor() {
     if (selectedId === id) setSelectedId(null);
   };
 
+  // Generic Image Upload
+  const handleImageUpload = async (file: File, callback: (url: string) => void) => {
+    if (!file.type.startsWith('image/')) return toast.error("Apenas imagens são permitidas.");
+    if (file.size > 5 * 1024 * 1024) return toast.error("A imagem deve ter no máximo 5MB.");
+    
+    const toastId = toast.loading("Fazendo upload da imagem...");
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${user?.id}/${fileName}`;
+
+      const { error } = await supabase.storage.from('contract_images').upload(filePath, file);
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage.from('contract_images').getPublicUrl(filePath);
+      callback(publicUrl);
+      toast.success("Upload concluído!", { id: toastId });
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao fazer upload da imagem.", { id: toastId });
+    }
+  };
+
+  // Multiple Gallery Upload
+  const handleGalleryUpload = async (files: FileList, sectionId: string) => {
+    const toastId = toast.loading(`Fazendo upload de ${files.length} imagem(ns)...`);
+    try {
+      const newUrls = [];
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (!file.type.startsWith('image/')) continue;
+        if (file.size > 5 * 1024 * 1024) continue;
+        
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `${user?.id}/${fileName}`;
+
+        const { error } = await supabase.storage.from('contract_images').upload(filePath, file);
+        if (error) throw error;
+        
+        const { data: { publicUrl } } = supabase.storage.from('contract_images').getPublicUrl(filePath);
+        newUrls.push(publicUrl);
+      }
+      
+      setSections(prev => prev.map(s => {
+        if (s.id === sectionId) {
+          return { ...s, images: [...(s.images || []), ...newUrls] };
+        }
+        return s;
+      }));
+      
+      toast.success("Upload da galeria concluído!", { id: toastId });
+    } catch (error) {
+      toast.error("Erro no upload da galeria.", { id: toastId });
+    }
+  };
+
   // PDF Methods
   const handlePdfUpload = async (file: File) => {
     if (file.type !== 'application/pdf') return toast.error("Apenas arquivos PDF.");
@@ -440,7 +498,6 @@ export default function OrcamentoEditor() {
                 </div>
               ) : isPDFMode ? (
                 <div className="p-4 space-y-8">
-                  {/* ... PDF controls (mantidos) ... */}
                   <div className="space-y-3">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Arquivo PDF</label>
                     {sections[0]?.fileUrl ? (
@@ -587,8 +644,23 @@ export default function OrcamentoEditor() {
                               />
                             </div>
                             <div className="pt-2">
-                              <label className="text-xs font-bold text-gray-500 mb-1 block">URL da Imagem</label>
-                              <input value={activeSection.imageUrl || ''} onChange={e => updateSection(activeSection.id, { imageUrl: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none shadow-sm" placeholder="https://" />
+                              <label className="text-xs font-bold text-gray-500 mb-1 block">Imagem</label>
+                              {activeSection.imageUrl ? (
+                                <div className="relative rounded-lg overflow-hidden border border-gray-200 group h-32">
+                                  <img src={activeSection.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                    <button onClick={() => updateSection(activeSection.id, { imageUrl: '' })} className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold flex items-center gap-1">
+                                      <X className="w-3 h-3" /> Remover
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <label className="border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 hover:border-orange-300 transition-colors">
+                                  <UploadCloud className="w-6 h-6 text-gray-400 mb-2" />
+                                  <span className="text-xs font-bold text-gray-600">Fazer upload de imagem</span>
+                                  <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files && handleImageUpload(e.target.files[0], url => updateSection(activeSection.id, { imageUrl: url }))} />
+                                </label>
+                              )}
                             </div>
                           </>
                         )}
@@ -646,25 +718,27 @@ export default function OrcamentoEditor() {
                               />
                             </div>
                             <div className="space-y-3">
-                              <label className="text-xs font-bold text-gray-500 mb-1 block">URLs das Imagens</label>
-                              {activeSection.images?.map((img: string, i: number) => (
-                                <div key={i} className="flex gap-2 items-center">
-                                  <input value={img} onChange={e => {
-                                    const newImgs = [...activeSection.images]; newImgs[i] = e.target.value;
-                                    updateSection(activeSection.id, { images: newImgs });
-                                  }} className="flex-1 text-sm p-2 bg-white border border-gray-200 rounded-lg outline-none shadow-sm" placeholder="https://" />
-                                  <button onClick={() => {
-                                    const newImgs = [...activeSection.images]; newImgs.splice(i, 1);
-                                    updateSection(activeSection.id, { images: newImgs });
-                                  }} className="text-red-500 p-2 hover:bg-red-50 rounded-lg border border-transparent hover:border-red-100"><Trash2 className="w-4 h-4"/></button>
-                                </div>
-                              ))}
-                              <button onClick={() => {
-                                const newImgs = [...(activeSection.images || []), ''];
-                                updateSection(activeSection.id, { images: newImgs });
-                              }} className="w-full py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-xs font-bold text-gray-500 hover:bg-gray-50 transition-colors">
-                                + Adicionar Imagem
-                              </button>
+                              <label className="text-xs font-bold text-gray-500 mb-1 block">Imagens da Galeria</label>
+                              <div className="grid grid-cols-2 gap-2">
+                                {activeSection.images?.map((img: string, i: number) => (
+                                  <div key={i} className="relative rounded-lg overflow-hidden border border-gray-200 group aspect-square">
+                                    <img src={img} className="w-full h-full object-cover" alt="Galeria" />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                      <button onClick={() => {
+                                        const newImgs = [...activeSection.images]; newImgs.splice(i, 1);
+                                        updateSection(activeSection.id, { images: newImgs });
+                                      }} className="p-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                                <label className="border-2 border-dashed border-gray-300 rounded-lg aspect-square flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 hover:border-orange-300 transition-colors">
+                                  <Plus className="w-6 h-6 text-gray-400 mb-1" />
+                                  <span className="text-[10px] font-bold text-gray-500">Adicionar Imagens</span>
+                                  <input type="file" accept="image/*" multiple className="hidden" onChange={e => e.target.files && handleGalleryUpload(e.target.files, activeSection.id)} />
+                                </label>
+                              </div>
                             </div>
                           </>
                         )}
@@ -772,8 +846,23 @@ export default function OrcamentoEditor() {
                           </div>
 
                           <div>
-                            <label className="text-xs font-bold text-gray-700 mb-1.5 block">Imagem de Fundo (URL)</label>
-                            <input value={activeSection.styles?.backgroundImage || ''} onChange={e => updateStyle(activeSection.id, 'backgroundImage', e.target.value)} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg focus:outline-none placeholder:text-gray-300" placeholder="https://..." />
+                            <label className="text-xs font-bold text-gray-700 mb-1.5 block">Imagem de Fundo</label>
+                            {activeSection.styles?.backgroundImage ? (
+                              <div className="relative rounded-lg overflow-hidden border border-gray-200 group h-24 mt-2">
+                                <img src={activeSection.styles.backgroundImage} alt="Background" className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                  <button onClick={() => updateStyle(activeSection.id, 'backgroundImage', '')} className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold flex items-center gap-1">
+                                    <X className="w-3 h-3" /> Remover
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <label className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 hover:border-orange-300 transition-colors mt-2">
+                                <UploadCloud className="w-5 h-5 text-gray-400 mb-1" />
+                                <span className="text-[10px] font-bold text-gray-600">Fazer upload de imagem de fundo</span>
+                                <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files && handleImageUpload(e.target.files[0], url => updateStyle(activeSection.id, 'backgroundImage', url))} />
+                              </label>
+                            )}
                           </div>
                         </div>
 
