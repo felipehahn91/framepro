@@ -90,7 +90,6 @@ const PreviewBlock = ({ section }: { section: any }) => {
   }
 
   if (section.type === 'pricing') {
-    // Compatibilidade com orçamentos antigos
     const packages = section.packages || (section.items ? section.items.map((i: any) => ({
       id: crypto.randomUUID(),
       title: i.name,
@@ -1030,11 +1029,11 @@ export default function OrcamentoEditor() {
                           <div>
                             <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">
                               Cor de Fundo 
-                              <span className="font-normal text-gray-400 uppercase">{activeSection.styles?.backgroundColor || '#ffffff'}</span>
+                              <span className="font-normal text-gray-400 uppercase">{activeSection.styles?.backgroundColor || 'transparent'}</span>
                             </label>
                             <div className="flex gap-2">
                               <input type="color" value={activeSection.styles?.backgroundColor || '#ffffff'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="h-10 w-12 rounded cursor-pointer border border-gray-300 p-0.5 bg-white" />
-                              <input type="text" value={activeSection.styles?.backgroundColor || '#ffffff'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none focus:border-orange-400 bg-white" />
+                              <input type="text" value={activeSection.styles?.backgroundColor || 'transparent'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none focus:border-orange-400 bg-white" />
                             </div>
                           </div>
 
@@ -1115,7 +1114,7 @@ export default function OrcamentoEditor() {
                   )}
                 </div>
               ) : (
-                <div className="flex flex-col w-full h-full relative group/canvas">
+                <div className="flex flex-col w-full flex-1 relative group/canvas">
                   {sections.length === 0 ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
                       <LayoutTemplate className="w-16 h-16 mb-4 opacity-20" />
