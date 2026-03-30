@@ -29,6 +29,21 @@ const quillModules = {
   ]
 };
 
+// Toolbar menor específica para Títulos e Subtítulos
+const titleQuillModules = {
+  toolbar: [
+    ['bold', 'italic', 'underline'],
+    [{ 'color': [] }, { 'background': [] }],
+    [{ 'align': [] }],
+    ['clean']
+  ]
+};
+
+const renderHTML = (html: string, fallback: string) => {
+  if (!html || html === '<p><br></p>') return fallback;
+  return html;
+};
+
 // --- PREVIEW BLOCK COM ESTILOS DINÂMICOS ---
 const PreviewBlock = ({ section }: { section: any }) => {
   const styles = section.styles || {};
@@ -48,12 +63,16 @@ const PreviewBlock = ({ section }: { section: any }) => {
       <div style={{...baseStyle, padding: 0}} className="relative w-full aspect-video flex flex-col items-center justify-center text-center overflow-hidden">
         {styles.backgroundImage && <div className="absolute inset-0 bg-black/40 z-0"></div>}
         <div className="relative z-10 p-8 max-w-3xl w-full">
-          <h1 className="font-bold mb-4" style={{ color: styles.textColor || '#111827', fontSize: `${styles.titleSize || 48}px`, lineHeight: 1.1 }}>
-            {section.title || 'Título da Proposta'}
-          </h1>
-          <div className="opacity-90" style={{ color: styles.textColor || '#4B5563', fontSize: `${styles.textSize || 20}px`, lineHeight: 1.4 }}>
-            {section.subtitle ? <div dangerouslySetInnerHTML={{ __html: section.subtitle.replace(/\n/g, '<br/>') }} /> : 'Subtítulo da sua proposta'}
-          </div>
+          <div 
+            className="font-bold mb-4 title-rich-text" 
+            style={{ color: styles.textColor || '#111827', fontSize: `${styles.titleSize || 48}px`, lineHeight: 1.1 }}
+            dangerouslySetInnerHTML={{ __html: renderHTML(section.title, 'Título da Proposta') }}
+          />
+          <div 
+            className="opacity-90 title-rich-text" 
+            style={{ color: styles.textColor || '#4B5563', fontSize: `${styles.textSize || 20}px`, lineHeight: 1.4 }}
+            dangerouslySetInnerHTML={{ __html: renderHTML(section.subtitle, 'Subtítulo da sua proposta') }}
+          />
         </div>
       </div>
     );
@@ -62,7 +81,7 @@ const PreviewBlock = ({ section }: { section: any }) => {
   if (section.type === 'text') {
     return (
       <div style={baseStyle} className="w-full prose max-w-none">
-        {section.content ? (
+        {section.content && section.content !== '<p><br></p>' ? (
           <div dangerouslySetInnerHTML={{ __html: section.content }} />
         ) : (
           <p className="opacity-50 italic">Bloco de texto vazio. Selecione este bloco para digitar.</p>
@@ -75,9 +94,11 @@ const PreviewBlock = ({ section }: { section: any }) => {
     const total = section.items?.reduce((acc: number, item: any) => acc + (Number(item.price) || 0), 0) || 0;
     return (
       <div style={baseStyle} className="w-full">
-        <h2 className="font-bold mb-8" style={{ color: styles.textColor || '#111827', fontSize: `${styles.titleSize || 32}px` }}>
-          {section.title || 'Investimento'}
-        </h2>
+        <div 
+          className="font-bold mb-8 title-rich-text" 
+          style={{ color: styles.textColor || '#111827', fontSize: `${styles.titleSize || 32}px` }}
+          dangerouslySetInnerHTML={{ __html: renderHTML(section.title, 'Investimento') }}
+        />
         <div className="space-y-4">
           {section.items?.map((item: any, i: number) => (
             <div key={i} className="flex justify-between items-center py-4 border-b border-gray-200/50 last:border-0">
@@ -102,9 +123,13 @@ const PreviewBlock = ({ section }: { section: any }) => {
     return (
       <div style={baseStyle} className={`w-full flex flex-col ${section.imagePosition === 'right' ? 'md:flex-row' : 'md:flex-row-reverse'} gap-8 md:gap-12 items-center`}>
         <div className="flex-1 space-y-4 w-full">
-          <h2 className="font-bold leading-tight mb-4" style={{ color: styles.textColor || '#111827', fontSize: `${styles.titleSize || 36}px` }}>{section.title || 'Título da Seção'}</h2>
+          <div 
+            className="font-bold leading-tight mb-4 title-rich-text" 
+            style={{ color: styles.textColor || '#111827', fontSize: `${styles.titleSize || 36}px` }}
+            dangerouslySetInnerHTML={{ __html: renderHTML(section.title, 'Título da Seção') }}
+          />
           <div className="prose max-w-none opacity-90">
-            {section.content ? <div dangerouslySetInnerHTML={{ __html: section.content }} /> : <p>Descreva seu serviço, produto ou metodologia aqui.</p>}
+            {section.content && section.content !== '<p><br></p>' ? <div dangerouslySetInnerHTML={{ __html: section.content }} /> : <p>Descreva seu serviço, produto ou metodologia aqui.</p>}
           </div>
         </div>
         <div className="flex-1 w-full">
@@ -123,7 +148,13 @@ const PreviewBlock = ({ section }: { section: any }) => {
   if (section.type === 'gallery') {
     return (
       <div style={baseStyle} className="w-full">
-        {section.title && <h2 className="font-bold mb-6 text-center" style={{ fontSize: `${styles.titleSize || 32}px` }}>{section.title}</h2>}
+        {section.title && (
+          <div 
+            className="font-bold mb-6 text-center title-rich-text" 
+            style={{ fontSize: `${styles.titleSize || 32}px` }}
+            dangerouslySetInnerHTML={{ __html: section.title }}
+          />
+        )}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {section.images?.length > 0 ? section.images.map((img: string, i: number) => (
             <img key={i} src={img} className="w-full aspect-square object-cover rounded-xl shadow-sm" alt={`Galeria ${i}`} />
@@ -138,7 +169,13 @@ const PreviewBlock = ({ section }: { section: any }) => {
   if (section.type === 'video') {
     return (
       <div style={baseStyle} className="w-full flex flex-col items-center">
-        {section.title && <h2 className="font-bold mb-6 text-center" style={{ fontSize: `${styles.titleSize || 32}px` }}>{section.title}</h2>}
+        {section.title && (
+          <div 
+            className="font-bold mb-6 text-center title-rich-text" 
+            style={{ fontSize: `${styles.titleSize || 32}px` }}
+            dangerouslySetInnerHTML={{ __html: section.title }}
+          />
+        )}
         {section.videoUrl ? (
           <div className="w-full max-w-4xl aspect-video rounded-2xl overflow-hidden shadow-xl">
             <iframe 
@@ -236,7 +273,7 @@ export default function OrcamentoEditor() {
     };
     
     if (type === 'cover') { 
-      newSection.title = 'Nova Capa'; newSection.subtitle = ''; newSection.imageUrl = ''; 
+      newSection.title = 'Nova Capa'; newSection.subtitle = 'Subtítulo da proposta'; newSection.imageUrl = ''; 
       newSection.styles.padding = 0;
     }
     if (type === 'text') newSection.content = '<p>Digite seu texto aqui...</p>';
@@ -308,9 +345,16 @@ export default function OrcamentoEditor() {
         @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,700;1,400&family=Montserrat:ital,wght@0,400;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
         .ql-toolbar { border-radius: 8px 8px 0 0; border-color: #e5e7eb !important; background: #fafafa; }
         .ql-container { border-radius: 0 0 8px 8px; border-color: #e5e7eb !important; font-family: inherit; font-size: 14px; background: white; min-height: 150px; }
+        
+        /* Estilos específicos para o Quill menor (Títulos) */
+        .title-quill .ql-container { min-height: 60px; height: auto; }
+        .title-quill .ql-editor { min-height: 60px; padding: 12px; }
+        
+        /* Remove a margem padrão do parágrafo gerado pelo Quill no preview */
+        .title-rich-text p { margin: 0; padding: 0; }
       `}} />
       <div className="flex flex-col h-[calc(100vh-6rem)]">
-        {/* Topbar */}
+        {/* Topbar: Minimalista */}
         <div className="bg-white border border-gray-200 p-4 rounded-xl shadow-sm flex items-center justify-between mb-4 shrink-0">
           <div className="flex items-center gap-4">
             <button onClick={() => navigate('/orcamentos')} className="text-gray-500 hover:text-gray-900 transition-colors">
@@ -333,7 +377,7 @@ export default function OrcamentoEditor() {
         {/* Workspace Elementor Style */}
         <div className="flex-1 flex overflow-hidden bg-gray-100 rounded-xl border border-gray-200">
           
-          {/* SIDEBAR ESQUERDA (Ferramentas / Configuração do Elemento Ativo) */}
+          {/* SIDEBAR ESQUERDA */}
           <div className="w-[340px] bg-white border-r border-gray-200 flex flex-col shrink-0 z-10 shadow-[2px_0_10px_rgba(0,0,0,0.02)]">
             
             <div className="p-4 border-b border-gray-200 bg-white flex flex-col gap-3 shadow-sm z-10 relative">
@@ -478,12 +522,24 @@ export default function OrcamentoEditor() {
                         {activeSection.type === 'cover' && (
                           <>
                             <div>
-                              <label className="text-xs font-bold text-gray-500 mb-1 block">Título</label>
-                              <input value={activeSection.title || ''} onChange={e => updateSection(activeSection.id, { title: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-orange-400 outline-none shadow-sm" />
+                              <label className="text-xs font-bold text-gray-500 mb-1 block">Título da Capa</label>
+                              <ReactQuill 
+                                theme="snow"
+                                value={activeSection.title || ''}
+                                onChange={(val) => updateSection(activeSection.id, { title: val })}
+                                modules={titleQuillModules}
+                                className="bg-white rounded-lg shadow-sm title-quill"
+                              />
                             </div>
                             <div>
                               <label className="text-xs font-bold text-gray-500 mb-1 block">Subtítulo</label>
-                              <textarea value={activeSection.subtitle || ''} onChange={e => updateSection(activeSection.id, { subtitle: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-orange-400 outline-none resize-none h-20 shadow-sm" />
+                              <ReactQuill 
+                                theme="snow"
+                                value={activeSection.subtitle || ''}
+                                onChange={(val) => updateSection(activeSection.id, { subtitle: val })}
+                                modules={titleQuillModules}
+                                className="bg-white rounded-lg shadow-sm title-quill"
+                              />
                             </div>
                           </>
                         )}
@@ -512,7 +568,13 @@ export default function OrcamentoEditor() {
                             </div>
                             <div>
                               <label className="text-xs font-bold text-gray-500 mb-1 block">Título da Seção</label>
-                              <input value={activeSection.title || ''} onChange={e => updateSection(activeSection.id, { title: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none shadow-sm" />
+                              <ReactQuill 
+                                theme="snow"
+                                value={activeSection.title || ''}
+                                onChange={(val) => updateSection(activeSection.id, { title: val })}
+                                modules={titleQuillModules}
+                                className="bg-white rounded-lg shadow-sm title-quill"
+                              />
                             </div>
                             <div>
                               <label className="text-xs font-bold text-gray-500 mb-1 block">Conteúdo</label>
@@ -535,7 +597,13 @@ export default function OrcamentoEditor() {
                           <>
                             <div>
                               <label className="text-xs font-bold text-gray-500 mb-1 block">Título da Tabela</label>
-                              <input value={activeSection.title || ''} onChange={e => updateSection(activeSection.id, { title: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none shadow-sm" />
+                              <ReactQuill 
+                                theme="snow"
+                                value={activeSection.title || ''}
+                                onChange={(val) => updateSection(activeSection.id, { title: val })}
+                                modules={titleQuillModules}
+                                className="bg-white rounded-lg shadow-sm title-quill"
+                              />
                             </div>
                             <div className="space-y-3">
                               <label className="text-xs font-bold text-gray-500 mb-1 block">Itens da Oferta</label>
@@ -569,7 +637,13 @@ export default function OrcamentoEditor() {
                           <>
                             <div>
                               <label className="text-xs font-bold text-gray-500 mb-1 block">Título (Opcional)</label>
-                              <input value={activeSection.title || ''} onChange={e => updateSection(activeSection.id, { title: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none shadow-sm" />
+                              <ReactQuill 
+                                theme="snow"
+                                value={activeSection.title || ''}
+                                onChange={(val) => updateSection(activeSection.id, { title: val })}
+                                modules={titleQuillModules}
+                                className="bg-white rounded-lg shadow-sm title-quill"
+                              />
                             </div>
                             <div className="space-y-3">
                               <label className="text-xs font-bold text-gray-500 mb-1 block">URLs das Imagens</label>
@@ -599,7 +673,13 @@ export default function OrcamentoEditor() {
                           <>
                             <div>
                               <label className="text-xs font-bold text-gray-500 mb-1 block">Título (Opcional)</label>
-                              <input value={activeSection.title || ''} onChange={e => updateSection(activeSection.id, { title: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none shadow-sm" />
+                              <ReactQuill 
+                                theme="snow"
+                                value={activeSection.title || ''}
+                                onChange={(val) => updateSection(activeSection.id, { title: val })}
+                                modules={titleQuillModules}
+                                className="bg-white rounded-lg shadow-sm title-quill"
+                              />
                             </div>
                             <div>
                               <label className="text-xs font-bold text-gray-500 mb-1 block">URL do Vídeo (YouTube/Vimeo)</label>
@@ -646,29 +726,30 @@ export default function OrcamentoEditor() {
 
                           <div>
                             <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">
-                              Cor do Texto 
+                              Cor Padrão do Texto 
                               <span className="font-normal text-gray-400 uppercase">{activeSection.styles?.textColor || '#111827'}</span>
                             </label>
                             <div className="flex gap-2">
                               <input type="color" value={activeSection.styles?.textColor || '#111827'} onChange={e => updateStyle(activeSection.id, 'textColor', e.target.value)} className="h-10 w-12 rounded cursor-pointer border border-gray-300 p-0.5" />
                               <input type="text" value={activeSection.styles?.textColor || '#111827'} onChange={e => updateStyle(activeSection.id, 'textColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none" />
                             </div>
+                            <p className="text-[10px] text-gray-400 mt-1">Essa cor afeta os textos e títulos normais, mas pode ser sobrescrita pelo editor de texto.</p>
                           </div>
 
                           {['cover', 'pricing', 'two-columns', 'gallery', 'video'].includes(activeSection.type) && (
                             <div>
                               <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">
-                                Tamanho do Título
-                                <span className="font-normal text-gray-500">{activeSection.styles?.titleSize || (activeSection.type === 'cover' ? 56 : 32)}px</span>
+                                Tamanho Base do Título
+                                <span className="font-normal text-gray-500">{activeSection.styles?.titleSize || (activeSection.type === 'cover' ? 48 : 32)}px</span>
                               </label>
-                              <input type="range" min="16" max="100" step="2" value={activeSection.styles?.titleSize || (activeSection.type === 'cover' ? 56 : 32)} onChange={e => updateStyle(activeSection.id, 'titleSize', Number(e.target.value))} className="w-full accent-orange-500" />
+                              <input type="range" min="16" max="100" step="2" value={activeSection.styles?.titleSize || (activeSection.type === 'cover' ? 48 : 32)} onChange={e => updateStyle(activeSection.id, 'titleSize', Number(e.target.value))} className="w-full accent-orange-500" />
                             </div>
                           )}
 
                           {['cover', 'pricing'].includes(activeSection.type) && (
                             <div>
                               <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">
-                                Tamanho do Texto/Subtítulo
+                                Tamanho do Subtítulo / Valores
                                 <span className="font-normal text-gray-500">{activeSection.styles?.textSize || 18}px</span>
                               </label>
                               <input type="range" min="12" max="60" step="1" value={activeSection.styles?.textSize || 18} onChange={e => updateStyle(activeSection.id, 'textSize', Number(e.target.value))} className="w-full accent-orange-500" />
@@ -686,7 +767,7 @@ export default function OrcamentoEditor() {
                             </label>
                             <div className="flex gap-2">
                               <input type="color" value={activeSection.styles?.backgroundColor || '#ffffff'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="h-10 w-12 rounded cursor-pointer border border-gray-300 p-0.5" />
-                              <input type="text" value={activeSection.styles?.backgroundColor || '#ffffff'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none" />
+                              <input type="text" value={activeSection.styles?.backgroundColor || '#ffffff'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none focus:border-orange-400" />
                             </div>
                           </div>
 

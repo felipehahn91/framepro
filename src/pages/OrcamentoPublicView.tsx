@@ -4,6 +4,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, AlertCircle, ImageIcon, Video } from "lucide-react";
 
+const renderHTML = (html: string, fallback: string) => {
+  if (!html || html === '<p><br></p>') return fallback;
+  return html;
+};
+
 // --- PREVIEW BLOCK PÚBLICO COM ESTILOS ---
 const PreviewBlock = ({ section }: { section: any }) => {
   const styles = section.styles || {};
@@ -23,12 +28,16 @@ const PreviewBlock = ({ section }: { section: any }) => {
       <div style={{...baseStyle, padding: 0}} className="relative w-full aspect-video flex flex-col items-center justify-center text-center overflow-hidden">
         {styles.backgroundImage && <div className="absolute inset-0 bg-black/40 z-0"></div>}
         <div className="relative z-10 p-8 max-w-3xl w-full">
-          <h1 className="font-bold mb-4" style={{ color: styles.textColor || '#111827', fontSize: `${styles.titleSize || 48}px`, lineHeight: 1.1 }}>
-            {section.title}
-          </h1>
-          <div className="opacity-90" style={{ color: styles.textColor || '#4B5563', fontSize: `${styles.textSize || 20}px`, lineHeight: 1.4 }}>
-            {section.subtitle ? <div dangerouslySetInnerHTML={{ __html: section.subtitle.replace(/\n/g, '<br/>') }} /> : null}
-          </div>
+          <div 
+            className="font-bold mb-4 title-rich-text" 
+            style={{ color: styles.textColor || '#111827', fontSize: `${styles.titleSize || 48}px`, lineHeight: 1.1 }}
+            dangerouslySetInnerHTML={{ __html: renderHTML(section.title, 'Título da Proposta') }}
+          />
+          <div 
+            className="opacity-90 title-rich-text" 
+            style={{ color: styles.textColor || '#4B5563', fontSize: `${styles.textSize || 20}px`, lineHeight: 1.4 }}
+            dangerouslySetInnerHTML={{ __html: renderHTML(section.subtitle, 'Subtítulo da sua proposta') }}
+          />
         </div>
       </div>
     );
@@ -37,7 +46,7 @@ const PreviewBlock = ({ section }: { section: any }) => {
   if (section.type === 'text') {
     return (
       <div style={baseStyle} className="w-full prose max-w-none">
-        {section.content ? (
+        {section.content && section.content !== '<p><br></p>' ? (
           <div dangerouslySetInnerHTML={{ __html: section.content }} />
         ) : null}
       </div>
@@ -48,9 +57,11 @@ const PreviewBlock = ({ section }: { section: any }) => {
     const total = section.items?.reduce((acc: number, item: any) => acc + (Number(item.price) || 0), 0) || 0;
     return (
       <div style={baseStyle} className="w-full">
-        <h2 className="font-bold mb-10" style={{ color: styles.textColor || '#111827', fontSize: `${styles.titleSize || 32}px` }}>
-          {section.title}
-        </h2>
+        <div 
+          className="font-bold mb-10 title-rich-text" 
+          style={{ color: styles.textColor || '#111827', fontSize: `${styles.titleSize || 32}px` }}
+          dangerouslySetInnerHTML={{ __html: renderHTML(section.title, 'Investimento') }}
+        />
         <div className="space-y-4">
           {section.items?.map((item: any, i: number) => (
             <div key={i} className="flex justify-between items-center py-4 border-b border-gray-200/50 last:border-0">
@@ -75,9 +86,13 @@ const PreviewBlock = ({ section }: { section: any }) => {
     return (
       <div style={baseStyle} className={`w-full flex flex-col ${section.imagePosition === 'right' ? 'md:flex-row' : 'md:flex-row-reverse'} gap-8 md:gap-16 items-center`}>
         <div className="flex-1 space-y-6 w-full">
-          <h2 className="font-bold leading-tight" style={{ color: styles.textColor || '#111827', fontSize: `${styles.titleSize || 36}px` }}>{section.title}</h2>
+          <div 
+            className="font-bold leading-tight title-rich-text" 
+            style={{ color: styles.textColor || '#111827', fontSize: `${styles.titleSize || 36}px` }}
+            dangerouslySetInnerHTML={{ __html: renderHTML(section.title, 'Título da Seção') }}
+          />
           <div className="prose max-w-none opacity-90">
-            {section.content && <div dangerouslySetInnerHTML={{ __html: section.content }} />}
+            {section.content && section.content !== '<p><br></p>' && <div dangerouslySetInnerHTML={{ __html: section.content }} />}
           </div>
         </div>
         <div className="flex-1 w-full">
@@ -92,7 +107,13 @@ const PreviewBlock = ({ section }: { section: any }) => {
   if (section.type === 'gallery') {
     return (
       <div style={baseStyle} className="w-full">
-        {section.title && <h2 className="font-bold mb-10 text-center" style={{ fontSize: `${styles.titleSize || 32}px` }}>{section.title}</h2>}
+        {section.title && section.title !== '<p><br></p>' && (
+          <div 
+            className="font-bold mb-10 text-center title-rich-text" 
+            style={{ fontSize: `${styles.titleSize || 32}px` }}
+            dangerouslySetInnerHTML={{ __html: section.title }}
+          />
+        )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {section.images?.map((img: string, i: number) => (
             <div key={i} className="aspect-square rounded-2xl overflow-hidden shadow-md group">
@@ -107,7 +128,13 @@ const PreviewBlock = ({ section }: { section: any }) => {
   if (section.type === 'video') {
     return (
       <div style={baseStyle} className="w-full flex flex-col items-center">
-        {section.title && <h2 className="font-bold mb-10 text-center" style={{ fontSize: `${styles.titleSize || 32}px` }}>{section.title}</h2>}
+        {section.title && section.title !== '<p><br></p>' && (
+          <div 
+            className="font-bold mb-10 text-center title-rich-text" 
+            style={{ fontSize: `${styles.titleSize || 32}px` }}
+            dangerouslySetInnerHTML={{ __html: section.title }}
+          />
+        )}
         {section.videoUrl && (
           <div className="w-full max-w-5xl aspect-video rounded-3xl overflow-hidden shadow-2xl bg-black">
             <iframe 
@@ -171,6 +198,7 @@ export default function OrcamentoPublicView() {
     <>
       <style dangerouslySetInnerHTML={{__html: `
         @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,700;1,400&family=Montserrat:ital,wght@0,400;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+        .title-rich-text p { margin: 0; padding: 0; }
       `}} />
       <div className="min-h-screen bg-gray-100 font-sans text-gray-900 flex flex-col items-center justify-start sm:py-12">
         {isPDFMode ? (
