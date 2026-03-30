@@ -397,13 +397,14 @@ export default function Oportunidades() {
         )}
       </div>
 
-      {/* Modal de Importação CSV */}
+      {/* Modal de Importação CSV / Trello */}
       <LeadImportModal 
         isOpen={isImportOpen} 
         onClose={() => setIsImportOpen(false)} 
         pipelines={pipelines} 
         columns={columns} 
         userId={user?.id} 
+        onImportSuccess={fetchData}
       />
 
       {/* MODAL: Adicionar ao Pipeline */}
