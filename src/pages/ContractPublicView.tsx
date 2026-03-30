@@ -24,7 +24,7 @@ export default function ContractPublicView() {
     try {
       const { data, error } = await supabase
         .from('contracts')
-        .select('*, opportunities(name)')
+        .select('*, clients:client_id(name), users:user_id(raw_user_meta_data)')
         .eq('share_token', token)
         .single();
 
@@ -51,7 +51,7 @@ export default function ContractPublicView() {
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Contrato_${contract.opportunities?.name || 'Documento'}.pdf`);
+      pdf.save(`Contrato_${contract.clients?.name || 'Documento'}.pdf`);
       toast.success("PDF baixado!");
     } catch (error) {
       toast.error("Erro ao gerar PDF.");
@@ -59,25 +59,37 @@ export default function ContractPublicView() {
   };
 
   const handleSaveSignature = async () => {
-    if (!sigCanvas.current || sigCanvas.current.isEmpty()) return toast.error("Desenhe sua assinatura.");
+    if (!sigCanvas.current || sigCanvas.current.isEmpty()) {
+      return toast.error("Desenhe sua assinatura.");
+    }
     
     setSavingSig(true);
     try {
-      const signatureImage = sigCanvas.current.getTrimmedCanvas().toDataURL('image/png');
+      // Usando getCanvas() no lugar de getTrimmedCanvas() para evitar erros do navegador de renderização/corte
+      const signatureImage = sigCanvas.current.getCanvas().toDataURL('image/png');
       
-      // Update signature logic based on if we already have one
       const updates: any = {};
       if (!contract.client_signature) {
         updates.client_signature = signatureImage;
         updates.signature_status = contract.supplier_signature ? 'Assinado 2/2' : 'Assinado 1/2';
       }
 
-      await supabase.from('contracts').update(updates).eq('id', contract.id);
+      // Dispara o update e CAPTURA explicitamente o erro do Supabase
+      const { error } = await supabase
+        .from('contracts')
+        .update(updates)
+        .eq('share_token', token);
+
+      if (error) {
+        console.error("Supabase Update Error:", error);
+        throw new Error(error.message); // Repassa o erro do banco para o toast
+      }
       
       setContract({ ...contract, ...updates });
       toast.success("Assinatura salva com sucesso!");
-    } catch (error) {
-      toast.error("Erro ao salvar assinatura.");
+    } catch (error: any) {
+      console.error("Catch Error:", error);
+      toast.error(`Erro ao salvar: ${error.message || "Tente novamente."}`);
     } finally {
       setSavingSig(false);
     }
@@ -91,8 +103,7 @@ export default function ContractPublicView() {
   if (!contract) return <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50"><h2 className="text-2xl font-bold">Contrato Inválido</h2><p className="text-gray-500">O link expirou ou não existe.</p></div>;
 
   const isSigned = !!contract.client_signature;
-  const clientName = contract.opportunities?.name || 'Contratante';
-  const supplierName = 'Fornecedor';
+  const supplierName = contract.users?.raw_user_meta_data?.first_name || 'Fornecedor';
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 font-sans text-gray-900">
@@ -164,7 +175,7 @@ export default function ContractPublicView() {
                     </div>
                   )}
                 </div>
-                <p className="font-bold text-lg text-center">{clientName}</p>
+                <p className="font-bold text-lg text-center">{contract.clients?.name}</p>
                 <p className="text-sm text-gray-500 uppercase tracking-widest mt-1">Contratante</p>
                 
                 {!isSigned && (
