@@ -3,6 +3,8 @@ import { Layout } from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
+import ReactQuill from "react-quill-new";
+import "react-quill-new/dist/quill.snow.css";
 import { 
   ArrowLeft, Save, Loader2, Image as ImageIcon, Type, DollarSign, 
   Trash2, Plus, FileUp, Settings, Link as LinkIcon, ArrowUp, ArrowDown,
@@ -16,6 +18,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+const quillModules = {
+  toolbar: [
+    [{ 'header': [2, 3, false] }],
+    ['bold', 'italic', 'underline', 'strike'],
+    [{ 'color': [] }, { 'background': [] }],
+    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+    [{ 'align': [] }],
+    ['clean']
+  ]
+};
+
 // --- PREVIEW BLOCK COM ESTILOS DINÂMICOS ---
 const PreviewBlock = ({ section }: { section: any }) => {
   const styles = section.styles || {};
@@ -27,19 +40,20 @@ const PreviewBlock = ({ section }: { section: any }) => {
     backgroundPosition: 'center',
     color: styles.textColor || 'inherit',
     padding: `${styles.padding || 40}px`,
+    fontFamily: styles.fontFamily || 'inherit',
   };
 
   if (section.type === 'cover') {
     return (
       <div style={{...baseStyle, padding: 0}} className="relative w-full aspect-video flex flex-col items-center justify-center text-center overflow-hidden">
         {styles.backgroundImage && <div className="absolute inset-0 bg-black/40 z-0"></div>}
-        <div className="relative z-10 p-8 max-w-2xl w-full">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4" style={{ color: styles.textColor || '#111827' }}>
+        <div className="relative z-10 p-8 max-w-3xl w-full">
+          <h1 className="font-bold mb-4" style={{ color: styles.textColor || '#111827', fontSize: `${styles.titleSize || 48}px`, lineHeight: 1.1 }}>
             {section.title || 'Título da Proposta'}
           </h1>
-          <p className="text-lg md:text-xl opacity-90" style={{ color: styles.textColor || '#4B5563' }}>
-            {section.subtitle || 'Subtítulo da sua proposta'}
-          </p>
+          <div className="opacity-90" style={{ color: styles.textColor || '#4B5563', fontSize: `${styles.textSize || 20}px`, lineHeight: 1.4 }}>
+            {section.subtitle ? <div dangerouslySetInnerHTML={{ __html: section.subtitle.replace(/\n/g, '<br/>') }} /> : 'Subtítulo da sua proposta'}
+          </div>
         </div>
       </div>
     );
@@ -49,7 +63,7 @@ const PreviewBlock = ({ section }: { section: any }) => {
     return (
       <div style={baseStyle} className="w-full prose max-w-none">
         {section.content ? (
-          <div dangerouslySetInnerHTML={{ __html: section.content.replace(/\n/g, '<br/>') }} />
+          <div dangerouslySetInnerHTML={{ __html: section.content }} />
         ) : (
           <p className="opacity-50 italic">Bloco de texto vazio. Selecione este bloco para digitar.</p>
         )}
@@ -61,20 +75,20 @@ const PreviewBlock = ({ section }: { section: any }) => {
     const total = section.items?.reduce((acc: number, item: any) => acc + (Number(item.price) || 0), 0) || 0;
     return (
       <div style={baseStyle} className="w-full">
-        <h2 className="text-2xl font-bold mb-8" style={{ color: styles.textColor || '#111827' }}>
+        <h2 className="font-bold mb-8" style={{ color: styles.textColor || '#111827', fontSize: `${styles.titleSize || 32}px` }}>
           {section.title || 'Investimento'}
         </h2>
         <div className="space-y-4">
           {section.items?.map((item: any, i: number) => (
             <div key={i} className="flex justify-between items-center py-4 border-b border-gray-200/50 last:border-0">
-              <span className="text-lg opacity-90">{item.name || 'Item sem nome'}</span>
-              <span className="font-semibold text-lg">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(item.price) || 0)}</span>
+              <span className="opacity-90" style={{ fontSize: `${styles.textSize || 18}px` }}>{item.name || 'Item sem nome'}</span>
+              <span className="font-semibold" style={{ fontSize: `${styles.textSize || 18}px` }}>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(item.price) || 0)}</span>
             </div>
           ))}
           {section.items?.length > 0 && (
             <div className="flex justify-between items-center py-6 mt-6 border-t-2 border-current">
-              <span className="font-bold text-xl">Total</span>
-              <span className="font-bold text-2xl" style={{ color: styles.textColor ? 'inherit' : '#f97316' }}>
+              <span className="font-bold" style={{ fontSize: `${(styles.textSize || 18) + 4}px` }}>Total</span>
+              <span className="font-bold" style={{ color: styles.textColor ? 'inherit' : '#f97316', fontSize: `${(styles.textSize || 18) + 8}px` }}>
                 {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total)}
               </span>
             </div>
@@ -88,9 +102,9 @@ const PreviewBlock = ({ section }: { section: any }) => {
     return (
       <div style={baseStyle} className={`w-full flex flex-col ${section.imagePosition === 'right' ? 'md:flex-row' : 'md:flex-row-reverse'} gap-8 md:gap-12 items-center`}>
         <div className="flex-1 space-y-4 w-full">
-          <h2 className="text-3xl font-bold" style={{ color: styles.textColor || '#111827' }}>{section.title || 'Título da Seção'}</h2>
+          <h2 className="font-bold leading-tight mb-4" style={{ color: styles.textColor || '#111827', fontSize: `${styles.titleSize || 36}px` }}>{section.title || 'Título da Seção'}</h2>
           <div className="prose max-w-none opacity-90">
-            {section.content ? <div dangerouslySetInnerHTML={{ __html: section.content.replace(/\n/g, '<br/>') }} /> : <p>Descreva seu serviço, produto ou metodologia aqui.</p>}
+            {section.content ? <div dangerouslySetInnerHTML={{ __html: section.content }} /> : <p>Descreva seu serviço, produto ou metodologia aqui.</p>}
           </div>
         </div>
         <div className="flex-1 w-full">
@@ -109,7 +123,7 @@ const PreviewBlock = ({ section }: { section: any }) => {
   if (section.type === 'gallery') {
     return (
       <div style={baseStyle} className="w-full">
-        {section.title && <h2 className="text-2xl font-bold mb-6 text-center">{section.title}</h2>}
+        {section.title && <h2 className="font-bold mb-6 text-center" style={{ fontSize: `${styles.titleSize || 32}px` }}>{section.title}</h2>}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {section.images?.length > 0 ? section.images.map((img: string, i: number) => (
             <img key={i} src={img} className="w-full aspect-square object-cover rounded-xl shadow-sm" alt={`Galeria ${i}`} />
@@ -124,7 +138,7 @@ const PreviewBlock = ({ section }: { section: any }) => {
   if (section.type === 'video') {
     return (
       <div style={baseStyle} className="w-full flex flex-col items-center">
-        {section.title && <h2 className="text-2xl font-bold mb-6">{section.title}</h2>}
+        {section.title && <h2 className="font-bold mb-6 text-center" style={{ fontSize: `${styles.titleSize || 32}px` }}>{section.title}</h2>}
         {section.videoUrl ? (
           <div className="w-full max-w-4xl aspect-video rounded-2xl overflow-hidden shadow-xl">
             <iframe 
@@ -210,16 +224,24 @@ export default function OrcamentoEditor() {
     const newSection: any = { 
       id: crypto.randomUUID(), 
       type,
-      styles: { backgroundColor: '#ffffff', textColor: '#111827', padding: 40, backgroundImage: '' }
+      styles: { 
+        backgroundColor: '#ffffff', 
+        textColor: '#111827', 
+        padding: 40, 
+        backgroundImage: '',
+        fontFamily: 'inherit',
+        titleSize: type === 'cover' ? 56 : 32,
+        textSize: 18
+      }
     };
     
     if (type === 'cover') { 
       newSection.title = 'Nova Capa'; newSection.subtitle = ''; newSection.imageUrl = ''; 
       newSection.styles.padding = 0;
     }
-    if (type === 'text') newSection.content = 'Digite seu texto aqui...';
+    if (type === 'text') newSection.content = '<p>Digite seu texto aqui...</p>';
     if (type === 'pricing') { newSection.title = 'Investimento'; newSection.items = [{ name: 'Pacote Básico', price: 1500 }]; }
-    if (type === 'two-columns') { newSection.title = 'Nossa Solução'; newSection.content = 'Detalhes...'; newSection.imageUrl = ''; newSection.imagePosition = 'right'; }
+    if (type === 'two-columns') { newSection.title = 'Nossa Solução'; newSection.content = '<p>Detalhes do serviço...</p>'; newSection.imageUrl = ''; newSection.imagePosition = 'right'; }
     if (type === 'gallery') { newSection.title = 'Portfólio'; newSection.images = []; }
     if (type === 'video') { newSection.title = 'Apresentação'; newSection.videoUrl = ''; }
     if (type === 'separator') { newSection.height = 40; newSection.showLine = true; }
@@ -282,8 +304,13 @@ export default function OrcamentoEditor() {
 
   return (
     <Layout>
+      <style dangerouslySetInnerHTML={{__html: `
+        @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,700;1,400&family=Montserrat:ital,wght@0,400;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+        .ql-toolbar { border-radius: 8px 8px 0 0; border-color: #e5e7eb !important; background: #fafafa; }
+        .ql-container { border-radius: 0 0 8px 8px; border-color: #e5e7eb !important; font-family: inherit; font-size: 14px; background: white; min-height: 150px; }
+      `}} />
       <div className="flex flex-col h-[calc(100vh-6rem)]">
-        {/* Topbar: Minimalista */}
+        {/* Topbar */}
         <div className="bg-white border border-gray-200 p-4 rounded-xl shadow-sm flex items-center justify-between mb-4 shrink-0">
           <div className="flex items-center gap-4">
             <button onClick={() => navigate('/orcamentos')} className="text-gray-500 hover:text-gray-900 transition-colors">
@@ -303,13 +330,12 @@ export default function OrcamentoEditor() {
           </button>
         </div>
 
-        {/* Workspace Elementor Style (3 Columns Layout) */}
+        {/* Workspace Elementor Style */}
         <div className="flex-1 flex overflow-hidden bg-gray-100 rounded-xl border border-gray-200">
           
           {/* SIDEBAR ESQUERDA (Ferramentas / Configuração do Elemento Ativo) */}
-          <div className="w-[320px] bg-white border-r border-gray-200 flex flex-col shrink-0 z-10 shadow-[2px_0_10px_rgba(0,0,0,0.02)]">
+          <div className="w-[340px] bg-white border-r border-gray-200 flex flex-col shrink-0 z-10 shadow-[2px_0_10px_rgba(0,0,0,0.02)]">
             
-            {/* Header da Sidebar (Mais Intuitivo) */}
             <div className="p-4 border-b border-gray-200 bg-white flex flex-col gap-3 shadow-sm z-10 relative">
               {activeSection ? (
                 <>
@@ -335,7 +361,6 @@ export default function OrcamentoEditor() {
             <div className="flex-1 overflow-y-auto custom-scrollbar bg-gray-50/30">
               
               {!activeSection && !isPDFMode ? (
-                // Visão de Elementos (Nenhuma camada selecionada)
                 <div className="p-4 space-y-6">
                   <div>
                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Adicionar Bloco</h3>
@@ -344,7 +369,7 @@ export default function OrcamentoEditor() {
                         <ImageIcon className="w-5 h-5 mb-2" /> <span className="text-[11px] font-bold">Capa</span>
                       </button>
                       <button onClick={() => addSection('text')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group shadow-sm">
-                        <Type className="w-5 h-5 mb-2" /> <span className="text-[11px] font-bold">Texto</span>
+                        <Type className="w-5 h-5 mb-2" /> <span className="text-[11px] font-bold">Texto Livre</span>
                       </button>
                       <button onClick={() => addSection('two-columns')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group shadow-sm">
                         <Columns className="w-5 h-5 mb-2" /> <span className="text-[11px] font-bold">2 Colunas</span>
@@ -365,13 +390,13 @@ export default function OrcamentoEditor() {
                   </div>
                   <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl">
                     <p className="text-sm text-orange-800">
-                      <strong>Dica:</strong> Clique em qualquer bloco no centro da tela para editar seu conteúdo e estilo, ou use a barra à direita (Camadas) para reordenar.
+                      <strong>Dica:</strong> Clique em qualquer bloco no centro da tela para editar seu conteúdo, ou use a aba de Estilo para mudar fontes e cores.
                     </p>
                   </div>
                 </div>
               ) : isPDFMode ? (
-                // PDF Settings Sidebar
                 <div className="p-4 space-y-8">
+                  {/* ... PDF controls (mantidos) ... */}
                   <div className="space-y-3">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Arquivo PDF</label>
                     {sections[0]?.fileUrl ? (
@@ -434,9 +459,8 @@ export default function OrcamentoEditor() {
                   </div>
                 </div>
               ) : (
-                // Builder Active Section Settings (Content / Style)
+                // Builder Active Section Settings
                 <div className="flex flex-col h-full animate-in fade-in slide-in-from-left-2">
-                  {/* Tabs Conteúdo / Estilo */}
                   <div className="flex border-b border-gray-200 shrink-0 bg-white sticky top-0 z-10 shadow-sm">
                     <button onClick={() => setActiveTab('content')} className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${activeTab === 'content' ? 'text-orange-500 border-b-2 border-orange-500 bg-orange-50/30' : 'text-gray-500 hover:bg-gray-50'}`}>
                       <AlignLeft className="w-3.5 h-3.5" /> Conteúdo
@@ -447,9 +471,10 @@ export default function OrcamentoEditor() {
                   </div>
 
                   <div className="p-4 space-y-5">
+                    {/* ABA DE CONTEÚDO */}
                     {activeTab === 'content' && activeSection && (
                       <div className="space-y-4 animate-in fade-in">
-                        {/* COVER */}
+                        
                         {activeSection.type === 'cover' && (
                           <>
                             <div>
@@ -463,15 +488,19 @@ export default function OrcamentoEditor() {
                           </>
                         )}
 
-                        {/* TEXT */}
                         {activeSection.type === 'text' && (
                           <div>
-                            <label className="text-xs font-bold text-gray-500 mb-1 block">Conteúdo do Bloco</label>
-                            <textarea value={activeSection.content || ''} onChange={e => updateSection(activeSection.id, { content: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-orange-400 outline-none min-h-[300px] resize-none shadow-sm" placeholder="Escreva seu texto aqui..." />
+                            <label className="text-xs font-bold text-gray-500 mb-1 block">Conteúdo do Texto Livre</label>
+                            <ReactQuill 
+                              theme="snow"
+                              value={activeSection.content || ''}
+                              onChange={(val) => updateSection(activeSection.id, { content: val })}
+                              modules={quillModules}
+                              className="bg-white rounded-lg shadow-sm"
+                            />
                           </div>
                         )}
 
-                        {/* 2 COLUMNS */}
                         {activeSection.type === 'two-columns' && (
                           <>
                             <div>
@@ -486,17 +515,22 @@ export default function OrcamentoEditor() {
                               <input value={activeSection.title || ''} onChange={e => updateSection(activeSection.id, { title: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none shadow-sm" />
                             </div>
                             <div>
-                              <label className="text-xs font-bold text-gray-500 mb-1 block">Texto</label>
-                              <textarea value={activeSection.content || ''} onChange={e => updateSection(activeSection.id, { content: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none resize-none h-32 shadow-sm" />
+                              <label className="text-xs font-bold text-gray-500 mb-1 block">Conteúdo</label>
+                              <ReactQuill 
+                                theme="snow"
+                                value={activeSection.content || ''}
+                                onChange={(val) => updateSection(activeSection.id, { content: val })}
+                                modules={quillModules}
+                                className="bg-white rounded-lg shadow-sm"
+                              />
                             </div>
-                            <div>
+                            <div className="pt-2">
                               <label className="text-xs font-bold text-gray-500 mb-1 block">URL da Imagem</label>
                               <input value={activeSection.imageUrl || ''} onChange={e => updateSection(activeSection.id, { imageUrl: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none shadow-sm" placeholder="https://" />
                             </div>
                           </>
                         )}
 
-                        {/* PRICING */}
                         {activeSection.type === 'pricing' && (
                           <>
                             <div>
@@ -531,7 +565,6 @@ export default function OrcamentoEditor() {
                           </>
                         )}
 
-                        {/* GALLERY */}
                         {activeSection.type === 'gallery' && (
                           <>
                             <div>
@@ -562,7 +595,6 @@ export default function OrcamentoEditor() {
                           </>
                         )}
 
-                        {/* VIDEO */}
                         {activeSection.type === 'video' && (
                           <>
                             <div>
@@ -576,7 +608,6 @@ export default function OrcamentoEditor() {
                           </>
                         )}
 
-                        {/* SEPARATOR */}
                         {activeSection.type === 'separator' && (
                           <>
                             <div>
@@ -593,9 +624,59 @@ export default function OrcamentoEditor() {
                       </div>
                     )}
 
+                    {/* ABA DE ESTILO COM TIPOGRAFIA AVANÇADA */}
                     {activeTab === 'style' && activeSection && (
                       <div className="space-y-5 animate-in fade-in">
-                        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                          <h4 className="text-[11px] font-bold uppercase text-gray-400 tracking-wider mb-2">Tipografia (Geral)</h4>
+                          
+                          <div>
+                            <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">Família da Fonte</label>
+                            <select 
+                              value={activeSection.styles?.fontFamily || 'inherit'} 
+                              onChange={e => updateStyle(activeSection.id, 'fontFamily', e.target.value)}
+                              className="w-full text-sm border border-gray-200 rounded-lg p-2.5 focus:outline-none focus:border-orange-400 bg-white"
+                            >
+                              <option value="inherit">Padrão do Sistema</option>
+                              <option value="'Montserrat', sans-serif">Montserrat (Moderna)</option>
+                              <option value="'Playfair Display', serif">Playfair Display (Elegante)</option>
+                              <option value="'Lora', serif">Lora (Clássica)</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">
+                              Cor do Texto 
+                              <span className="font-normal text-gray-400 uppercase">{activeSection.styles?.textColor || '#111827'}</span>
+                            </label>
+                            <div className="flex gap-2">
+                              <input type="color" value={activeSection.styles?.textColor || '#111827'} onChange={e => updateStyle(activeSection.id, 'textColor', e.target.value)} className="h-10 w-12 rounded cursor-pointer border border-gray-300 p-0.5" />
+                              <input type="text" value={activeSection.styles?.textColor || '#111827'} onChange={e => updateStyle(activeSection.id, 'textColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none" />
+                            </div>
+                          </div>
+
+                          {['cover', 'pricing', 'two-columns', 'gallery', 'video'].includes(activeSection.type) && (
+                            <div>
+                              <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">
+                                Tamanho do Título
+                                <span className="font-normal text-gray-500">{activeSection.styles?.titleSize || (activeSection.type === 'cover' ? 56 : 32)}px</span>
+                              </label>
+                              <input type="range" min="16" max="100" step="2" value={activeSection.styles?.titleSize || (activeSection.type === 'cover' ? 56 : 32)} onChange={e => updateStyle(activeSection.id, 'titleSize', Number(e.target.value))} className="w-full accent-orange-500" />
+                            </div>
+                          )}
+
+                          {['cover', 'pricing'].includes(activeSection.type) && (
+                            <div>
+                              <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">
+                                Tamanho do Texto/Subtítulo
+                                <span className="font-normal text-gray-500">{activeSection.styles?.textSize || 18}px</span>
+                              </label>
+                              <input type="range" min="12" max="60" step="1" value={activeSection.styles?.textSize || 18} onChange={e => updateStyle(activeSection.id, 'textSize', Number(e.target.value))} className="w-full accent-orange-500" />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
                           <h4 className="text-[11px] font-bold uppercase text-gray-400 tracking-wider mb-2">Fundo (Background)</h4>
                           
                           <div>
@@ -605,37 +686,22 @@ export default function OrcamentoEditor() {
                             </label>
                             <div className="flex gap-2">
                               <input type="color" value={activeSection.styles?.backgroundColor || '#ffffff'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="h-10 w-12 rounded cursor-pointer border border-gray-300 p-0.5" />
-                              <input type="text" value={activeSection.styles?.backgroundColor || '#ffffff'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none focus:border-orange-400" />
+                              <input type="text" value={activeSection.styles?.backgroundColor || '#ffffff'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none" />
                             </div>
                           </div>
 
                           <div>
                             <label className="text-xs font-bold text-gray-700 mb-1.5 block">Imagem de Fundo (URL)</label>
-                            <input value={activeSection.styles?.backgroundImage || ''} onChange={e => updateStyle(activeSection.id, 'backgroundImage', e.target.value)} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-orange-400 placeholder:text-gray-300" placeholder="https://..." />
+                            <input value={activeSection.styles?.backgroundImage || ''} onChange={e => updateStyle(activeSection.id, 'backgroundImage', e.target.value)} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg focus:outline-none placeholder:text-gray-300" placeholder="https://..." />
                           </div>
                         </div>
 
-                        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-4">
-                          <h4 className="text-[11px] font-bold uppercase text-gray-400 tracking-wider mb-2">Tipografia</h4>
-                          
-                          <div>
-                            <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">
-                              Cor do Texto 
-                              <span className="font-normal text-gray-400 uppercase">{activeSection.styles?.textColor || '#111827'}</span>
-                            </label>
-                            <div className="flex gap-2">
-                              <input type="color" value={activeSection.styles?.textColor || '#111827'} onChange={e => updateStyle(activeSection.id, 'textColor', e.target.value)} className="h-10 w-12 rounded cursor-pointer border border-gray-300 p-0.5" />
-                              <input type="text" value={activeSection.styles?.textColor || '#111827'} onChange={e => updateStyle(activeSection.id, 'textColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none focus:border-orange-400" />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
                           <h4 className="text-[11px] font-bold uppercase text-gray-400 tracking-wider mb-2">Espaçamento</h4>
                           
                           <div>
                             <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">
-                              Padding Interno
+                              Padding Interno (Espaço)
                               <span className="font-normal text-gray-500">{activeSection.styles?.padding || 40}px</span>
                             </label>
                             <input type="range" min="0" max="120" step="4" value={activeSection.styles?.padding || 40} onChange={e => updateStyle(activeSection.id, 'padding', Number(e.target.value))} className="w-full accent-orange-500" />
@@ -687,7 +753,7 @@ export default function OrcamentoEditor() {
                     sections.map(s => (
                       <div 
                         key={s.id} 
-                        className={`w-full relative group cursor-pointer transition-all ${selectedId === s.id ? 'ring-[3px] ring-inset ring-orange-500 z-10 shadow-xl' : 'hover:ring-[3px] hover:ring-inset hover:blue-400/50 z-0'}`} 
+                        className={`w-full relative group cursor-pointer transition-all ${selectedId === s.id ? 'ring-[3px] ring-inset ring-orange-500 z-10 shadow-xl' : 'hover:ring-[3px] hover:ring-inset hover:ring-blue-400/50 z-0'}`} 
                         onClick={() => { setSelectedId(s.id); setActiveTab('content'); }}
                       >
                         <PreviewBlock section={s} />
@@ -719,7 +785,7 @@ export default function OrcamentoEditor() {
                             <LayoutTemplate className="w-4 h-4 mr-3 text-orange-500" /> Capa
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => addSection('text')} className="cursor-pointer py-3 rounded-lg focus:bg-orange-50 font-medium text-gray-700">
-                            <Type className="w-4 h-4 mr-3 text-orange-500" /> Texto
+                            <Type className="w-4 h-4 mr-3 text-orange-500" /> Texto Livre
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => addSection('two-columns')} className="cursor-pointer py-3 rounded-lg focus:bg-orange-50 font-medium text-gray-700">
                             <Columns className="w-4 h-4 mr-3 text-orange-500" /> 2 Colunas
