@@ -4,8 +4,8 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
-  Trash2, Plus, UserPlus, MessageCircle, Diamond, Link as LinkIcon, 
-  Upload, Loader2, Copy, ExternalLink, X
+  Trash2, Plus, UserPlus, MessageCircle, Link as LinkIcon, 
+  Upload, Loader2, Copy, ExternalLink, X, ArrowUp, ArrowDown, UserMinus
 } from "lucide-react";
 import { toast } from "sonner";
 import LeadImportModal from "@/components/LeadImportModal";
@@ -45,6 +45,7 @@ export default function Oportunidades() {
   const [linkForms, setLinkForms] = useState<LinkForm[]>([]);
   
   const [activePipelineId, setActivePipelineId] = useState<string>("");
+  const [selectedOpps, setSelectedOpps] = useState<string[]>([]);
 
   // Modais
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -55,18 +56,8 @@ export default function Oportunidades() {
 
   // Formulário Modal
   const [formData, setFormData] = useState({
-    pipeline_id: '',
-    tag: '',
-    name: '',
-    value: '',
-    email: '',
-    phone: '',
-    instagram: '',
-    date: '',
-    local: '',
-    description: '',
-    whatsapp_number: '',
-    whatsapp_text: ''
+    pipeline_id: '', tag: '', name: '', value: '', email: '', phone: '', 
+    instagram: '', date: '', local: '', description: '', whatsapp_number: '', whatsapp_text: ''
   });
   const [formFields, setFormFields] = useState({
     email: true, phone: true, instagram: true, date: false, local: false, description: false
@@ -83,7 +74,10 @@ export default function Oportunidades() {
         (payload) => {
           if (payload.eventType === 'INSERT') setOpportunities(prev => [...prev, payload.new as Opportunity]);
           if (payload.eventType === 'UPDATE') setOpportunities(prev => prev.map(o => o.id === payload.new.id ? payload.new as Opportunity : o));
-          if (payload.eventType === 'DELETE') setOpportunities(prev => prev.filter(o => o.id !== payload.old.id));
+          if (payload.eventType === 'DELETE') {
+            setOpportunities(prev => prev.filter(o => o.id !== payload.old.id));
+            setSelectedOpps(prev => prev.filter(id => id !== payload.old.id));
+          }
         }
       )
       .subscribe();
@@ -112,7 +106,8 @@ export default function Oportunidades() {
           const defCols = [
             { name: 'Aberto', order_index: 0, pipeline_id: newPipe.data.id, user_id: user?.id },
             { name: 'Em Progresso', order_index: 1, pipeline_id: newPipe.data.id, user_id: user?.id },
-            { name: 'Ganho', order_index: 2, pipeline_id: newPipe.data.id, user_id: user?.id }
+            { name: 'Ganho', order_index: 2, pipeline_id: newPipe.data.id, user_id: user?.id },
+            { name: 'Perdido', order_index: 3, pipeline_id: newPipe.data.id, user_id: user?.id }
           ];
           const newCols = await supabase.from('columns').insert(defCols).select();
           cols = newCols.data || [];
@@ -137,6 +132,7 @@ export default function Oportunidades() {
 
   const activeColumns = columns.filter(c => c.pipeline_id === activePipelineId).sort((a, b) => a.order_index - b.order_index);
 
+  // Drag and Drop
   const onDragEnd = async (result: any) => {
     const { destination, source, draggableId, type } = result;
     if (!destination) return;
@@ -150,19 +146,94 @@ export default function Oportunidades() {
       const updatedCols = newCols.map((col, index) => ({ ...col, order_index: index }));
       setColumns(prev => prev.map(c => updatedCols.find(uc => uc.id === c.id) || c));
 
-      // Atualizar no banco
       for (const col of updatedCols) {
         await supabase.from('columns').update({ order_index: col.order_index }).eq('id', col.id);
       }
       return;
     }
 
-    // Mover Card
     const destColId = destination.droppableId;
     setOpportunities(prev => prev.map(o => o.id === draggableId ? { ...o, column_id: destColId } : o));
     await supabase.from('opportunities').update({ column_id: destColId }).eq('id', draggableId);
   };
 
+  // Reordenar Setas Cima/Baixo
+  const moveCard = (oppId: string, colId: string, direction: 'up' | 'down') => {
+    setOpportunities(prev => {
+      const oppsInCol = prev.filter(o => o.column_id === colId);
+      const otherOpps = prev.filter(o => o.column_id !== colId);
+      const index = oppsInCol.findIndex(o => o.id === oppId);
+      
+      if (direction === 'up' && index > 0) {
+        const temp = oppsInCol[index];
+        oppsInCol[index] = oppsInCol[index - 1];
+        oppsInCol[index - 1] = temp;
+      } else if (direction === 'down' && index < oppsInCol.length - 1) {
+        const temp = oppsInCol[index];
+        oppsInCol[index] = oppsInCol[index + 1];
+        oppsInCol[index + 1] = temp;
+      }
+      
+      return [...otherOpps, ...oppsInCol];
+    });
+  };
+
+  // Seleções
+  const handleSelectAll = (colId: string) => {
+    const colOppsIds = opportunities.filter(o => o.column_id === colId).map(o => o.id);
+    setSelectedOpps(prev => Array.from(new Set([...prev, ...colOppsIds])));
+  };
+
+  const handleDeselectAll = (colId: string) => {
+    const colOppsIds = opportunities.filter(o => o.column_id === colId).map(o => o.id);
+    setSelectedOpps(prev => prev.filter(id => !colOppsIds.includes(id)));
+  };
+
+  const toggleSelection = (oppId: string) => {
+    setSelectedOpps(prev => prev.includes(oppId) ? prev.filter(id => id !== oppId) : [...prev, oppId]);
+  };
+
+  const handleBulkDelete = async () => {
+    if (!confirm(`Deletar ${selectedOpps.length} oportunidades?`)) return;
+    try {
+      for (const id of selectedOpps) {
+        await supabase.from('opportunities').delete().eq('id', id);
+      }
+      setOpportunities(prev => prev.filter(o => !selectedOpps.includes(o.id)));
+      setSelectedOpps([]);
+      toast.success("Oportunidades deletadas.");
+    } catch (e) {
+      toast.error("Erro ao deletar.");
+    }
+  };
+
+  // Ações nos Cards
+  const handleToggleClient = async (opp: Opportunity) => {
+    try {
+      const newStatus = !opp.is_client;
+      await supabase.from('opportunities').update({ is_client: newStatus }).eq('id', opp.id);
+      setOpportunities(prev => prev.map(o => o.id === opp.id ? { ...o, is_client: newStatus } : o));
+      toast.success(newStatus ? "Adicionado aos clientes!" : "Removido de clientes.");
+    } catch (e) {
+      toast.error("Erro ao atualizar status do cliente.");
+    }
+  };
+
+  const handleCadencia = (opp: Opportunity) => {
+    const phone = opp.phone;
+    if (!phone) return toast.error("Este lead não possui telefone cadastrado.");
+    const cleanPhone = phone.replace(/\D/g, '');
+    window.open(`https://wa.me/${cleanPhone}?text=Olá ${opp.name}, `, '_blank');
+  };
+
+  const handleDeleteColumn = async (colId: string) => {
+    if (!confirm("Deletar esta coluna? As oportunidades não serão perdidas, mas ficarão sem coluna até serem movidas.")) return;
+    await supabase.from('columns').delete().eq('id', colId);
+    setColumns(prev => prev.filter(c => c.id !== colId));
+    toast.success("Coluna deletada.");
+  };
+
+  // Criação
   const handleCreateNew = async () => {
     if (!formData.name) return toast.error("Nome é obrigatório.");
     if (activeColumns.length === 0) return toast.error("Crie uma coluna primeiro.");
@@ -198,7 +269,6 @@ export default function Oportunidades() {
           whatsapp_text: formData.whatsapp_text,
           fields: formFields
         }).select().single();
-        
         if (data) setLinkForms(prev => [...prev, data]);
         toast.success("Link Form gerado!");
       }
@@ -212,23 +282,11 @@ export default function Oportunidades() {
   const handleCreateColumn = async () => {
     if (!newColName) return;
     const { data } = await supabase.from('columns').insert({
-      user_id: user?.id,
-      pipeline_id: activePipelineId,
-      name: newColName,
-      order_index: activeColumns.length
+      user_id: user?.id, pipeline_id: activePipelineId, name: newColName, order_index: activeColumns.length
     }).select().single();
-    
     if (data) setColumns([...columns, data]);
-    setNewColName("");
-    setIsNewColOpen(false);
+    setNewColName(""); setIsNewColOpen(false);
     toast.success("Coluna criada!");
-  };
-
-  const handleDeleteOpp = async (id: string) => {
-    if (!confirm("Deletar oportunidade?")) return;
-    setOpportunities(prev => prev.filter(o => o.id !== id));
-    await supabase.from('opportunities').delete().eq('id', id);
-    toast.success("Deletado.");
   };
 
   const handleDeleteLinkForm = async (id: string) => {
@@ -241,21 +299,28 @@ export default function Oportunidades() {
 
   return (
     <Layout>
-      <div className="max-w-full mx-auto flex flex-col h-full">
+      <div className="max-w-full mx-auto flex flex-col h-full bg-[#FAFAFA]">
+        {/* Bulk Action Bar */}
+        {selectedOpps.length > 0 && (
+          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-3 mb-4 flex items-center justify-between animate-in slide-in-from-top-2">
+            <span className="font-semibold text-orange-500">{selectedOpps.length} oportunidade(s) selecionada(s)</span>
+            <div className="flex gap-2">
+              <button onClick={() => setSelectedOpps([])} className="px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100 rounded-md transition-colors">Cancelar</button>
+              <button onClick={handleBulkDelete} className="px-3 py-1.5 text-sm bg-red-50 text-red-600 hover:bg-red-100 rounded-md flex items-center gap-1.5 transition-colors">
+                <Trash2 className="w-4 h-4" /> Deletar
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Header Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Oportunidades</h1>
           <div className="flex items-center gap-3 ml-auto">
-            <button 
-              onClick={() => setIsImportOpen(true)}
-              className="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 shadow-sm"
-            >
+            <button onClick={() => setIsImportOpen(true)} className="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 shadow-sm">
               <Upload className="w-4 h-4" /> Importar
             </button>
-            <button 
-              onClick={() => setIsModalOpen(true)}
-              className="px-4 py-2 bg-orange-400 text-white font-medium rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-2 shadow-sm"
-            >
+            <button onClick={() => setIsModalOpen(true)} className="px-4 py-2 bg-orange-400 text-white font-medium rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-2 shadow-sm">
               <Plus className="w-4 h-4" /> Adicionar
             </button>
           </div>
@@ -264,8 +329,7 @@ export default function Oportunidades() {
         {/* Toolbar */}
         <div className="flex items-center gap-3 mb-6">
           <select 
-            value={activePipelineId}
-            onChange={(e) => setActivePipelineId(e.target.value)}
+            value={activePipelineId} onChange={(e) => setActivePipelineId(e.target.value)}
             className="w-[200px] px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] text-gray-700 shadow-sm transition-colors outline-none focus:ring-2 focus:ring-orange-400 appearance-none cursor-pointer"
           >
             {pipelines.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -278,10 +342,7 @@ export default function Oportunidades() {
                 if (data) {
                   setPipelines([...pipelines, data]);
                   setActivePipelineId(data.id);
-                  const defCols = [
-                    { name: 'Aberto', order_index: 0, pipeline_id: data.id, user_id: user?.id },
-                  ];
-                  const newCols = await supabase.from('columns').insert(defCols).select();
+                  const newCols = await supabase.from('columns').insert([{ name: 'Aberto', order_index: 0, pipeline_id: data.id, user_id: user?.id }]).select();
                   setColumns([...columns, ...(newCols.data || [])]);
                 }
               }
@@ -293,11 +354,11 @@ export default function Oportunidades() {
         </div>
 
         {/* Kanban Board */}
-        <div className="flex gap-4 overflow-x-auto pb-4 flex-1 items-start">
+        <div className="flex gap-5 overflow-x-auto pb-4 flex-1 items-start">
           <DragDropContext onDragEnd={onDragEnd}>
             <Droppable droppableId="board" direction="horizontal" type="column">
               {(provided) => (
-                <div className="flex gap-4 h-full" {...provided.droppableProps} ref={provided.innerRef}>
+                <div className="flex gap-5 h-full" {...provided.droppableProps} ref={provided.innerRef}>
                   {activeColumns.map((col, index) => {
                     const colOpps = opportunities.filter(o => o.column_id === col.id);
                     return (
@@ -305,14 +366,24 @@ export default function Oportunidades() {
                         {(provided) => (
                           <div 
                             ref={provided.innerRef} {...provided.draggableProps}
-                            className="flex-1 min-w-[300px] max-w-[320px] bg-white rounded-xl border border-gray-200 flex flex-col max-h-[calc(100vh-220px)] shadow-sm"
+                            className="flex-1 min-w-[320px] max-w-[340px] bg-white rounded-xl border border-gray-200 flex flex-col max-h-[calc(100vh-220px)] shadow-sm"
                           >
-                            <div className="p-4 border-b border-gray-100 bg-gray-50/50 rounded-t-xl" {...provided.dragHandleProps}>
-                              <div className="flex items-center justify-between">
-                                <h3 className="font-bold text-gray-900 text-base">{col.name}</h3>
-                                <span className="bg-white border border-gray-200 text-gray-500 text-xs font-bold px-2 py-0.5 rounded-full min-w-[24px] text-center shadow-sm">
-                                  {colOpps.length}
-                                </span>
+                            <div className="p-4 border-b border-gray-100 rounded-t-xl bg-white" {...provided.dragHandleProps}>
+                              <div className="flex items-center justify-between mb-3">
+                                <h3 className="font-bold text-gray-900 text-[15px]">{col.name}</h3>
+                                <div className="flex items-center gap-2">
+                                  <span className="bg-gray-100 text-gray-500 text-xs font-bold px-2 py-0.5 rounded-full min-w-[24px] text-center">
+                                    {colOpps.length}
+                                  </span>
+                                  <button onClick={() => handleDeleteColumn(col.id)} className="text-gray-400 hover:text-red-500 transition-colors">
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 text-[11px] text-gray-500 font-medium">
+                                <button onClick={() => handleSelectAll(col.id)} className="hover:text-gray-900 transition-colors">Selecionar Todos</button>
+                                <span className="text-gray-300">|</span>
+                                <button onClick={() => handleDeselectAll(col.id)} className="hover:text-gray-900 transition-colors">Desmarcar Todos</button>
                               </div>
                             </div>
                             
@@ -320,30 +391,64 @@ export default function Oportunidades() {
                               {(provided, snapshot) => (
                                 <div 
                                   ref={provided.innerRef} {...provided.droppableProps}
-                                  className={`flex-1 p-3 overflow-y-auto rounded-b-xl space-y-3 transition-colors ${snapshot.isDraggingOver ? 'bg-orange-50/50' : 'bg-gray-50/30'}`}
+                                  className={`flex-1 p-3 overflow-y-auto rounded-b-xl space-y-3 transition-colors ${snapshot.isDraggingOver ? 'bg-orange-50/20' : 'bg-gray-50/30'}`}
                                   style={{ minHeight: '150px' }}
                                 >
-                                  {colOpps.map((opp, index) => (
-                                    <Draggable key={opp.id} draggableId={opp.id} index={index}>
+                                  {colOpps.map((opp, oppIndex) => (
+                                    <Draggable key={opp.id} draggableId={opp.id} index={oppIndex}>
                                       {(provided, snapshot) => (
                                         <div
                                           ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
-                                          className="bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all group relative"
+                                          className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all relative group"
                                           style={{ ...provided.draggableProps.style, opacity: snapshot.isDragging ? 0.9 : 1 }}
                                         >
-                                          <div className="flex justify-between items-start mb-2.5">
-                                            <span className="font-semibold text-gray-900 text-[15px] truncate">{opp.name}</span>
-                                            <button onClick={() => handleDeleteOpp(opp.id)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                                              <Trash2 className="w-4 h-4" />
-                                            </button>
+                                          {/* Card Header: Checkbox + Name + Arrows */}
+                                          <div className="flex justify-between items-start mb-3">
+                                            <div className="flex items-center gap-2.5">
+                                              <input 
+                                                type="checkbox" 
+                                                checked={selectedOpps.includes(opp.id)}
+                                                onChange={() => toggleSelection(opp.id)}
+                                                className="w-4 h-4 rounded-full border-gray-300 text-orange-400 focus:ring-orange-400 cursor-pointer"
+                                              />
+                                              <span className="font-semibold text-gray-900 text-sm">{opp.name}</span>
+                                            </div>
+                                            <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                              <button onClick={() => moveCard(opp.id, col.id, 'up')} disabled={oppIndex === 0} className="text-gray-400 hover:text-gray-700 disabled:opacity-30">
+                                                <ArrowUp className="w-3 h-3" />
+                                              </button>
+                                              <button onClick={() => moveCard(opp.id, col.id, 'down')} disabled={oppIndex === colOpps.length - 1} className="text-gray-400 hover:text-gray-700 disabled:opacity-30">
+                                                <ArrowDown className="w-3 h-3" />
+                                              </button>
+                                            </div>
                                           </div>
+
+                                          {/* Card Info: Tag, Email, Phone */}
                                           {opp.tag && (
-                                            <div className="mb-3 inline-flex items-center gap-1.5 bg-gray-100/80 px-2 py-0.5 rounded-md text-[11px] font-medium text-gray-600">
+                                            <div className="mb-2.5 inline-flex items-center bg-gray-100 px-2 py-0.5 rounded-md text-[11px] font-medium text-gray-600">
                                               {PHOTO_TYPES.find(p => p.value === opp.tag)?.label || opp.tag}
                                             </div>
                                           )}
-                                          <div className="text-[13px] text-gray-500 truncate mb-1">{opp.phone || opp.email}</div>
-                                          {opp.value && <div className="text-[13px] font-medium text-gray-700">{opp.value}</div>}
+                                          <div className="text-[12px] text-gray-500 mb-0.5 truncate">{opp.email}</div>
+                                          <div className="text-[12px] text-gray-500 mb-4">{opp.phone}</div>
+
+                                          {/* Card Footer: Buttons */}
+                                          <div className="flex gap-2">
+                                            <button 
+                                              onClick={() => handleToggleClient(opp)}
+                                              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md border text-[11px] font-semibold transition-colors ${opp.is_client ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                                            >
+                                              {opp.is_client ? <UserMinus className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
+                                              {opp.is_client ? '-Cliente' : '+Cliente'}
+                                            </button>
+                                            <button 
+                                              onClick={() => handleCadencia(opp)}
+                                              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md border border-gray-200 text-gray-700 text-[11px] font-semibold hover:bg-gray-50 transition-colors"
+                                            >
+                                              <MessageCircle className="w-3.5 h-3.5 text-green-500" />
+                                              Cadência
+                                            </button>
+                                          </div>
                                         </div>
                                       )}
                                     </Draggable>
@@ -359,11 +464,12 @@ export default function Oportunidades() {
                   })}
                   {provided.placeholder}
                   
+                  {/* Add Column Button */}
                   <button 
                     onClick={() => setIsNewColOpen(true)}
-                    className="min-w-[300px] max-w-[320px] bg-gray-50/50 border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-50 transition-all h-[100px] font-medium"
+                    className="min-w-[320px] max-w-[320px] bg-transparent border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center text-gray-900 hover:border-gray-300 hover:bg-gray-50 transition-all h-[50px] font-semibold text-sm"
                   >
-                    <Plus className="w-5 h-5 mr-2" /> Nova Coluna
+                    <Plus className="w-4 h-4 mr-2" /> Adicionar Coluna
                   </button>
                 </div>
               )}
@@ -420,7 +526,6 @@ export default function Oportunidades() {
               <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button>
             </div>
 
-            {/* Toggle Tabs */}
             <div className="flex bg-gray-50 p-1 rounded-xl mb-6">
               <button 
                 onClick={() => setActiveTab('opp')}
@@ -516,7 +621,7 @@ export default function Oportunidades() {
                           type="checkbox" className="hidden" 
                           checked={formFields[key as keyof typeof formFields]}
                           onChange={(e) => {
-                            if (['email', 'phone', 'instagram'].includes(key)) return; // Bloqueados conforme imagem
+                            if (['email', 'phone', 'instagram'].includes(key)) return;
                             setFormFields({...formFields, [key]: e.target.checked})
                           }}
                         />
@@ -532,7 +637,6 @@ export default function Oportunidades() {
                         className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
                         placeholder="Ex: 5511999999999"
                       />
-                      <p className="text-[11px] text-gray-500 mt-1">Número que receberá a mensagem do cliente</p>
                     </div>
                     <div>
                       <label className="block text-sm font-semibold text-gray-700 mb-1.5">Texto da Mensagem</label>
@@ -541,7 +645,6 @@ export default function Oportunidades() {
                         className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
                         placeholder="Ex: Olá, gostaria de um orçamento"
                       />
-                      <p className="text-[11px] text-gray-500 mt-1">Texto pré-definido para o WhatsApp</p>
                     </div>
                   </div>
                 </div>
@@ -560,7 +663,7 @@ export default function Oportunidades() {
         </div>
       )}
 
-      {/* Modal Nova Coluna Simples */}
+      {/* Modal Nova Coluna */}
       {isNewColOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsNewColOpen(false)} />
