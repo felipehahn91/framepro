@@ -9,6 +9,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import Index from "./pages/Index";
 import Oportunidades from "./pages/Oportunidades";
 import Clientes from "./pages/Clientes";
+import Tarefas from "./pages/Tarefas";
 import Login from "./pages/Login";
 import LinkFormPage from "./pages/LinkFormPage";
 import NotFound from "./pages/NotFound";
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="/oportunidades" element={<ProtectedRoute><Oportunidades /></ProtectedRoute>} />
             <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
+            <Route path="/tarefas" element={<ProtectedRoute><Tarefas /></ProtectedRoute>} />
             
             {/* Fallback */}
             <Route path="*" element={<NotFound />} />
