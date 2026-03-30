@@ -8,6 +8,7 @@ import {
   Upload, Loader2, Copy, ExternalLink, X
 } from "lucide-react";
 import { toast } from "sonner";
+import LeadImportModal from "@/components/LeadImportModal";
 
 // --- Tipos ---
 interface Pipeline { id: string; name: string; }
@@ -47,6 +48,7 @@ export default function Oportunidades() {
 
   // Modais
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'opp' | 'link'>('opp');
   const [isNewColOpen, setIsNewColOpen] = useState(false);
   const [newColName, setNewColName] = useState("");
@@ -245,6 +247,12 @@ export default function Oportunidades() {
           <h1 className="text-3xl font-bold text-gray-900">Oportunidades</h1>
           <div className="flex items-center gap-3 ml-auto">
             <button 
+              onClick={() => setIsImportOpen(true)}
+              className="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 shadow-sm"
+            >
+              <Upload className="w-4 h-4" /> Importar
+            </button>
+            <button 
               onClick={() => setIsModalOpen(true)}
               className="px-4 py-2 bg-orange-400 text-white font-medium rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-2 shadow-sm"
             >
@@ -388,6 +396,15 @@ export default function Oportunidades() {
           </div>
         )}
       </div>
+
+      {/* Modal de Importação CSV */}
+      <LeadImportModal 
+        isOpen={isImportOpen} 
+        onClose={() => setIsImportOpen(false)} 
+        pipelines={pipelines} 
+        columns={columns} 
+        userId={user?.id} 
+      />
 
       {/* MODAL: Adicionar ao Pipeline */}
       {isModalOpen && (
