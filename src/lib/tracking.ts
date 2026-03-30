@@ -9,17 +9,16 @@ export const initTracking = (orcamentoId: string, sessionId: string, device: str
   
   const sessionEvents: any[] = [];
   const startTime = Date.now();
-  let analyticsRowId: string | null = null;
 
-  // Cria a sessão imediatamente
+  // Cria a sessão base imediatamente. Removemos o .select().single() pois usuários anônimos 
+  // não têm permissão de leitura (SELECT), o que causava erro e impedia as atualizações futuras.
   supabase.from('orcamento_analytics').insert({
     orcamento_id: orcamentoId,
     session_id: sessionId,
     device: device,
     replay_data: { device, events: [] }
-  }).select('id').single().then(({ data, error }) => {
-    if (error) console.error(error);
-    if (data) analyticsRowId = data.id;
+  }).then(({ error }) => {
+    if (error) console.error("Erro ao iniciar sessão de analytics:", error);
   });
 
   // Pega as coordenadas exatas relativas ao container central da proposta
@@ -48,9 +47,7 @@ export const initTracking = (orcamentoId: string, sessionId: string, device: str
         x: data.x,
         y: data.y,
         timestamp: timeOffset
-      }).then(({ error }) => {
-        if (error) console.error(error);
-      });
+      }).then();
     }
   };
 
@@ -71,7 +68,7 @@ export const initTracking = (orcamentoId: string, sessionId: string, device: str
     if (now - lastMouseMove > 100 && e.touches.length > 0) {
       const touch = e.touches[0];
       const coords = getRelativeCoords(touch.clientX, touch.clientY);
-      recordEvent('mousemove', coords); // Salvamos como mousemove para o player ler igual
+      recordEvent('mousemove', coords); 
       lastMouseMove = now;
     }
   };
@@ -85,7 +82,6 @@ export const initTracking = (orcamentoId: string, sessionId: string, device: str
   const onScroll = () => {
     const now = Date.now();
     if (now - lastScroll > 150) {
-      // Capturamos o scroll do window, mas no player ele vai simular a rolagem
       recordEvent('scroll', { scroll_y: window.scrollY });
       lastScroll = now;
     }
@@ -96,16 +92,17 @@ export const initTracking = (orcamentoId: string, sessionId: string, device: str
   window.addEventListener('click', onClick);
   window.addEventListener('scroll', onScroll, { passive: true });
 
-  // Envia os dados periodicamente (a cada 5 segundos)
-  trackingInterval = setInterval(() => {
-    if (analyticsRowId && sessionEvents.length > 0) {
+  const syncData = () => {
+    if (sessionEvents.length > 0) {
+      // Atualiza pelo session_id gerado pelo cliente, evitando precisar ler dados protegidos
       supabase.from('orcamento_analytics').update({
         replay_data: { device, events: [...sessionEvents] }
-      }).eq('id', analyticsRowId).then(({ error }) => {
-        if (error) console.error(error);
-      });
+      }).eq('session_id', sessionId).then();
     }
-  }, 5000);
+  };
+
+  // Sincroniza periodicamente com o banco de dados
+  trackingInterval = setInterval(syncData, 5000);
 
   return () => {
     isTracking = false;
@@ -115,13 +112,7 @@ export const initTracking = (orcamentoId: string, sessionId: string, device: str
     window.removeEventListener('scroll', onScroll);
     clearInterval(trackingInterval);
     
-    // Envio final no momento em que sair
-    if (analyticsRowId && sessionEvents.length > 0) {
-      supabase.from('orcamento_analytics').update({
-        replay_data: { device, events: [...sessionEvents] }
-      }).eq('id', analyticsRowId).then(({ error }) => {
-        if (error) console.error(error);
-      });
-    }
+    // Dispara uma última vez quando a página for fechada
+    syncData();
   };
 };
