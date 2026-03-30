@@ -14,6 +14,9 @@ import Financeiro from "./pages/Financeiro";
 import Contratos from "./pages/Contratos";
 import ContractEditor from "./pages/ContractEditor";
 import ContractPublicView from "./pages/ContractPublicView";
+import Orcamentos from "./pages/Orcamentos";
+import OrcamentoEditor from "./pages/OrcamentoEditor";
+import OrcamentoPublicView from "./pages/OrcamentoPublicView";
 import Login from "./pages/Login";
 import LinkFormPage from "./pages/LinkFormPage";
 import NotFound from "./pages/NotFound";
@@ -32,6 +35,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/link-form/:id" element={<LinkFormPage />} />
             <Route path="/contratos/public/:token" element={<ContractPublicView />} />
+            <Route path="/orcamentos/public/:token" element={<OrcamentoPublicView />} />
             
             {/* Rotas Privadas */}
             <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
@@ -43,6 +47,9 @@ const App = () => (
             <Route path="/contratos" element={<ProtectedRoute><Contratos /></ProtectedRoute>} />
             <Route path="/contratos/novo" element={<ProtectedRoute><ContractEditor /></ProtectedRoute>} />
             <Route path="/contratos/editar/:id" element={<ProtectedRoute><ContractEditor /></ProtectedRoute>} />
+
+            <Route path="/orcamentos" element={<ProtectedRoute><Orcamentos /></ProtectedRoute>} />
+            <Route path="/orcamentos/editar/:id" element={<ProtectedRoute><OrcamentoEditor /></ProtectedRoute>} />
             
             {/* Fallback */}
             <Route path="*" element={<NotFound />} />
