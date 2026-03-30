@@ -309,21 +309,25 @@ export default function OrcamentoEditor() {
           {/* SIDEBAR ESQUERDA (Ferramentas / Configuração do Elemento Ativo) */}
           <div className="w-[320px] bg-white border-r border-gray-200 flex flex-col shrink-0 z-10 shadow-[2px_0_10px_rgba(0,0,0,0.02)]">
             
-            {/* Header da Sidebar */}
-            <div className="p-4 border-b border-gray-100 bg-gray-50/80 flex items-center justify-between">
+            {/* Header da Sidebar (Mais Intuitivo) */}
+            <div className="p-4 border-b border-gray-200 bg-white flex flex-col gap-3 shadow-sm z-10 relative">
               {activeSection ? (
-                <div className="flex items-center gap-2 text-gray-800 font-bold text-sm">
-                  <Settings className="w-4 h-4" /> Editando: <span className="capitalize">{activeSection.type.replace('-', ' ')}</span>
-                </div>
+                <>
+                  <button 
+                    onClick={() => setSelectedId(null)} 
+                    className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-orange-500 transition-colors w-fit"
+                  >
+                    <ArrowLeft className="w-4 h-4" /> Voltar aos Blocos
+                  </button>
+                  <div className="flex items-center gap-2 text-gray-900 font-bold text-base">
+                    <Settings className="w-5 h-5 text-orange-500" /> 
+                    <span className="capitalize">Editar {activeSection.type.replace('-', ' ')}</span>
+                  </div>
+                </>
               ) : (
-                <div className="flex items-center gap-2 text-gray-800 font-bold text-sm">
-                  <LayoutTemplate className="w-4 h-4" /> Elementos
+                <div className="flex items-center gap-2 text-gray-900 font-bold text-base">
+                  <LayoutTemplate className="w-5 h-5 text-orange-500" /> Blocos Disponíveis
                 </div>
-              )}
-              {activeSection && (
-                <button onClick={() => setSelectedId(null)} className="text-gray-400 hover:text-gray-700 p-1 bg-white rounded shadow-sm border border-gray-200" title="Voltar para Elementos">
-                  <LayoutTemplate className="w-4 h-4" />
-                </button>
               )}
             </div>
 
@@ -334,7 +338,7 @@ export default function OrcamentoEditor() {
                 // Visão de Elementos (Nenhuma camada selecionada)
                 <div className="p-4 space-y-6">
                   <div>
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Adicionar Elemento</h3>
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Adicionar Bloco</h3>
                     <div className="grid grid-cols-2 gap-2">
                       <button onClick={() => addSection('cover')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group shadow-sm">
                         <ImageIcon className="w-5 h-5 mb-2" /> <span className="text-[11px] font-bold">Capa</span>
@@ -361,7 +365,7 @@ export default function OrcamentoEditor() {
                   </div>
                   <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl">
                     <p className="text-sm text-orange-800">
-                      <strong>Dica:</strong> Clique em qualquer elemento no centro da tela para editar seu conteúdo e estilo, ou use a barra à direita (Camadas) para reordenar.
+                      <strong>Dica:</strong> Clique em qualquer bloco no centro da tela para editar seu conteúdo e estilo, ou use a barra à direita (Camadas) para reordenar.
                     </p>
                   </div>
                 </div>
@@ -431,9 +435,9 @@ export default function OrcamentoEditor() {
                 </div>
               ) : (
                 // Builder Active Section Settings (Content / Style)
-                <div className="flex flex-col h-full">
+                <div className="flex flex-col h-full animate-in fade-in slide-in-from-left-2">
                   {/* Tabs Conteúdo / Estilo */}
-                  <div className="flex border-b border-gray-200 shrink-0 bg-white sticky top-0 z-10">
+                  <div className="flex border-b border-gray-200 shrink-0 bg-white sticky top-0 z-10 shadow-sm">
                     <button onClick={() => setActiveTab('content')} className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${activeTab === 'content' ? 'text-orange-500 border-b-2 border-orange-500 bg-orange-50/30' : 'text-gray-500 hover:bg-gray-50'}`}>
                       <AlignLeft className="w-3.5 h-3.5" /> Conteúdo
                     </button>
@@ -646,7 +650,7 @@ export default function OrcamentoEditor() {
           </div>
 
           {/* CANVAS AREA (Centro - Preview da Folha) */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-8 flex justify-center relative custom-scrollbar">
+          <div className="flex-1 bg-gray-200/50 overflow-y-auto p-4 sm:p-8 flex justify-center relative custom-scrollbar">
             
             <div className="w-full max-w-[850px] min-h-[1000px] bg-white shadow-2xl border border-gray-200 flex flex-col relative transition-all mb-20">
               
@@ -683,7 +687,7 @@ export default function OrcamentoEditor() {
                     sections.map(s => (
                       <div 
                         key={s.id} 
-                        className={`w-full relative group cursor-pointer transition-all ${selectedId === s.id ? 'ring-[3px] ring-inset ring-orange-500 z-10 shadow-xl' : 'hover:ring-[3px] hover:ring-inset hover:ring-blue-400/50 z-0'}`} 
+                        className={`w-full relative group cursor-pointer transition-all ${selectedId === s.id ? 'ring-[3px] ring-inset ring-orange-500 z-10 shadow-xl' : 'hover:ring-[3px] hover:ring-inset hover:blue-400/50 z-0'}`} 
                         onClick={() => { setSelectedId(s.id); setActiveTab('content'); }}
                       >
                         <PreviewBlock section={s} />
