@@ -114,12 +114,10 @@ const PreviewBlock = ({ section }: { section: any }) => {
         <div className={`grid gap-6 md:gap-8 grid-cols-1 ${packages.length === 2 ? 'md:grid-cols-2 max-w-4xl mx-auto' : packages.length >= 3 ? 'md:grid-cols-3' : 'max-w-md mx-auto'}`}>
           {packages.map((pkg: any, i: number) => (
             <div key={pkg.id || i} className="flex flex-col bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 relative">
-              {/* Header color background */}
               <div style={{ backgroundColor: pkg.color || '#3b82f6' }} className="pt-6 pb-16 px-6 text-center text-white">
                 <h3 className="text-xl font-bold uppercase tracking-wider">{pkg.title || 'Plano'}</h3>
               </div>
               
-              {/* Price Card overlapping */}
               <div className="px-6 flex-1 flex flex-col relative z-10 -mt-10">
                 <div className="bg-white rounded-xl shadow-lg p-6 text-center border border-gray-50 mb-6 flex flex-col items-center justify-center min-h-[120px]">
                   <div className="text-3xl font-bold" style={{ color: pkg.color || '#3b82f6' }}>
@@ -128,7 +126,6 @@ const PreviewBlock = ({ section }: { section: any }) => {
                   {pkg.description && <p className="text-xs text-gray-400 mt-3 leading-relaxed">{pkg.description}</p>}
                 </div>
                 
-                {/* Features */}
                 <ul className="space-y-4 text-left flex-1 px-2">
                   {(pkg.features || []).map((feat: string, idx: number) => (
                     <li key={idx} className="flex items-start gap-3 text-sm text-gray-600">
@@ -141,7 +138,6 @@ const PreviewBlock = ({ section }: { section: any }) => {
                   )}
                 </ul>
                 
-                {/* Action Button */}
                 <div className="mt-8 mb-6 px-2">
                   <a 
                     href={pkg.buttonLink || '#'} 
@@ -469,6 +465,8 @@ export default function OrcamentoEditor() {
   };
 
   const activeSection = sections.find(s => s.id === selectedId);
+
+  if (loading) return <Layout><div className="flex h-full items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div></Layout>;
 
   return (
     <Layout>
@@ -1029,11 +1027,11 @@ export default function OrcamentoEditor() {
                           <div>
                             <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">
                               Cor de Fundo 
-                              <span className="font-normal text-gray-400 uppercase">{activeSection.styles?.backgroundColor || 'transparent'}</span>
+                              <span className="font-normal text-gray-400 uppercase">{activeSection.styles?.backgroundColor || '#ffffff'}</span>
                             </label>
                             <div className="flex gap-2">
                               <input type="color" value={activeSection.styles?.backgroundColor || '#ffffff'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="h-10 w-12 rounded cursor-pointer border border-gray-300 p-0.5 bg-white" />
-                              <input type="text" value={activeSection.styles?.backgroundColor || 'transparent'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none focus:border-orange-400 bg-white" />
+                              <input type="text" value={activeSection.styles?.backgroundColor || '#ffffff'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none focus:border-orange-400 bg-white" />
                             </div>
                           </div>
 
@@ -1079,12 +1077,12 @@ export default function OrcamentoEditor() {
 
           {/* CANVAS AREA (Centro - Preview da Folha) */}
           <div 
-            className="flex-1 overflow-y-auto p-4 sm:p-8 flex justify-center relative custom-scrollbar"
+            className="flex-1 overflow-y-auto p-4 sm:p-8 flex justify-center items-start relative custom-scrollbar"
             style={{ backgroundColor: globalSettings.pageBackgroundColor || '#f3f4f6' }}
           >
             
             <div 
-              className="w-full min-h-[1000px] shadow-2xl border border-gray-200 flex flex-col relative transition-all mb-20 overflow-hidden"
+              className={`w-full min-h-[1000px] shadow-2xl border border-gray-200 flex flex-col relative transition-all mb-20 overflow-hidden ${isPDFMode ? 'h-full' : 'h-fit'}`}
               style={{
                 maxWidth: globalSettings.maxWidth,
                 backgroundColor: globalSettings.backgroundColor
@@ -1114,7 +1112,7 @@ export default function OrcamentoEditor() {
                   )}
                 </div>
               ) : (
-                <div className="flex flex-col w-full flex-1 relative group/canvas">
+                <div className="flex flex-col w-full relative group/canvas">
                   {sections.length === 0 ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
                       <LayoutTemplate className="w-16 h-16 mb-4 opacity-20" />
