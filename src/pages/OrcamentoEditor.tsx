@@ -9,7 +9,7 @@ import {
   ArrowLeft, Save, Loader2, Image as ImageIcon, Type, DollarSign, 
   Trash2, Plus, FileUp, Settings, Link as LinkIcon, ArrowUp, ArrowDown,
   LayoutTemplate, Video, Minus, Columns, ChevronDown, Palette, AlignLeft, X, Layers,
-  UploadCloud, ExternalLink, Maximize
+  UploadCloud, ExternalLink
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -214,7 +214,7 @@ export default function OrcamentoEditor() {
   const [saving, setSaving] = useState(false);
   const [orcamento, setOrcamento] = useState<any>(null);
   
-  const [globalSettings, setGlobalSettings] = useState({ backgroundColor: '#ffffff', maxWidth: '900px' });
+  const [globalSettings, setGlobalSettings] = useState({ pageBackgroundColor: '#f3f4f6', backgroundColor: '#ffffff', maxWidth: '900px' });
   const [sections, setSections] = useState<any[]>([]);
   
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -238,10 +238,10 @@ export default function OrcamentoEditor() {
       const globalSec = loadedSections.find((s: any) => s.type === 'global-settings');
       
       if (globalSec) {
-        setGlobalSettings(globalSec.styles || { backgroundColor: '#ffffff', maxWidth: '900px' });
+        setGlobalSettings(globalSec.styles || { pageBackgroundColor: '#f3f4f6', backgroundColor: '#ffffff', maxWidth: '900px' });
         setSections(loadedSections.filter((s: any) => s.type !== 'global-settings'));
       } else {
-        setGlobalSettings({ backgroundColor: '#ffffff', maxWidth: '900px' });
+        setGlobalSettings({ pageBackgroundColor: '#f3f4f6', backgroundColor: '#ffffff', maxWidth: '900px' });
         setSections(loadedSections);
       }
 
@@ -284,7 +284,6 @@ export default function OrcamentoEditor() {
     }
   };
 
-  // Builder Methods
   const addSection = (type: string) => {
     const newSection: any = { 
       id: crypto.randomUUID(), 
@@ -346,7 +345,6 @@ export default function OrcamentoEditor() {
     if (selectedId === id) setSelectedId(null);
   };
 
-  // Image Uploads
   const handleImageUpload = async (file: File, callback: (url: string) => void) => {
     if (!file.type.startsWith('image/')) return toast.error("Apenas imagens são permitidas.");
     if (file.size > 5 * 1024 * 1024) return toast.error("A imagem deve ter no máximo 5MB.");
@@ -402,7 +400,6 @@ export default function OrcamentoEditor() {
     }
   };
 
-  // PDF Methods
   const handlePdfUpload = async (file: File) => {
     if (file.type !== 'application/pdf') return toast.error("Apenas arquivos PDF.");
     toast.info("Fazendo upload...");
@@ -466,7 +463,7 @@ export default function OrcamentoEditor() {
           </div>
         </div>
 
-        {/* Workspace */}
+        {/* Workspace Elementor Style */}
         <div className="flex-1 flex overflow-hidden bg-gray-100 rounded-xl border border-gray-200">
           
           {/* SIDEBAR ESQUERDA */}
@@ -512,15 +509,28 @@ export default function OrcamentoEditor() {
               {selectedId === 'global' ? (
                 <div className="p-4 space-y-5 animate-in fade-in">
                   <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
-                    <h4 className="text-[11px] font-bold uppercase text-gray-400 tracking-wider mb-2">Fundo da Página</h4>
+                    <h4 className="text-[11px] font-bold uppercase text-gray-400 tracking-wider mb-2">Fundo da Tela</h4>
                     <div>
-                      <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">Cor de Fundo</label>
+                      <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">Cor de Fundo (Área Externa)</label>
                       <div className="flex gap-2">
-                        <input type="color" value={globalSettings.backgroundColor} onChange={e => setGlobalSettings({...globalSettings, backgroundColor: e.target.value})} className="h-10 w-12 rounded cursor-pointer border border-gray-300 p-0.5 bg-white" />
-                        <input type="text" value={globalSettings.backgroundColor} onChange={e => setGlobalSettings({...globalSettings, backgroundColor: e.target.value})} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none focus:border-orange-400 bg-white" />
+                        <input type="color" value={globalSettings.pageBackgroundColor || '#f3f4f6'} onChange={e => setGlobalSettings({...globalSettings, pageBackgroundColor: e.target.value})} className="h-10 w-12 rounded cursor-pointer border border-gray-300 p-0.5 bg-white" />
+                        <input type="text" value={globalSettings.pageBackgroundColor || '#f3f4f6'} onChange={e => setGlobalSettings({...globalSettings, pageBackgroundColor: e.target.value})} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none focus:border-orange-400 bg-white" />
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-1.5">Define a cor da página inteira por trás do orçamento.</p>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                    <h4 className="text-[11px] font-bold uppercase text-gray-400 tracking-wider mb-2">Fundo da Proposta</h4>
+                    <div>
+                      <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">Cor de Fundo (Papel)</label>
+                      <div className="flex gap-2">
+                        <input type="color" value={globalSettings.backgroundColor || '#ffffff'} onChange={e => setGlobalSettings({...globalSettings, backgroundColor: e.target.value})} className="h-10 w-12 rounded cursor-pointer border border-gray-300 p-0.5 bg-white" />
+                        <input type="text" value={globalSettings.backgroundColor || '#ffffff'} onChange={e => setGlobalSettings({...globalSettings, backgroundColor: e.target.value})} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none focus:border-orange-400 bg-white" />
                       </div>
                     </div>
                   </div>
+
                   <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
                     <h4 className="text-[11px] font-bold uppercase text-gray-400 tracking-wider mb-2">Dimensões</h4>
                     <div>
@@ -955,7 +965,10 @@ export default function OrcamentoEditor() {
           </div>
 
           {/* CANVAS AREA (Centro - Preview da Folha) */}
-          <div className="flex-1 bg-gray-200/50 overflow-y-auto p-4 sm:p-8 flex justify-center relative custom-scrollbar">
+          <div 
+            className="flex-1 overflow-y-auto p-4 sm:p-8 flex justify-center relative custom-scrollbar"
+            style={{ backgroundColor: globalSettings.pageBackgroundColor || '#f3f4f6' }}
+          >
             
             <div 
               className="w-full min-h-[1000px] shadow-2xl border border-gray-200 flex flex-col relative transition-all mb-20 overflow-hidden"

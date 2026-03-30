@@ -196,7 +196,7 @@ export default function OrcamentoPublicView() {
   // Extrair configurações globais e seções reais
   const loadedSections = orcamento.sections || [];
   const globalSec = loadedSections.find((s: any) => s.type === 'global-settings');
-  const globalSettings = globalSec?.styles || { backgroundColor: '#ffffff', maxWidth: '900px' };
+  const globalSettings = globalSec?.styles || { pageBackgroundColor: '#f3f4f6', backgroundColor: '#ffffff', maxWidth: '900px' };
   const renderSections = loadedSections.filter((s: any) => s.type !== 'global-settings');
   
   const pdfSection = loadedSections.find((s: any) => s.type === 'pdf');
@@ -207,7 +207,10 @@ export default function OrcamentoPublicView() {
         @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,700;1,400&family=Montserrat:ital,wght@0,400;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
         .title-rich-text p { margin: 0; padding: 0; }
       `}} />
-      <div className="min-h-screen bg-gray-100/50 font-sans text-gray-900 flex flex-col items-center justify-start sm:py-12">
+      <div 
+        className="min-h-screen font-sans text-gray-900 flex flex-col items-center justify-start sm:py-12 transition-colors"
+        style={{ backgroundColor: globalSettings.pageBackgroundColor || '#f3f4f6' }}
+      >
         {isPDFMode ? (
           // Visualização Modo PDF
           <div className="w-full h-[100dvh] sm:h-[90vh] sm:max-w-4xl sm:rounded-3xl sm:shadow-2xl overflow-hidden relative flex flex-col bg-white">
