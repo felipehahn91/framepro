@@ -22,7 +22,6 @@ export default function ContractPublicView() {
 
   const fetchContract = async () => {
     try {
-      // CORREÇÃO: Usando a busca segura (apenas tabela de oportunidades permitida publicamente)
       const { data, error } = await supabase
         .from('contracts')
         .select('*, opportunities(name)')
@@ -43,19 +42,45 @@ export default function ContractPublicView() {
 
   const handleDownloadPDF = async () => {
     if (!contractRef.current) return;
-    toast.info("Gerando PDF...");
+    toast.info("Gerando PDF, aguarde alguns segundos...");
+    
     try {
-      const canvas = await html2canvas(contractRef.current, { scale: 2 });
+      // Captura o DOM do contrato garantindo fundo branco e suporte a imagens externas (CORS)
+      const canvas = await html2canvas(contractRef.current, { 
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff'
+      });
+      
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF("p", "mm", "a4");
+      
+      // Cálculos para fatiamento de múltiplas páginas
       const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+      let heightLeft = pdfHeight;
+      let position = 0;
+
+      // Adiciona a primeira página
+      pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
+      heightLeft -= pageHeight;
+
+      // Enquanto houver conteúdo sobrando, adiciona novas páginas
+      while (heightLeft > 0) {
+        position = position - pageHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+      }
+      
       pdf.save(`Contrato_${contract.opportunities?.name || 'Documento'}.pdf`);
-      toast.success("PDF baixado!");
+      toast.success("PDF baixado com sucesso!");
     } catch (error) {
       toast.error("Erro ao gerar PDF.");
+      console.error(error);
     }
   };
 
@@ -66,7 +91,6 @@ export default function ContractPublicView() {
     
     setSavingSig(true);
     try {
-      // getCanvas() captura exatamente o que foi desenhado sem bugar no recorte
       const signatureImage = sigCanvas.current.getCanvas().toDataURL('image/png');
       
       const updates: any = {};
@@ -142,15 +166,21 @@ export default function ContractPublicView() {
 
         {/* Papel do Documento */}
         <div className="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-          <div ref={contractRef} className="p-8 sm:p-12 bg-white text-black">
+          {/* Adicionada cor de fundo forçada branca para o PDF exportado ficar perfeito */}
+          <div ref={contractRef} className="p-8 sm:p-12 bg-white text-black" style={{ backgroundColor: '#ffffff' }}>
             
             {contract.contract_image && (
-              <img src={contract.contract_image} alt="Capa Contrato" className="w-full h-[300px] object-cover rounded-xl mb-8 border border-gray-200" />
+              <img 
+                src={contract.contract_image} 
+                crossOrigin="anonymous" 
+                alt="Capa Contrato" 
+                className="w-full h-[300px] object-cover rounded-xl mb-8 border border-gray-200" 
+              />
             )}
 
             {/* Conteúdo HTML do Quill */}
             <div 
-              className="prose max-w-none mb-16"
+              className="prose max-w-none mb-16 text-black"
               dangerouslySetInnerHTML={{ __html: contract.description || '<p>Contrato vazio.</p>' }}
             />
 
@@ -161,7 +191,7 @@ export default function ContractPublicView() {
               <div className="flex flex-col items-center">
                 <div className="h-32 w-full max-w-xs flex flex-col justify-end border-b-2 border-gray-800 relative mb-2">
                   {isSigned ? (
-                    <img src={contract.client_signature} alt="Assinatura Cliente" className="max-h-24 mx-auto" />
+                    <img src={contract.client_signature} crossOrigin="anonymous" alt="Assinatura" className="max-h-24 mx-auto" />
                   ) : (
                     <div className="absolute inset-0 no-print border-2 border-dashed border-gray-200 rounded-lg bg-gray-50 flex items-center justify-center group overflow-hidden">
                       <SignaturePad 
@@ -174,7 +204,7 @@ export default function ContractPublicView() {
                     </div>
                   )}
                 </div>
-                <p className="font-bold text-lg text-center">{clientName}</p>
+                <p className="font-bold text-lg text-center text-black">{clientName}</p>
                 <p className="text-sm text-gray-500 uppercase tracking-widest mt-1">Contratante</p>
                 
                 {!isSigned && (
@@ -187,16 +217,16 @@ export default function ContractPublicView() {
                 )}
               </div>
 
-              {/* Fornecedor (Visualização Apenas) */}
+              {/* Fornecedor */}
               <div className="flex flex-col items-center">
                 <div className="h-32 w-full max-w-xs flex flex-col justify-end border-b-2 border-gray-800 relative mb-2">
                   {contract.supplier_signature ? (
-                    <img src={contract.supplier_signature} alt="Assinatura Fornecedor" className="max-h-24 mx-auto" />
+                    <img src={contract.supplier_signature} crossOrigin="anonymous" alt="Assinatura Fornecedor" className="max-h-24 mx-auto" />
                   ) : (
-                    <div className="text-center text-gray-300 font-medium mb-4">Pendente assinatura do Fornecedor</div>
+                    <div className="text-center text-gray-300 font-medium mb-4">Pendente assinatura</div>
                   )}
                 </div>
-                <p className="font-bold text-lg text-center">{supplierName}</p>
+                <p className="font-bold text-lg text-center text-black">{supplierName}</p>
                 <p className="text-sm text-gray-500 uppercase tracking-widest mt-1">Contratado</p>
               </div>
 
