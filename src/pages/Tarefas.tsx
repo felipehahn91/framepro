@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
   Plus, Edit2, Trash2, Filter, Loader2, X, CheckSquare, 
-  Calendar as CalendarIcon, AlertCircle, CheckCircle2, Circle
+  Calendar as CalendarIcon, AlertCircle, CheckCircle2, Circle, ArrowUpDown
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -24,9 +24,10 @@ export default function Tarefas() {
   const [loading, setLoading] = useState(true);
   const [tasks, setTasks] = useState<Task[]>([]);
   
-  // Filtros
+  // Filtros e Ordenação
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("created_desc");
 
   // Modais
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -56,7 +57,6 @@ export default function Tarefas() {
         .order('created_at', { ascending: false });
 
       if (error) {
-        // Se a tabela não existir ainda, apenas setamos vazio silenciosamente
         if (error.code === '42P01') {
           console.warn("Tabela 'tasks' não existe. Ela será criada ao inserir a primeira tarefa se as políticas permitirem, ou precisa ser criada no banco.");
           setTasks([]);
@@ -74,13 +74,47 @@ export default function Tarefas() {
     }
   };
 
-  const filteredTasks = useMemo(() => {
-    return tasks.filter(task => {
+  const filteredAndSortedTasks = useMemo(() => {
+    // 1. Filtrar
+    let result = tasks.filter(task => {
       const matchStatus = statusFilter === "all" || task.status === statusFilter;
       const matchPriority = priorityFilter === "all" || task.priority === priorityFilter;
       return matchStatus && matchPriority;
     });
-  }, [tasks, statusFilter, priorityFilter]);
+
+    // 2. Ordenar
+    result.sort((a, b) => {
+      if (sortBy === 'created_desc') {
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+      
+      if (sortBy === 'date_asc' || sortBy === 'date_desc') {
+        // Tarefas sem data ficam por último sempre
+        if (!a.due_date && !b.due_date) return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        if (!a.due_date) return 1;
+        if (!b.due_date) return -1;
+        
+        const dateA = new Date(a.due_date).getTime();
+        const dateB = new Date(b.due_date).getTime();
+        
+        if (dateA === dateB) return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        return sortBy === 'date_asc' ? dateA - dateB : dateB - dateA;
+      }
+      
+      if (sortBy === 'priority_high') {
+        const priorityWeight: Record<string, number> = { 'Alta': 3, 'Média': 2, 'Baixa': 1 };
+        const wA = priorityWeight[a.priority] || 0;
+        const wB = priorityWeight[b.priority] || 0;
+        
+        if (wA === wB) return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        return wB - wA; // Maior peso primeiro
+      }
+      
+      return 0;
+    });
+
+    return result;
+  }, [tasks, statusFilter, priorityFilter, sortBy]);
 
   const handleOpenModal = (task?: Task) => {
     if (task) {
@@ -154,7 +188,6 @@ export default function Tarefas() {
     e.stopPropagation();
     const newStatus = task.status === 'Concluída' ? 'Pendente' : 'Concluída';
     
-    // Optimistic update
     setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
     
     try {
@@ -166,7 +199,6 @@ export default function Tarefas() {
       if (error) throw error;
       toast.success(newStatus === 'Concluída' ? "Tarefa concluída!" : "Tarefa reaberta.");
     } catch (error) {
-      // Revert optimistic update on error
       setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: task.status } : t));
       toast.error("Erro ao atualizar status.");
     }
@@ -242,39 +274,56 @@ export default function Tarefas() {
         {/* Main Card Container */}
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm flex-1 flex flex-col">
           
-          {/* Filters Bar */}
-          <div className="p-4 border-b border-gray-100 flex flex-wrap gap-4 items-center bg-gray-50/50 rounded-t-xl">
-            <div className="flex items-center gap-2 text-gray-500">
-              <Filter className="w-4 h-4" />
+          {/* Filters & Sorting Bar */}
+          <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-gray-50/50 rounded-t-xl justify-between">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2 text-gray-500">
+                <Filter className="w-4 h-4" />
+                <select 
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="bg-white border border-gray-200 rounded-md text-sm py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-orange-400 cursor-pointer"
+                >
+                  <option value="all">Todos os Status</option>
+                  <option value="Pendente">Pendentes</option>
+                  <option value="Em Progresso">Em Progresso</option>
+                  <option value="Concluída">Concluídas</option>
+                </select>
+              </div>
+
               <select 
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value)}
                 className="bg-white border border-gray-200 rounded-md text-sm py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-orange-400 cursor-pointer"
               >
-                <option value="all">Todos os Status</option>
-                <option value="Pendente">Pendentes</option>
-                <option value="Em Progresso">Em Progresso</option>
-                <option value="Concluída">Concluídas</option>
+                <option value="all">Todas Prioridades</option>
+                <option value="Alta">Alta</option>
+                <option value="Média">Média</option>
+                <option value="Baixa">Baixa</option>
               </select>
             </div>
 
-            <select 
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              className="bg-white border border-gray-200 rounded-md text-sm py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-orange-400 cursor-pointer"
-            >
-              <option value="all">Todas Prioridades</option>
-              <option value="Alta">Alta</option>
-              <option value="Média">Média</option>
-              <option value="Baixa">Baixa</option>
-            </select>
+            {/* Ordering */}
+            <div className="flex items-center gap-2 text-gray-500">
+              <ArrowUpDown className="w-4 h-4" />
+              <select 
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="bg-white border border-gray-200 rounded-md text-sm py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-orange-400 cursor-pointer"
+              >
+                <option value="created_desc">Mais recentes primeiro</option>
+                <option value="date_asc">Vencimento (Mais próximo)</option>
+                <option value="date_desc">Vencimento (Mais distante)</option>
+                <option value="priority_high">Prioridade (Alta primeiro)</option>
+              </select>
+            </div>
           </div>
 
           {/* Task List */}
           <div className="flex-1 overflow-y-auto">
-            {filteredTasks.length > 0 ? (
+            {filteredAndSortedTasks.length > 0 ? (
               <div className="divide-y divide-gray-100">
-                {filteredTasks.map((task) => {
+                {filteredAndSortedTasks.map((task) => {
                   const isCompleted = task.status === 'Concluída';
                   const overdue = isOverdue(task.due_date, task.status);
 
