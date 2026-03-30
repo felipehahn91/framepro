@@ -19,6 +19,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+const SECTION_LABELS: Record<string, string> = {
+  'cover': 'Capa',
+  'text': 'Texto Livre',
+  'pricing': 'Oferta',
+  'two-columns': '2 Colunas',
+  'gallery': 'Galeria',
+  'video': 'Vídeo',
+  'button': 'Botão CTA',
+  'separator': 'Separador'
+};
+
 const quillModules = {
   toolbar: [
     [{ 'header': [2, 3, false] }],
@@ -586,7 +597,7 @@ export default function OrcamentoEditor() {
                   </button>
                   <div className="flex items-center gap-2 text-gray-900 font-bold text-base">
                     <Settings className="w-5 h-5 text-orange-500" /> 
-                    <span className="capitalize">Editar {activeSection.type.replace('-', ' ')}</span>
+                    <span className="capitalize">Editar {SECTION_LABELS[activeSection.type] || activeSection.type}</span>
                   </div>
                 </>
               ) : (
@@ -663,7 +674,7 @@ export default function OrcamentoEditor() {
                       <button onClick={() => addSection('button')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group shadow-sm">
                         <MousePointerClick className="w-5 h-5 mb-2" /> <span className="text-[11px] font-bold">Botão CTA</span>
                       </button>
-                      <button onClick={() => addSection('separator')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group shadow-sm">
+                      <button onClick={() => addSection('separator')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group col-span-2 shadow-sm">
                         <Minus className="w-5 h-5 mb-2" /> <span className="text-[11px] font-bold">Separador</span>
                       </button>
                     </div>
@@ -859,7 +870,7 @@ export default function OrcamentoEditor() {
                                   {sections.filter(s => s.id !== activeSection.id).map(s => {
                                     const sectionName = s.title ? s.title.replace(/<[^>]*>?/gm, '').substring(0,25) : s.id.substring(0,8);
                                     return (
-                                      <option key={s.id} value={s.id}>{s.type.toUpperCase()} - {sectionName}</option>
+                                      <option key={s.id} value={s.id}>{(SECTION_LABELS[s.type] || s.type).toUpperCase()} - {sectionName}</option>
                                     );
                                   })}
                                 </select>
@@ -1298,7 +1309,7 @@ export default function OrcamentoEditor() {
                         {/* Editor Controls Overlay (Like Elementor) */}
                         {selectedId === s.id && (
                           <div className="absolute -top-[28px] left-1/2 -translate-x-1/2 bg-orange-500 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-t-lg shadow-md flex items-center gap-2">
-                            <Settings className="w-3 h-3" /> Editando {s.type}
+                            <Settings className="w-3 h-3" /> Editando {SECTION_LABELS[s.type] || s.type}
                           </div>
                         )}
                       </div>
@@ -1353,7 +1364,7 @@ export default function OrcamentoEditor() {
             <div className="w-[280px] bg-white border-l border-gray-200 flex flex-col shrink-0 z-10 shadow-[-2px_0_10px_rgba(0,0,0,0.02)]">
               <div className="p-4 border-b border-gray-100 flex items-center gap-2 bg-gray-50/50">
                 <Layers className="w-4 h-4 text-gray-600" />
-                <h2 className="font-bold text-gray-800 text-sm uppercase tracking-wider">Navegador</h2>
+                <h2 className="font-bold text-gray-800 text-sm uppercase tracking-wider">Camadas (Blocos)</h2>
               </div>
               
               <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar bg-gray-50/30">
@@ -1370,8 +1381,6 @@ export default function OrcamentoEditor() {
                     </span>
                   </div>
                 </div>
-
-                <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">Camadas (Blocos)</h3>
                 
                 {sections.map((s, idx) => (
                   <div 
@@ -1394,7 +1403,7 @@ export default function OrcamentoEditor() {
                       {s.type === 'separator' && <Minus className={`w-4 h-4 ${selectedId === s.id ? 'text-orange-500' : 'text-gray-400'}`} />}
                       
                       <span className={`font-semibold text-sm capitalize ${selectedId === s.id ? 'text-orange-900' : 'text-gray-700'}`}>
-                        {s.type.replace('-', ' ')}
+                        {SECTION_LABELS[s.type] || s.type}
                       </span>
                     </div>
                     
