@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import Oportunidades from "./pages/Oportunidades";
 import Clientes from "./pages/Clientes";
 import Tarefas from "./pages/Tarefas";
+import Financeiro from "./pages/Financeiro";
 import Login from "./pages/Login";
 import LinkFormPage from "./pages/LinkFormPage";
 import NotFound from "./pages/NotFound";
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/oportunidades" element={<ProtectedRoute><Oportunidades /></ProtectedRoute>} />
             <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
             <Route path="/tarefas" element={<ProtectedRoute><Tarefas /></ProtectedRoute>} />
+            <Route path="/financeiro" element={<ProtectedRoute><Financeiro /></ProtectedRoute>} />
             
             {/* Fallback */}
             <Route path="*" element={<NotFound />} />
