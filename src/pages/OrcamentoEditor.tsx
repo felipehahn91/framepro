@@ -9,7 +9,7 @@ import {
   ArrowLeft, Save, Loader2, Image as ImageIcon, Type, DollarSign, 
   Trash2, Plus, FileUp, Settings, Link as LinkIcon, ArrowUp, ArrowDown,
   LayoutTemplate, Video, Minus, Columns, ChevronDown, Palette, AlignLeft, X, Layers,
-  UploadCloud
+  UploadCloud, ExternalLink
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -257,6 +257,12 @@ export default function OrcamentoEditor() {
     }
   };
 
+  const handlePreview = () => {
+    if (orcamento?.share_token) {
+      window.open(`/orcamentos/public/${orcamento.share_token}`, '_blank');
+    }
+  };
+
   // Builder Methods
   const addSection = (type: string) => {
     const newSection: any = { 
@@ -423,13 +429,21 @@ export default function OrcamentoEditor() {
               type="text" 
               value={orcamento.name} 
               onChange={e => setOrcamento({...orcamento, name: e.target.value})}
-              className="text-[16px] font-bold text-gray-900 border-none focus:ring-0 p-0 bg-transparent w-64 md:w-96 outline-none"
+              className="text-[16px] font-bold text-gray-900 border-none focus:ring-0 p-0 bg-transparent w-48 md:w-96 outline-none"
               placeholder="Nome da Proposta"
             />
           </div>
-          <button onClick={handleSave} disabled={saving} className="px-6 py-2 bg-orange-500 text-white text-sm font-semibold rounded-md hover:bg-orange-600 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50">
-            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Atualizar
-          </button>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={handlePreview} 
+              className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-semibold rounded-md hover:bg-gray-200 transition-colors flex items-center gap-2"
+            >
+              <ExternalLink className="w-4 h-4" /> Visualizar
+            </button>
+            <button onClick={handleSave} disabled={saving} className="px-6 py-2 bg-orange-500 text-white text-sm font-semibold rounded-md hover:bg-orange-600 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Atualizar
+            </button>
+          </div>
         </div>
 
         {/* Workspace Elementor Style */}
@@ -498,6 +512,7 @@ export default function OrcamentoEditor() {
                 </div>
               ) : isPDFMode ? (
                 <div className="p-4 space-y-8">
+                  {/* ... PDF controls (mantidos) ... */}
                   <div className="space-y-3">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Arquivo PDF</label>
                     {sections[0]?.fileUrl ? (
