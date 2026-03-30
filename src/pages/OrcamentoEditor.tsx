@@ -6,7 +6,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { 
   ArrowLeft, Save, Loader2, Image as ImageIcon, Type, DollarSign, 
   Trash2, Plus, FileUp, Settings, Link as LinkIcon, ArrowUp, ArrowDown,
-  LayoutTemplate, Video, Minus, Columns, ChevronDown, Palette, AlignLeft, X
+  LayoutTemplate, Video, Minus, Columns, ChevronDown, Palette, AlignLeft, X, Layers
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -32,7 +32,6 @@ const PreviewBlock = ({ section }: { section: any }) => {
   if (section.type === 'cover') {
     return (
       <div style={{...baseStyle, padding: 0}} className="relative w-full aspect-video flex flex-col items-center justify-center text-center overflow-hidden">
-        {/* Overlay escuro opcional se houver imagem */}
         {styles.backgroundImage && <div className="absolute inset-0 bg-black/40 z-0"></div>}
         <div className="relative z-10 p-8 max-w-2xl w-full">
           <h1 className="text-4xl md:text-5xl font-bold mb-4" style={{ color: styles.textColor || '#111827' }}>
@@ -295,20 +294,20 @@ export default function OrcamentoEditor() {
               type="text" 
               value={orcamento.name} 
               onChange={e => setOrcamento({...orcamento, name: e.target.value})}
-              className="text-[16px] font-bold text-gray-900 border-none focus:ring-0 p-0 bg-transparent w-64 outline-none"
+              className="text-[16px] font-bold text-gray-900 border-none focus:ring-0 p-0 bg-transparent w-64 md:w-96 outline-none"
               placeholder="Nome da Proposta"
             />
           </div>
-          <button onClick={handleSave} disabled={saving} className="px-6 py-2 bg-orange-500 text-white text-sm font-semibold rounded-lg hover:bg-orange-600 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50">
+          <button onClick={handleSave} disabled={saving} className="px-6 py-2 bg-orange-500 text-white text-sm font-semibold rounded-md hover:bg-orange-600 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Atualizar
           </button>
         </div>
 
-        {/* Workspace Elementor Style */}
-        <div className="flex-1 flex gap-4 overflow-hidden">
+        {/* Workspace Elementor Style (3 Columns Layout) */}
+        <div className="flex-1 flex overflow-hidden bg-gray-100 rounded-xl border border-gray-200">
           
-          {/* SIDEBAR ESQUERDA (Ferramentas) */}
-          <div className="w-[320px] bg-white border border-gray-200 rounded-xl shadow-sm flex flex-col overflow-hidden shrink-0 z-10">
+          {/* SIDEBAR ESQUERDA (Ferramentas / Configuração do Elemento Ativo) */}
+          <div className="w-[320px] bg-white border-r border-gray-200 flex flex-col shrink-0 z-10 shadow-[2px_0_10px_rgba(0,0,0,0.02)]">
             
             {/* Header da Sidebar */}
             <div className="p-4 border-b border-gray-100 bg-gray-50/80 flex items-center justify-between">
@@ -322,7 +321,7 @@ export default function OrcamentoEditor() {
                 </div>
               )}
               {activeSection && (
-                <button onClick={() => setSelectedId(null)} className="text-gray-400 hover:text-gray-700 p-1 bg-white rounded shadow-sm border border-gray-200">
+                <button onClick={() => setSelectedId(null)} className="text-gray-400 hover:text-gray-700 p-1 bg-white rounded shadow-sm border border-gray-200" title="Voltar para Elementos">
                   <LayoutTemplate className="w-4 h-4" />
                 </button>
               )}
@@ -335,47 +334,35 @@ export default function OrcamentoEditor() {
                 // Visão de Elementos (Nenhuma camada selecionada)
                 <div className="p-4 space-y-6">
                   <div>
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Camadas Ativas</h3>
-                    <div className="space-y-2">
-                      {sections.map((s, idx) => (
-                        <div key={s.id} onClick={() => setSelectedId(s.id)} className="flex items-center justify-between px-3 py-2 bg-white rounded-lg border border-gray-200 cursor-pointer hover:border-orange-400 hover:shadow-sm transition-all group">
-                          <span className="font-semibold text-sm text-gray-700 capitalize">{s.type.replace('-', ' ')}</span>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={(e) => { e.stopPropagation(); moveSection(idx, 'up'); }} disabled={idx === 0} className="p-1 hover:bg-gray-100 rounded text-gray-500"><ArrowUp className="w-3.5 h-3.5" /></button>
-                            <button onClick={(e) => { e.stopPropagation(); moveSection(idx, 'down'); }} disabled={idx === sections.length - 1} className="p-1 hover:bg-gray-100 rounded text-gray-500"><ArrowDown className="w-3.5 h-3.5" /></button>
-                            <button onClick={(e) => { e.stopPropagation(); removeSection(s.id); }} className="p-1 hover:bg-red-50 text-red-500 rounded"><Trash2 className="w-3.5 h-3.5" /></button>
-                          </div>
-                        </div>
-                      ))}
-                      {sections.length === 0 && <p className="text-xs text-gray-400 italic text-center py-4">Nenhuma seção adicionada.</p>}
-                    </div>
-                  </div>
-                  
-                  <div>
                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Adicionar Elemento</h3>
                     <div className="grid grid-cols-2 gap-2">
-                      <button onClick={() => addSection('cover')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group">
+                      <button onClick={() => addSection('cover')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group shadow-sm">
                         <ImageIcon className="w-5 h-5 mb-2" /> <span className="text-[11px] font-bold">Capa</span>
                       </button>
-                      <button onClick={() => addSection('text')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group">
+                      <button onClick={() => addSection('text')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group shadow-sm">
                         <Type className="w-5 h-5 mb-2" /> <span className="text-[11px] font-bold">Texto</span>
                       </button>
-                      <button onClick={() => addSection('two-columns')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group">
+                      <button onClick={() => addSection('two-columns')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group shadow-sm">
                         <Columns className="w-5 h-5 mb-2" /> <span className="text-[11px] font-bold">2 Colunas</span>
                       </button>
-                      <button onClick={() => addSection('pricing')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group">
+                      <button onClick={() => addSection('pricing')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group shadow-sm">
                         <DollarSign className="w-5 h-5 mb-2" /> <span className="text-[11px] font-bold">Oferta</span>
                       </button>
-                      <button onClick={() => addSection('gallery')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group">
+                      <button onClick={() => addSection('gallery')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group shadow-sm">
                         <LayoutTemplate className="w-5 h-5 mb-2" /> <span className="text-[11px] font-bold">Galeria</span>
                       </button>
-                      <button onClick={() => addSection('video')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group">
+                      <button onClick={() => addSection('video')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group shadow-sm">
                         <Video className="w-5 h-5 mb-2" /> <span className="text-[11px] font-bold">Vídeo</span>
                       </button>
-                      <button onClick={() => addSection('separator')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group col-span-2">
+                      <button onClick={() => addSection('separator')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group col-span-2 shadow-sm">
                         <Minus className="w-5 h-5 mb-2" /> <span className="text-[11px] font-bold">Separador</span>
                       </button>
                     </div>
+                  </div>
+                  <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl">
+                    <p className="text-sm text-orange-800">
+                      <strong>Dica:</strong> Clique em qualquer elemento no centro da tela para editar seu conteúdo e estilo, ou use a barra à direita (Camadas) para reordenar.
+                    </p>
                   </div>
                 </div>
               ) : isPDFMode ? (
@@ -443,14 +430,14 @@ export default function OrcamentoEditor() {
                   </div>
                 </div>
               ) : (
-                // Builder Active Section Settings
+                // Builder Active Section Settings (Content / Style)
                 <div className="flex flex-col h-full">
                   {/* Tabs Conteúdo / Estilo */}
                   <div className="flex border-b border-gray-200 shrink-0 bg-white sticky top-0 z-10">
-                    <button onClick={() => setActiveTab('content')} className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${activeTab === 'content' ? 'text-orange-500 border-b-2 border-orange-500' : 'text-gray-500 hover:bg-gray-50'}`}>
+                    <button onClick={() => setActiveTab('content')} className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${activeTab === 'content' ? 'text-orange-500 border-b-2 border-orange-500 bg-orange-50/30' : 'text-gray-500 hover:bg-gray-50'}`}>
                       <AlignLeft className="w-3.5 h-3.5" /> Conteúdo
                     </button>
-                    <button onClick={() => setActiveTab('style')} className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${activeTab === 'style' ? 'text-orange-500 border-b-2 border-orange-500' : 'text-gray-500 hover:bg-gray-50'}`}>
+                    <button onClick={() => setActiveTab('style')} className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 ${activeTab === 'style' ? 'text-orange-500 border-b-2 border-orange-500 bg-orange-50/30' : 'text-gray-500 hover:bg-gray-50'}`}>
                       <Palette className="w-3.5 h-3.5" /> Estilo
                     </button>
                   </div>
@@ -463,11 +450,11 @@ export default function OrcamentoEditor() {
                           <>
                             <div>
                               <label className="text-xs font-bold text-gray-500 mb-1 block">Título</label>
-                              <input value={activeSection.title || ''} onChange={e => updateSection(activeSection.id, { title: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-orange-400 outline-none" />
+                              <input value={activeSection.title || ''} onChange={e => updateSection(activeSection.id, { title: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-orange-400 outline-none shadow-sm" />
                             </div>
                             <div>
                               <label className="text-xs font-bold text-gray-500 mb-1 block">Subtítulo</label>
-                              <textarea value={activeSection.subtitle || ''} onChange={e => updateSection(activeSection.id, { subtitle: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-orange-400 outline-none resize-none h-20" />
+                              <textarea value={activeSection.subtitle || ''} onChange={e => updateSection(activeSection.id, { subtitle: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-orange-400 outline-none resize-none h-20 shadow-sm" />
                             </div>
                           </>
                         )}
@@ -476,7 +463,7 @@ export default function OrcamentoEditor() {
                         {activeSection.type === 'text' && (
                           <div>
                             <label className="text-xs font-bold text-gray-500 mb-1 block">Conteúdo do Bloco</label>
-                            <textarea value={activeSection.content || ''} onChange={e => updateSection(activeSection.id, { content: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-orange-400 outline-none min-h-[300px] resize-none" placeholder="Escreva seu texto aqui..." />
+                            <textarea value={activeSection.content || ''} onChange={e => updateSection(activeSection.id, { content: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg focus:ring-1 focus:ring-orange-400 outline-none min-h-[300px] resize-none shadow-sm" placeholder="Escreva seu texto aqui..." />
                           </div>
                         )}
 
@@ -485,22 +472,22 @@ export default function OrcamentoEditor() {
                           <>
                             <div>
                               <label className="text-xs font-bold text-gray-500 mb-1 block">Layout (Posição da Imagem)</label>
-                              <select value={activeSection.imagePosition || 'right'} onChange={e => updateSection(activeSection.id, { imagePosition: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none">
+                              <select value={activeSection.imagePosition || 'right'} onChange={e => updateSection(activeSection.id, { imagePosition: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none shadow-sm">
                                 <option value="right">Texto à Esquerda, Imagem à Direita</option>
                                 <option value="left">Imagem à Esquerda, Texto à Direita</option>
                               </select>
                             </div>
                             <div>
                               <label className="text-xs font-bold text-gray-500 mb-1 block">Título da Seção</label>
-                              <input value={activeSection.title || ''} onChange={e => updateSection(activeSection.id, { title: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none" />
+                              <input value={activeSection.title || ''} onChange={e => updateSection(activeSection.id, { title: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none shadow-sm" />
                             </div>
                             <div>
                               <label className="text-xs font-bold text-gray-500 mb-1 block">Texto</label>
-                              <textarea value={activeSection.content || ''} onChange={e => updateSection(activeSection.id, { content: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none resize-none h-32" />
+                              <textarea value={activeSection.content || ''} onChange={e => updateSection(activeSection.id, { content: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none resize-none h-32 shadow-sm" />
                             </div>
                             <div>
                               <label className="text-xs font-bold text-gray-500 mb-1 block">URL da Imagem</label>
-                              <input value={activeSection.imageUrl || ''} onChange={e => updateSection(activeSection.id, { imageUrl: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none" placeholder="https://" />
+                              <input value={activeSection.imageUrl || ''} onChange={e => updateSection(activeSection.id, { imageUrl: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none shadow-sm" placeholder="https://" />
                             </div>
                           </>
                         )}
@@ -510,31 +497,31 @@ export default function OrcamentoEditor() {
                           <>
                             <div>
                               <label className="text-xs font-bold text-gray-500 mb-1 block">Título da Tabela</label>
-                              <input value={activeSection.title || ''} onChange={e => updateSection(activeSection.id, { title: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none" />
+                              <input value={activeSection.title || ''} onChange={e => updateSection(activeSection.id, { title: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none shadow-sm" />
                             </div>
                             <div className="space-y-3">
                               <label className="text-xs font-bold text-gray-500 mb-1 block">Itens da Oferta</label>
                               {activeSection.items?.map((item: any, i: number) => (
-                                <div key={i} className="flex gap-2 items-center bg-gray-50 p-2 rounded-lg border border-gray-200 group">
+                                <div key={i} className="flex gap-2 items-center bg-white p-2 rounded-lg border border-gray-200 shadow-sm group">
                                   <input value={item.name} onChange={e => {
                                     const newItems = [...activeSection.items]; newItems[i].name = e.target.value;
                                     updateSection(activeSection.id, { items: newItems });
-                                  }} className="flex-1 text-sm p-1.5 border border-gray-200 rounded outline-none" placeholder="Item" />
+                                  }} className="flex-1 text-sm p-1.5 border border-gray-200 rounded outline-none focus:border-orange-400" placeholder="Nome do item" />
                                   <input type="number" value={item.price} onChange={e => {
                                     const newItems = [...activeSection.items]; newItems[i].price = e.target.value;
                                     updateSection(activeSection.id, { items: newItems });
-                                  }} className="w-24 text-sm p-1.5 border border-gray-200 rounded outline-none" placeholder="0.00" />
+                                  }} className="w-24 text-sm p-1.5 border border-gray-200 rounded outline-none focus:border-orange-400" placeholder="R$ 0,00" />
                                   <button onClick={() => {
                                     const newItems = [...activeSection.items]; newItems.splice(i, 1);
                                     updateSection(activeSection.id, { items: newItems });
-                                  }} className="text-red-500 p-1 hover:bg-red-50 rounded"><X className="w-4 h-4"/></button>
+                                  }} className="text-gray-400 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-4 h-4"/></button>
                                 </div>
                               ))}
                               <button onClick={() => {
                                 const newItems = [...(activeSection.items || []), { name: 'Novo Item', price: 0 }];
                                 updateSection(activeSection.id, { items: newItems });
-                              }} className="w-full py-2.5 border-2 border-dashed border-gray-300 rounded-lg text-xs font-bold text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors mt-2">
-                                + Adicionar Item
+                              }} className="w-full py-2.5 border border-dashed border-gray-300 rounded-lg text-xs font-bold text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors mt-2">
+                                + Adicionar Novo Item
                               </button>
                             </div>
                           </>
@@ -545,7 +532,7 @@ export default function OrcamentoEditor() {
                           <>
                             <div>
                               <label className="text-xs font-bold text-gray-500 mb-1 block">Título (Opcional)</label>
-                              <input value={activeSection.title || ''} onChange={e => updateSection(activeSection.id, { title: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none" />
+                              <input value={activeSection.title || ''} onChange={e => updateSection(activeSection.id, { title: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none shadow-sm" />
                             </div>
                             <div className="space-y-3">
                               <label className="text-xs font-bold text-gray-500 mb-1 block">URLs das Imagens</label>
@@ -554,7 +541,7 @@ export default function OrcamentoEditor() {
                                   <input value={img} onChange={e => {
                                     const newImgs = [...activeSection.images]; newImgs[i] = e.target.value;
                                     updateSection(activeSection.id, { images: newImgs });
-                                  }} className="flex-1 text-sm p-2 bg-white border border-gray-200 rounded-lg outline-none" placeholder="https://" />
+                                  }} className="flex-1 text-sm p-2 bg-white border border-gray-200 rounded-lg outline-none shadow-sm" placeholder="https://" />
                                   <button onClick={() => {
                                     const newImgs = [...activeSection.images]; newImgs.splice(i, 1);
                                     updateSection(activeSection.id, { images: newImgs });
@@ -576,11 +563,11 @@ export default function OrcamentoEditor() {
                           <>
                             <div>
                               <label className="text-xs font-bold text-gray-500 mb-1 block">Título (Opcional)</label>
-                              <input value={activeSection.title || ''} onChange={e => updateSection(activeSection.id, { title: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none" />
+                              <input value={activeSection.title || ''} onChange={e => updateSection(activeSection.id, { title: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none shadow-sm" />
                             </div>
                             <div>
                               <label className="text-xs font-bold text-gray-500 mb-1 block">URL do Vídeo (YouTube/Vimeo)</label>
-                              <input value={activeSection.videoUrl || ''} onChange={e => updateSection(activeSection.id, { videoUrl: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none" placeholder="https://www.youtube.com/watch?v=..." />
+                              <input value={activeSection.videoUrl || ''} onChange={e => updateSection(activeSection.id, { videoUrl: e.target.value })} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none shadow-sm" placeholder="https://www.youtube.com/watch?v=..." />
                             </div>
                           </>
                         )}
@@ -604,7 +591,7 @@ export default function OrcamentoEditor() {
 
                     {activeTab === 'style' && activeSection && (
                       <div className="space-y-5 animate-in fade-in">
-                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-4">
                           <h4 className="text-[11px] font-bold uppercase text-gray-400 tracking-wider mb-2">Fundo (Background)</h4>
                           
                           <div>
@@ -614,17 +601,17 @@ export default function OrcamentoEditor() {
                             </label>
                             <div className="flex gap-2">
                               <input type="color" value={activeSection.styles?.backgroundColor || '#ffffff'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="h-10 w-12 rounded cursor-pointer border border-gray-300 p-0.5" />
-                              <input type="text" value={activeSection.styles?.backgroundColor || '#ffffff'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none" />
+                              <input type="text" value={activeSection.styles?.backgroundColor || '#ffffff'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none focus:border-orange-400" />
                             </div>
                           </div>
 
                           <div>
                             <label className="text-xs font-bold text-gray-700 mb-1.5 block">Imagem de Fundo (URL)</label>
-                            <input value={activeSection.styles?.backgroundImage || ''} onChange={e => updateStyle(activeSection.id, 'backgroundImage', e.target.value)} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg focus:outline-none placeholder:text-gray-300" placeholder="https://..." />
+                            <input value={activeSection.styles?.backgroundImage || ''} onChange={e => updateStyle(activeSection.id, 'backgroundImage', e.target.value)} className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-orange-400 placeholder:text-gray-300" placeholder="https://..." />
                           </div>
                         </div>
 
-                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-4">
                           <h4 className="text-[11px] font-bold uppercase text-gray-400 tracking-wider mb-2">Tipografia</h4>
                           
                           <div>
@@ -634,12 +621,12 @@ export default function OrcamentoEditor() {
                             </label>
                             <div className="flex gap-2">
                               <input type="color" value={activeSection.styles?.textColor || '#111827'} onChange={e => updateStyle(activeSection.id, 'textColor', e.target.value)} className="h-10 w-12 rounded cursor-pointer border border-gray-300 p-0.5" />
-                              <input type="text" value={activeSection.styles?.textColor || '#111827'} onChange={e => updateStyle(activeSection.id, 'textColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none" />
+                              <input type="text" value={activeSection.styles?.textColor || '#111827'} onChange={e => updateStyle(activeSection.id, 'textColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none focus:border-orange-400" />
                             </div>
                           </div>
                         </div>
 
-                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-4">
                           <h4 className="text-[11px] font-bold uppercase text-gray-400 tracking-wider mb-2">Espaçamento</h4>
                           
                           <div>
@@ -658,8 +645,8 @@ export default function OrcamentoEditor() {
             </div>
           </div>
 
-          {/* CANVAS AREA (Preview da Folha) */}
-          <div className="flex-1 bg-gray-200/50 overflow-y-auto p-4 sm:p-8 flex justify-center relative custom-scrollbar">
+          {/* CANVAS AREA (Centro - Preview da Folha) */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-8 flex justify-center relative custom-scrollbar">
             
             <div className="w-full max-w-[850px] min-h-[1000px] bg-white shadow-2xl border border-gray-200 flex flex-col relative transition-all mb-20">
               
@@ -690,7 +677,7 @@ export default function OrcamentoEditor() {
                   {sections.length === 0 ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
                       <LayoutTemplate className="w-16 h-16 mb-4 opacity-20" />
-                      <p className="font-medium text-gray-500">Adicione sua primeira seção clicando no botão abaixo</p>
+                      <p className="font-medium text-gray-500">Adicione sua primeira seção usando a barra esquerda ou os botões abaixo</p>
                     </div>
                   ) : (
                     sections.map(s => (
@@ -754,6 +741,54 @@ export default function OrcamentoEditor() {
             </div>
           </div>
 
+          {/* SIDEBAR DIREITA (Camadas / Navigator) */}
+          {!isPDFMode && (
+            <div className="w-[280px] bg-white border-l border-gray-200 flex flex-col shrink-0 z-10 shadow-[-2px_0_10px_rgba(0,0,0,0.02)]">
+              <div className="p-4 border-b border-gray-100 flex items-center gap-2 bg-gray-50/50">
+                <Layers className="w-4 h-4 text-gray-600" />
+                <h2 className="font-bold text-gray-800 text-sm uppercase tracking-wider">Camadas</h2>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar bg-gray-50/30">
+                {sections.map((s, idx) => (
+                  <div 
+                    key={s.id} 
+                    onClick={() => { setSelectedId(s.id); setActiveTab('content'); }}
+                    className={`flex items-center justify-between px-3 py-3 rounded-lg border cursor-pointer transition-all group ${
+                      selectedId === s.id 
+                        ? 'border-orange-400 bg-orange-50 shadow-sm' 
+                        : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      {s.type === 'cover' && <ImageIcon className={`w-4 h-4 ${selectedId === s.id ? 'text-orange-500' : 'text-gray-400'}`} />}
+                      {s.type === 'text' && <Type className={`w-4 h-4 ${selectedId === s.id ? 'text-orange-500' : 'text-gray-400'}`} />}
+                      {s.type === 'pricing' && <DollarSign className={`w-4 h-4 ${selectedId === s.id ? 'text-orange-500' : 'text-gray-400'}`} />}
+                      {s.type === 'two-columns' && <Columns className={`w-4 h-4 ${selectedId === s.id ? 'text-orange-500' : 'text-gray-400'}`} />}
+                      {s.type === 'gallery' && <ImageIcon className={`w-4 h-4 ${selectedId === s.id ? 'text-orange-500' : 'text-gray-400'}`} />}
+                      {s.type === 'video' && <Video className={`w-4 h-4 ${selectedId === s.id ? 'text-orange-500' : 'text-gray-400'}`} />}
+                      {s.type === 'separator' && <Minus className={`w-4 h-4 ${selectedId === s.id ? 'text-orange-500' : 'text-gray-400'}`} />}
+                      
+                      <span className={`font-semibold text-sm capitalize ${selectedId === s.id ? 'text-orange-900' : 'text-gray-700'}`}>
+                        {s.type.replace('-', ' ')}
+                      </span>
+                    </div>
+                    
+                    <div className={`flex items-center gap-0.5 transition-opacity ${selectedId === s.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                      <button onClick={(e) => { e.stopPropagation(); moveSection(idx, 'up'); }} disabled={idx === 0} className="p-1 hover:bg-black/5 rounded disabled:opacity-30 text-gray-500"><ArrowUp className="w-3.5 h-3.5" /></button>
+                      <button onClick={(e) => { e.stopPropagation(); moveSection(idx, 'down'); }} disabled={idx === sections.length - 1} className="p-1 hover:bg-black/5 rounded disabled:opacity-30 text-gray-500"><ArrowDown className="w-3.5 h-3.5" /></button>
+                      <div className="w-px h-3 bg-gray-200 mx-1"></div>
+                      <button onClick={(e) => { e.stopPropagation(); removeSection(s.id); }} className="p-1 hover:bg-red-100 hover:text-red-600 rounded text-gray-400"><Trash2 className="w-3.5 h-3.5" /></button>
+                    </div>
+                  </div>
+                ))}
+                
+                {sections.length === 0 && (
+                  <p className="text-xs text-gray-400 italic text-center py-4">Sua página está vazia.</p>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </Layout>
