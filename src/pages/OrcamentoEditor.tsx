@@ -9,7 +9,7 @@ import {
   ArrowLeft, Save, Loader2, Image as ImageIcon, Type, DollarSign, 
   Trash2, Plus, FileUp, Settings, Link as LinkIcon, ArrowUp, ArrowDown,
   LayoutTemplate, Video, Minus, Columns, ChevronDown, Palette, AlignLeft, X, Layers,
-  UploadCloud, ExternalLink
+  UploadCloud, ExternalLink, CheckCircle2
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -90,29 +90,73 @@ const PreviewBlock = ({ section }: { section: any }) => {
   }
 
   if (section.type === 'pricing') {
-    const total = section.items?.reduce((acc: number, item: any) => acc + (Number(item.price) || 0), 0) || 0;
+    // Compatibilidade com orçamentos antigos
+    const packages = section.packages || (section.items ? section.items.map((i: any) => ({
+      id: crypto.randomUUID(),
+      title: i.name,
+      price: i.price,
+      description: '',
+      features: [],
+      buttonText: 'Selecionar',
+      buttonLink: '',
+      color: '#3b82f6'
+    })) : []);
+
     return (
       <div style={baseStyle} className="w-full">
-        <div 
-          className="font-bold mb-8 title-rich-text" 
-          style={{ color: styles.textColor || '#111827', fontSize: `${styles.titleSize || 32}px` }}
-          dangerouslySetInnerHTML={{ __html: renderHTML(section.title, 'Investimento') }}
-        />
-        <div className="space-y-4">
-          {section.items?.map((item: any, i: number) => (
-            <div key={i} className="flex justify-between items-center py-4 border-b border-gray-200/50 last:border-0">
-              <span className="opacity-90" style={{ fontSize: `${styles.textSize || 18}px` }}>{item.name || 'Item sem nome'}</span>
-              <span className="font-semibold" style={{ fontSize: `${styles.textSize || 18}px` }}>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(item.price) || 0)}</span>
+        {section.title && section.title !== '<p><br></p>' && (
+          <div 
+            className="font-bold mb-12 text-center title-rich-text" 
+            style={{ color: styles.textColor || '#111827', fontSize: `${styles.titleSize || 32}px` }}
+            dangerouslySetInnerHTML={{ __html: section.title }}
+          />
+        )}
+        
+        <div className={`grid gap-6 md:gap-8 grid-cols-1 ${packages.length === 2 ? 'md:grid-cols-2 max-w-4xl mx-auto' : packages.length >= 3 ? 'md:grid-cols-3' : 'max-w-md mx-auto'}`}>
+          {packages.map((pkg: any, i: number) => (
+            <div key={pkg.id || i} className="flex flex-col bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 relative">
+              {/* Header color background */}
+              <div style={{ backgroundColor: pkg.color || '#3b82f6' }} className="pt-6 pb-16 px-6 text-center text-white">
+                <h3 className="text-xl font-bold uppercase tracking-wider">{pkg.title || 'Plano'}</h3>
+              </div>
+              
+              {/* Price Card overlapping */}
+              <div className="px-6 flex-1 flex flex-col relative z-10 -mt-10">
+                <div className="bg-white rounded-xl shadow-lg p-6 text-center border border-gray-50 mb-6 flex flex-col items-center justify-center min-h-[120px]">
+                  <div className="text-3xl font-bold" style={{ color: pkg.color || '#3b82f6' }}>
+                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(pkg.price) || 0)}
+                  </div>
+                  {pkg.description && <p className="text-xs text-gray-400 mt-3 leading-relaxed">{pkg.description}</p>}
+                </div>
+                
+                {/* Features */}
+                <ul className="space-y-4 text-left flex-1 px-2">
+                  {(pkg.features || []).map((feat: string, idx: number) => (
+                    <li key={idx} className="flex items-start gap-3 text-sm text-gray-600">
+                      <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" style={{ color: pkg.color || '#3b82f6' }} />
+                      <span className="text-sm leading-relaxed">{feat}</span>
+                    </li>
+                  ))}
+                  {(!pkg.features || pkg.features.length === 0) && (
+                    <p className="text-xs text-gray-300 italic text-center">Nenhum item adicionado.</p>
+                  )}
+                </ul>
+                
+                {/* Action Button */}
+                <div className="mt-8 mb-6 px-2">
+                  <a 
+                    href={pkg.buttonLink || '#'} 
+                    target={pkg.buttonLink ? "_blank" : "_self"}
+                    rel="noreferrer"
+                    style={{ backgroundColor: pkg.color || '#3b82f6' }} 
+                    className="block w-full py-3.5 rounded-full text-white font-bold transition-transform hover:-translate-y-1 shadow-lg hover:shadow-xl text-center text-sm uppercase tracking-wider"
+                  >
+                    {pkg.buttonText || 'Selecionar Plano'}
+                  </a>
+                </div>
+              </div>
             </div>
           ))}
-          {section.items?.length > 0 && (
-            <div className="flex justify-between items-center py-6 mt-6 border-t-2 border-current">
-              <span className="font-bold" style={{ fontSize: `${(styles.textSize || 18) + 4}px` }}>Total</span>
-              <span className="font-bold" style={{ color: styles.textColor ? 'inherit' : '#f97316', fontSize: `${(styles.textSize || 18) + 8}px` }}>
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total)}
-              </span>
-            </div>
-          )}
         </div>
       </div>
     );
@@ -304,7 +348,13 @@ export default function OrcamentoEditor() {
       newSection.styles.padding = 0;
     }
     if (type === 'text') newSection.content = '<p>Digite seu texto aqui...</p>';
-    if (type === 'pricing') { newSection.title = 'Investimento'; newSection.items = [{ name: 'Pacote Básico', price: 1500 }]; }
+    if (type === 'pricing') { 
+      newSection.title = 'Investimento'; 
+      newSection.packages = [
+        { id: crypto.randomUUID(), title: 'Basic', price: 1099, description: 'Plano inicial para projetos.', features: ['Benefício 1', 'Benefício 2'], buttonText: 'Contratar Basic', buttonLink: '', color: '#3b82f6' },
+        { id: crypto.randomUUID(), title: 'Premium', price: 2099, description: 'O melhor custo benefício.', features: ['Benefício 1', 'Benefício 2', 'Benefício Especial'], buttonText: 'Contratar Premium', buttonLink: '', color: '#8b5cf6' }
+      ]; 
+    }
     if (type === 'two-columns') { newSection.title = 'Nossa Solução'; newSection.content = '<p>Detalhes do serviço...</p>'; newSection.imageUrl = ''; newSection.imagePosition = 'right'; }
     if (type === 'gallery') { newSection.title = 'Portfólio'; newSection.images = []; }
     if (type === 'video') { newSection.title = 'Apresentação'; newSection.videoUrl = ''; }
@@ -421,8 +471,6 @@ export default function OrcamentoEditor() {
 
   const activeSection = sections.find(s => s.id === selectedId);
 
-  if (loading) return <Layout><div className="flex h-full items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div></Layout>;
-
   return (
     <Layout>
       <style dangerouslySetInnerHTML={{__html: `
@@ -444,7 +492,7 @@ export default function OrcamentoEditor() {
             <div className="h-6 w-px bg-gray-200"></div>
             <input 
               type="text" 
-              value={orcamento.name} 
+              value={orcamento?.name || ''} 
               onChange={e => setOrcamento({...orcamento, name: e.target.value})}
               className="text-[16px] font-bold text-gray-900 border-none focus:ring-0 p-0 bg-transparent w-48 md:w-96 outline-none"
               placeholder="Nome da Proposta"
@@ -747,7 +795,7 @@ export default function OrcamentoEditor() {
                         {activeSection.type === 'pricing' && (
                           <>
                             <div>
-                              <label className="text-xs font-bold text-gray-500 mb-1 block">Título da Tabela</label>
+                              <label className="text-xs font-bold text-gray-500 mb-1 block">Título da Tabela de Preços</label>
                               <ReactQuill 
                                 theme="snow"
                                 value={activeSection.title || ''}
@@ -757,29 +805,95 @@ export default function OrcamentoEditor() {
                               />
                             </div>
                             <div className="space-y-3">
-                              <label className="text-xs font-bold text-gray-500 mb-1 block">Itens da Oferta</label>
-                              {activeSection.items?.map((item: any, i: number) => (
-                                <div key={i} className="flex gap-2 items-center bg-white p-2 rounded-lg border border-gray-200 shadow-sm group">
-                                  <input value={item.name} onChange={e => {
-                                    const newItems = [...activeSection.items]; newItems[i].name = e.target.value;
-                                    updateSection(activeSection.id, { items: newItems });
-                                  }} className="flex-1 text-sm p-1.5 border border-gray-200 rounded outline-none focus:border-orange-400" placeholder="Nome do item" />
-                                  <input type="number" value={item.price} onChange={e => {
-                                    const newItems = [...activeSection.items]; newItems[i].price = e.target.value;
-                                    updateSection(activeSection.id, { items: newItems });
-                                  }} className="w-24 text-sm p-1.5 border border-gray-200 rounded outline-none focus:border-orange-400" placeholder="R$ 0,00" />
+                              <div className="flex items-center justify-between">
+                                <label className="text-xs font-bold text-gray-500 block">Pacotes (Planos)</label>
+                                <button onClick={() => {
+                                  if ((activeSection.packages || []).length >= 3) return toast.error("Máximo de 3 pacotes.");
+                                  const newPackages = [...(activeSection.packages || []), { 
+                                    id: crypto.randomUUID(), title: 'Novo Plano', price: 0, description: '', features: [], buttonText: 'Contratar', buttonLink: '', color: '#3b82f6' 
+                                  }];
+                                  updateSection(activeSection.id, { packages: newPackages });
+                                }} className="p-1 bg-orange-100 text-orange-600 rounded hover:bg-orange-200"><Plus className="w-4 h-4" /></button>
+                              </div>
+                              
+                              {activeSection.packages?.map((pkg: any, pkgIdx: number) => (
+                                <div key={pkg.id || pkgIdx} className="border border-gray-200 bg-white p-3 rounded-xl shadow-sm relative">
                                   <button onClick={() => {
-                                    const newItems = [...activeSection.items]; newItems.splice(i, 1);
-                                    updateSection(activeSection.id, { items: newItems });
-                                  }} className="text-gray-400 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-4 h-4"/></button>
+                                    const newPkgs = [...activeSection.packages]; newPkgs.splice(pkgIdx, 1);
+                                    updateSection(activeSection.id, { packages: newPkgs });
+                                  }} className="absolute top-2 right-2 text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                                  
+                                  <div className="space-y-2.5 mt-2">
+                                    <div className="flex gap-2">
+                                      <input type="color" value={pkg.color || '#3b82f6'} onChange={e => {
+                                        const newPkgs = [...activeSection.packages]; newPkgs[pkgIdx].color = e.target.value;
+                                        updateSection(activeSection.id, { packages: newPkgs });
+                                      }} className="w-8 h-8 rounded border-none cursor-pointer p-0" title="Cor do Plano" />
+                                      <input value={pkg.title} onChange={e => {
+                                        const newPkgs = [...activeSection.packages]; newPkgs[pkgIdx].title = e.target.value;
+                                        updateSection(activeSection.id, { packages: newPkgs });
+                                      }} className="flex-1 text-sm font-bold border-b border-gray-200 focus:border-orange-400 outline-none px-1" placeholder="Título (ex: Premium)" />
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xs font-bold text-gray-400">R$</span>
+                                      <input type="number" value={pkg.price} onChange={e => {
+                                        const newPkgs = [...activeSection.packages]; newPkgs[pkgIdx].price = e.target.value;
+                                        updateSection(activeSection.id, { packages: newPkgs });
+                                      }} className="w-full text-sm border border-gray-200 p-1.5 rounded outline-none focus:border-orange-400" placeholder="Valor (ex: 1500)" />
+                                    </div>
+                                    
+                                    <textarea value={pkg.description} onChange={e => {
+                                        const newPkgs = [...activeSection.packages]; newPkgs[pkgIdx].description = e.target.value;
+                                        updateSection(activeSection.id, { packages: newPkgs });
+                                      }} className="w-full text-xs border border-gray-200 p-1.5 rounded outline-none focus:border-orange-400 resize-none h-14" placeholder="Breve descrição do plano..." />
+                                    
+                                    {/* Features List */}
+                                    <div className="bg-gray-50 p-2 rounded-lg border border-gray-100 space-y-2">
+                                      <div className="flex items-center justify-between">
+                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Itens Inclusos</label>
+                                        <button onClick={() => {
+                                          const newPkgs = [...activeSection.packages];
+                                          newPkgs[pkgIdx].features = [...(newPkgs[pkgIdx].features || []), 'Novo Item'];
+                                          updateSection(activeSection.id, { packages: newPkgs });
+                                        }} className="text-[10px] font-bold text-orange-500 hover:underline">+ Item</button>
+                                      </div>
+                                      {(pkg.features || []).map((feat: string, fIdx: number) => (
+                                        <div key={fIdx} className="flex gap-1 items-center">
+                                          <input value={feat} onChange={e => {
+                                            const newPkgs = [...activeSection.packages];
+                                            newPkgs[pkgIdx].features[fIdx] = e.target.value;
+                                            updateSection(activeSection.id, { packages: newPkgs });
+                                          }} className="flex-1 text-xs border border-gray-200 p-1 rounded outline-none focus:border-orange-400" />
+                                          <button onClick={() => {
+                                            const newPkgs = [...activeSection.packages];
+                                            newPkgs[pkgIdx].features.splice(fIdx, 1);
+                                            updateSection(activeSection.id, { packages: newPkgs });
+                                          }} className="text-gray-400 hover:text-red-500"><X className="w-3.5 h-3.5"/></button>
+                                        </div>
+                                      ))}
+                                    </div>
+
+                                    {/* CTA Button */}
+                                    <div className="grid grid-cols-2 gap-2 pt-2">
+                                      <div>
+                                        <label className="text-[10px] font-semibold text-gray-400">Texto do Botão</label>
+                                        <input value={pkg.buttonText} onChange={e => {
+                                          const newPkgs = [...activeSection.packages]; newPkgs[pkgIdx].buttonText = e.target.value;
+                                          updateSection(activeSection.id, { packages: newPkgs });
+                                        }} className="w-full text-xs border border-gray-200 p-1.5 rounded outline-none focus:border-orange-400" placeholder="Ex: Contratar" />
+                                      </div>
+                                      <div>
+                                        <label className="text-[10px] font-semibold text-gray-400">Link do Botão</label>
+                                        <input value={pkg.buttonLink} onChange={e => {
+                                          const newPkgs = [...activeSection.packages]; newPkgs[pkgIdx].buttonLink = e.target.value;
+                                          updateSection(activeSection.id, { packages: newPkgs });
+                                        }} className="w-full text-xs border border-gray-200 p-1.5 rounded outline-none focus:border-orange-400" placeholder="https://" />
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
                               ))}
-                              <button onClick={() => {
-                                const newItems = [...(activeSection.items || []), { name: 'Novo Item', price: 0 }];
-                                updateSection(activeSection.id, { items: newItems });
-                              }} className="w-full py-2.5 border border-dashed border-gray-300 rounded-lg text-xs font-bold text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors mt-2">
-                                + Adicionar Novo Item
-                              </button>
                             </div>
                           </>
                         )}
@@ -916,11 +1030,11 @@ export default function OrcamentoEditor() {
                           <div>
                             <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">
                               Cor de Fundo 
-                              <span className="font-normal text-gray-400 uppercase">{activeSection.styles?.backgroundColor || 'transparent'}</span>
+                              <span className="font-normal text-gray-400 uppercase">{activeSection.styles?.backgroundColor || '#ffffff'}</span>
                             </label>
                             <div className="flex gap-2">
                               <input type="color" value={activeSection.styles?.backgroundColor || '#ffffff'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="h-10 w-12 rounded cursor-pointer border border-gray-300 p-0.5 bg-white" />
-                              <input type="text" value={activeSection.styles?.backgroundColor || 'transparent'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none focus:border-orange-400 bg-white" />
+                              <input type="text" value={activeSection.styles?.backgroundColor || '#ffffff'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none focus:border-orange-400 bg-white" />
                             </div>
                           </div>
 

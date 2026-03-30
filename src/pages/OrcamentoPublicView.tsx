@@ -2,14 +2,13 @@ import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 
 const renderHTML = (html: string, fallback: string) => {
   if (!html || html === '<p><br></p>') return fallback;
   return html;
 };
 
-// --- PREVIEW BLOCK PÚBLICO COM ESTILOS ---
 const PreviewBlock = ({ section }: { section: any }) => {
   const styles = section.styles || {};
   
@@ -54,29 +53,72 @@ const PreviewBlock = ({ section }: { section: any }) => {
   }
 
   if (section.type === 'pricing') {
-    const total = section.items?.reduce((acc: number, item: any) => acc + (Number(item.price) || 0), 0) || 0;
+    const packages = section.packages || (section.items ? section.items.map((i: any) => ({
+      id: crypto.randomUUID(),
+      title: i.name,
+      price: i.price,
+      description: '',
+      features: [],
+      buttonText: 'Selecionar',
+      buttonLink: '',
+      color: '#3b82f6'
+    })) : []);
+
     return (
       <div style={baseStyle} className="w-full">
-        <div 
-          className="font-bold mb-10 title-rich-text" 
-          style={{ color: styles.textColor || '#111827', fontSize: `${styles.titleSize || 32}px` }}
-          dangerouslySetInnerHTML={{ __html: renderHTML(section.title, 'Investimento') }}
-        />
-        <div className="space-y-4">
-          {section.items?.map((item: any, i: number) => (
-            <div key={i} className="flex justify-between items-center py-4 border-b border-gray-200/50 last:border-0">
-              <span className="opacity-90" style={{ fontSize: `${styles.textSize || 18}px` }}>{item.name}</span>
-              <span className="font-semibold" style={{ fontSize: `${styles.textSize || 18}px` }}>{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(item.price) || 0)}</span>
+        {section.title && section.title !== '<p><br></p>' && (
+          <div 
+            className="font-bold mb-12 text-center title-rich-text" 
+            style={{ color: styles.textColor || '#111827', fontSize: `${styles.titleSize || 32}px` }}
+            dangerouslySetInnerHTML={{ __html: section.title }}
+          />
+        )}
+        
+        <div className={`grid gap-6 md:gap-8 grid-cols-1 ${packages.length === 2 ? 'md:grid-cols-2 max-w-4xl mx-auto' : packages.length >= 3 ? 'md:grid-cols-3' : 'max-w-md mx-auto'}`}>
+          {packages.map((pkg: any, i: number) => (
+            <div key={pkg.id || i} className="flex flex-col bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 relative">
+              {/* Header color background */}
+              <div style={{ backgroundColor: pkg.color || '#3b82f6' }} className="pt-6 pb-16 px-6 text-center text-white">
+                <h3 className="text-xl font-bold uppercase tracking-wider">{pkg.title || 'Plano'}</h3>
+              </div>
+              
+              {/* Price Card overlapping */}
+              <div className="px-6 flex-1 flex flex-col relative z-10 -mt-10">
+                <div className="bg-white rounded-xl shadow-lg p-6 text-center border border-gray-50 mb-6 flex flex-col items-center justify-center min-h-[120px]">
+                  <div className="text-3xl font-bold" style={{ color: pkg.color || '#3b82f6' }}>
+                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(pkg.price) || 0)}
+                  </div>
+                  {pkg.description && <p className="text-xs text-gray-400 mt-3 leading-relaxed">{pkg.description}</p>}
+                </div>
+                
+                {/* Features */}
+                <ul className="space-y-4 text-left flex-1 px-2">
+                  {(pkg.features || []).map((feat: string, idx: number) => (
+                    <li key={idx} className="flex items-start gap-3 text-sm text-gray-600">
+                      <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" style={{ color: pkg.color || '#3b82f6' }} />
+                      <span className="text-sm leading-relaxed">{feat}</span>
+                    </li>
+                  ))}
+                  {(!pkg.features || pkg.features.length === 0) && (
+                    <p className="text-xs text-gray-300 italic text-center">Nenhum item adicionado.</p>
+                  )}
+                </ul>
+                
+                {/* Action Button */}
+                <div className="mt-8 mb-6 px-2">
+                  <a 
+                    href={pkg.buttonLink || '#'} 
+                    target={pkg.buttonLink ? "_blank" : "_self"}
+                    rel="noreferrer"
+                    style={{ backgroundColor: pkg.color || '#3b82f6' }} 
+                    className="block w-full py-3.5 rounded-full text-white font-bold transition-transform hover:-translate-y-1 shadow-lg hover:shadow-xl text-center text-sm uppercase tracking-wider"
+                  >
+                    {pkg.buttonText || 'Selecionar Plano'}
+                  </a>
+                </div>
+              </div>
             </div>
           ))}
-          {section.items?.length > 0 && (
-            <div className="flex justify-between items-center py-8 mt-8 border-t-2 border-current">
-              <span className="font-bold" style={{ fontSize: `${(styles.textSize || 18) + 4}px` }}>Total</span>
-              <span className="font-bold" style={{ color: styles.textColor ? 'inherit' : '#f97316', fontSize: `${(styles.textSize || 18) + 8}px` }}>
-                {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total)}
-              </span>
-            </div>
-          )}
         </div>
       </div>
     );
@@ -193,7 +235,6 @@ export default function OrcamentoPublicView() {
 
   const isPDFMode = orcamento.type === 'pdf';
   
-  // Extrair configurações globais e seções reais
   const loadedSections = orcamento.sections || [];
   const globalSec = loadedSections.find((s: any) => s.type === 'global-settings');
   const globalSettings = globalSec?.styles || { pageBackgroundColor: '#f3f4f6', backgroundColor: '#ffffff', maxWidth: '900px' };
@@ -212,7 +253,6 @@ export default function OrcamentoPublicView() {
         style={{ backgroundColor: globalSettings.pageBackgroundColor || '#f3f4f6' }}
       >
         {isPDFMode ? (
-          // Visualização Modo PDF
           <div className="w-full h-[100dvh] sm:h-[90vh] sm:max-w-4xl sm:rounded-3xl sm:shadow-2xl overflow-hidden relative flex flex-col bg-white">
             {pdfSection?.fileUrl ? (
               <iframe src={`${pdfSection.fileUrl}#toolbar=0`} className="w-full flex-1 border-0" title="Proposta PDF" />
@@ -220,7 +260,6 @@ export default function OrcamentoPublicView() {
               <div className="flex-1 flex items-center justify-center">O arquivo PDF não foi encontrado.</div>
             )}
             
-            {/* CTAs Fixed na base da tela para o cliente */}
             {pdfSection?.ctas?.length > 0 && pdfSection?.fileUrl && (
               <div className="absolute bottom-6 left-0 right-0 flex justify-center z-50 px-4 pointer-events-none">
                 <div className="bg-white/90 backdrop-blur-md px-6 py-4 rounded-2xl shadow-2xl border border-gray-200 flex flex-wrap justify-center gap-4 pointer-events-auto max-w-2xl w-full">
@@ -244,7 +283,6 @@ export default function OrcamentoPublicView() {
             )}
           </div>
         ) : (
-          // Visualização Modo Construtor (Design limpo como landing page)
           <div 
             className="w-full sm:rounded-3xl shadow-2xl min-h-screen sm:min-h-0 flex flex-col overflow-hidden transition-all"
             style={{ 
