@@ -22,9 +22,10 @@ export default function ContractPublicView() {
 
   const fetchContract = async () => {
     try {
+      // CORREÇÃO: Usando a busca segura (apenas tabela de oportunidades permitida publicamente)
       const { data, error } = await supabase
         .from('contracts')
-        .select('*, clients:client_id(name), users:user_id(raw_user_meta_data)')
+        .select('*, opportunities(name)')
         .eq('share_token', token)
         .single();
 
@@ -51,7 +52,7 @@ export default function ContractPublicView() {
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Contrato_${contract.clients?.name || 'Documento'}.pdf`);
+      pdf.save(`Contrato_${contract.opportunities?.name || 'Documento'}.pdf`);
       toast.success("PDF baixado!");
     } catch (error) {
       toast.error("Erro ao gerar PDF.");
@@ -65,7 +66,7 @@ export default function ContractPublicView() {
     
     setSavingSig(true);
     try {
-      // Usando getCanvas() no lugar de getTrimmedCanvas() para evitar erros do navegador de renderização/corte
+      // getCanvas() captura exatamente o que foi desenhado sem bugar no recorte
       const signatureImage = sigCanvas.current.getCanvas().toDataURL('image/png');
       
       const updates: any = {};
@@ -74,21 +75,18 @@ export default function ContractPublicView() {
         updates.signature_status = contract.supplier_signature ? 'Assinado 2/2' : 'Assinado 1/2';
       }
 
-      // Dispara o update e CAPTURA explicitamente o erro do Supabase
       const { error } = await supabase
         .from('contracts')
         .update(updates)
         .eq('share_token', token);
 
       if (error) {
-        console.error("Supabase Update Error:", error);
-        throw new Error(error.message); // Repassa o erro do banco para o toast
+        throw new Error(error.message); 
       }
       
       setContract({ ...contract, ...updates });
       toast.success("Assinatura salva com sucesso!");
     } catch (error: any) {
-      console.error("Catch Error:", error);
       toast.error(`Erro ao salvar: ${error.message || "Tente novamente."}`);
     } finally {
       setSavingSig(false);
@@ -103,7 +101,8 @@ export default function ContractPublicView() {
   if (!contract) return <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50"><h2 className="text-2xl font-bold">Contrato Inválido</h2><p className="text-gray-500">O link expirou ou não existe.</p></div>;
 
   const isSigned = !!contract.client_signature;
-  const supplierName = contract.users?.raw_user_meta_data?.first_name || 'Fornecedor';
+  const clientName = contract.opportunities?.name || 'Contratante';
+  const supplierName = 'Fornecedor';
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 font-sans text-gray-900">
@@ -162,7 +161,7 @@ export default function ContractPublicView() {
               <div className="flex flex-col items-center">
                 <div className="h-32 w-full max-w-xs flex flex-col justify-end border-b-2 border-gray-800 relative mb-2">
                   {isSigned ? (
-                    <img src={contract.client_signature} alt="Assinatura" className="max-h-24 mx-auto" />
+                    <img src={contract.client_signature} alt="Assinatura Cliente" className="max-h-24 mx-auto" />
                   ) : (
                     <div className="absolute inset-0 no-print border-2 border-dashed border-gray-200 rounded-lg bg-gray-50 flex items-center justify-center group overflow-hidden">
                       <SignaturePad 
@@ -175,7 +174,7 @@ export default function ContractPublicView() {
                     </div>
                   )}
                 </div>
-                <p className="font-bold text-lg text-center">{contract.clients?.name}</p>
+                <p className="font-bold text-lg text-center">{clientName}</p>
                 <p className="text-sm text-gray-500 uppercase tracking-widest mt-1">Contratante</p>
                 
                 {!isSigned && (
@@ -188,13 +187,13 @@ export default function ContractPublicView() {
                 )}
               </div>
 
-              {/* Fornecedor */}
+              {/* Fornecedor (Visualização Apenas) */}
               <div className="flex flex-col items-center">
                 <div className="h-32 w-full max-w-xs flex flex-col justify-end border-b-2 border-gray-800 relative mb-2">
                   {contract.supplier_signature ? (
                     <img src={contract.supplier_signature} alt="Assinatura Fornecedor" className="max-h-24 mx-auto" />
                   ) : (
-                    <div className="text-center text-gray-300 font-medium mb-4">Pendente assinatura</div>
+                    <div className="text-center text-gray-300 font-medium mb-4">Pendente assinatura do Fornecedor</div>
                   )}
                 </div>
                 <p className="font-bold text-lg text-center">{supplierName}</p>

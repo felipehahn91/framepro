@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Layout } from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
+import SignaturePad from "react-signature-canvas";
 import { 
-  ArrowLeft, Save, UploadCloud, X, Loader2, Image as ImageIcon 
+  ArrowLeft, Save, UploadCloud, X, Loader2, Image as ImageIcon, PenTool 
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,13 +21,18 @@ export default function ContractEditor() {
   const [saving, setSaving] = useState(false);
   const [clients, setClients] = useState<{id: string, name: string}[]>([]);
   
+  const sigCanvas = useRef<SignaturePad>(null);
+
   const [formData, setFormData] = useState({
     client_id: "",
     value: "",
     start_date: new Date().toISOString().split('T')[0],
     end_date: "",
     description: "",
-    contract_image: ""
+    contract_image: "",
+    supplier_signature: "",
+    client_signature: "",
+    signature_status: "Pendente"
   });
 
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -61,12 +67,13 @@ export default function ContractEditor() {
           start_date: contract.start_date,
           end_date: contract.end_date || "",
           description: contract.description || "",
-          contract_image: contract.contract_image || ""
+          contract_image: contract.contract_image || "",
+          supplier_signature: contract.supplier_signature || "",
+          client_signature: contract.client_signature || "",
+          signature_status: contract.signature_status || "Pendente"
         });
 
-        if (contract.contract_image) {
-          setImagePreview(contract.contract_image);
-        }
+        if (contract.contract_image) setImagePreview(contract.contract_image);
       }
     } catch (error) {
       toast.error("Erro ao carregar dados.");
@@ -93,7 +100,6 @@ export default function ContractEditor() {
     try {
       let imageUrl = formData.contract_image;
 
-      // Se houver uma nova imagem, faz upload pro storage
       if (imageFile && user) {
         const fileExt = imageFile.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
@@ -103,10 +109,7 @@ export default function ContractEditor() {
           .from('contract_images')
           .upload(filePath, imageFile);
 
-        if (uploadError) {
-          // Se o bucket não existir, vamos apenas alertar, mas salvar o texto
-          console.warn("Storage bucket not created or error:", uploadError);
-        } else {
+        if (!uploadError) {
           const { data: { publicUrl } } = supabase.storage
             .from('contract_images')
             .getPublicUrl(filePath);
@@ -122,10 +125,11 @@ export default function ContractEditor() {
         end_date: formData.end_date || null,
         description: formData.description,
         contract_image: imageUrl,
+        supplier_signature: formData.supplier_signature,
+        signature_status: formData.signature_status
       };
 
       if (isNew) {
-        // Gera um token único para compartilhamento
         const share_token = crypto.randomUUID();
         await supabase.from('contracts').insert({ ...payload, share_token });
         toast.success("Contrato criado com sucesso!");
@@ -156,7 +160,7 @@ export default function ContractEditor() {
             </button>
             <div>
               <h1 className="text-xl font-bold text-gray-900">{isNew ? 'Novo Contrato' : 'Editar Contrato'}</h1>
-              <p className="text-sm text-gray-500">Preencha os detalhes, anexe imagens e redija o documento.</p>
+              <p className="text-sm text-gray-500">Preencha os detalhes, assine e redija o documento.</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -215,6 +219,60 @@ export default function ContractEditor() {
               </div>
             </div>
 
+            {/* Espaço para a Assinatura do Fornecedor */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+              <div className="flex items-center gap-2 mb-4">
+                <PenTool className="w-5 h-5 text-orange-400" />
+                <h3 className="font-bold text-gray-900">Sua Assinatura (Fornecedor)</h3>
+              </div>
+              
+              {formData.supplier_signature ? (
+                <div className="relative inline-block w-full border-b-2 border-gray-800 pb-2 text-center">
+                  <img src={formData.supplier_signature} alt="Sua Assinatura" className="h-24 mx-auto object-contain" />
+                  <button 
+                    onClick={() => setFormData({
+                      ...formData, 
+                      supplier_signature: '', 
+                      signature_status: formData.client_signature ? 'Assinado 1/2' : 'Pendente'
+                    })} 
+                    className="absolute -top-3 -right-2 bg-red-500 text-white rounded-full p-1.5 hover:bg-red-600 transition-colors shadow-sm"
+                    title="Remover assinatura"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-gray-300 rounded-xl bg-gray-50 p-3">
+                  <SignaturePad 
+                    ref={sigCanvas} 
+                    canvasProps={{ className: "w-full h-24" }} 
+                  />
+                  <div className="flex gap-2 mt-3 justify-center">
+                    <button 
+                      onClick={() => sigCanvas.current?.clear()} 
+                      className="px-4 py-2 text-xs font-semibold bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                    >
+                      Limpar
+                    </button>
+                    <button 
+                      onClick={() => {
+                        if(!sigCanvas.current?.isEmpty()){
+                          setFormData({
+                            ...formData, 
+                            supplier_signature: sigCanvas.current?.getCanvas().toDataURL('image/png'),
+                            signature_status: formData.client_signature ? 'Assinado 2/2' : 'Assinado 1/2'
+                          });
+                        }
+                      }} 
+                      className="px-4 py-2 text-xs font-semibold bg-orange-400 text-white rounded-lg hover:bg-orange-500 transition-colors shadow-sm"
+                    >
+                      Adicionar Assinatura
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
               <div className="p-4 border-b border-gray-100 flex items-center gap-2">
                 <ImageIcon className="w-5 h-5 text-orange-400" />
@@ -268,7 +326,6 @@ export default function ContractEditor() {
                 }}
               />
             </div>
-            {/* Adiciona estilo customizado pro ReactQuill se encaixar perfeitamente */}
             <style dangerouslySetInnerHTML={{__html: `
               .editor-container .quill { display: flex; flex-direction: column; height: 100%; }
               .editor-container .ql-toolbar { border: none !important; border-bottom: 1px solid #e5e7eb !important; padding: 12px 16px !important; background: #fff; }
