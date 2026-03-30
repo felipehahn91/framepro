@@ -21,6 +21,19 @@ export const initTracking = (orcamentoId: string, sessionId: string, device: str
     if (data) analyticsRowId = data.id;
   });
 
+  // Pega as coordenadas exatas relativas ao container central da proposta
+  const getRelativeCoords = (e: MouseEvent) => {
+    const container = document.getElementById('proposal-container');
+    if (container) {
+      const rect = container.getBoundingClientRect();
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top // Isso resolve o problema de scroll
+      };
+    }
+    return { x: e.pageX, y: e.pageY };
+  };
+
   const recordEvent = (type: string, data: any) => {
     const timeOffset = Date.now() - startTime;
     sessionEvents.push({ type, timeOffset, ...data });
@@ -41,15 +54,17 @@ export const initTracking = (orcamentoId: string, sessionId: string, device: str
   let lastMouseMove = 0;
   const onMouseMove = (e: MouseEvent) => {
     const now = Date.now();
-    // Limita a gravação do mouse para não sobrecarregar (throttle de 100ms)
+    // Throttle de 100ms para evitar sobrecarga
     if (now - lastMouseMove > 100) {
-      recordEvent('mousemove', { x: e.pageX, y: e.pageY });
+      const coords = getRelativeCoords(e);
+      recordEvent('mousemove', coords);
       lastMouseMove = now;
     }
   };
 
   const onClick = (e: MouseEvent) => {
-    recordEvent('click', { x: e.pageX, y: e.pageY });
+    const coords = getRelativeCoords(e);
+    recordEvent('click', coords);
   };
 
   let lastScroll = 0;

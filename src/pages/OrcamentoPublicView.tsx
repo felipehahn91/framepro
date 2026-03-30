@@ -320,7 +320,10 @@ export default function OrcamentoPublicView() {
         style={{ backgroundColor: globalSettings.pageBackgroundColor || '#f3f4f6' }}
       >
         {isPDFMode ? (
-          <div className="w-full h-[100dvh] sm:h-[90vh] sm:max-w-4xl sm:rounded-3xl sm:shadow-2xl overflow-hidden relative flex flex-col bg-white">
+          <div 
+            id="proposal-container"
+            className="w-full h-[100dvh] sm:h-[90vh] sm:max-w-4xl sm:rounded-3xl sm:shadow-2xl overflow-hidden relative flex flex-col bg-white"
+          >
             {pdfSection?.fileUrl ? (
               <iframe src={`${pdfSection.fileUrl}#toolbar=0`} className="w-full flex-1 border-0" title="Proposta PDF" />
             ) : (
@@ -351,7 +354,8 @@ export default function OrcamentoPublicView() {
           </div>
         ) : (
           <div 
-            className="w-full sm:rounded-3xl shadow-2xl min-h-screen sm:min-h-0 flex flex-col overflow-hidden transition-all"
+            id="proposal-container"
+            className="w-full sm:rounded-3xl shadow-2xl min-h-screen sm:min-h-0 flex flex-col overflow-hidden transition-all relative"
             style={{ 
               maxWidth: globalSettings.maxWidth,
               backgroundColor: globalSettings.backgroundColor

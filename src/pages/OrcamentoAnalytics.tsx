@@ -5,11 +5,10 @@ import { Layout } from '@/components/Layout';
 import { Slider } from '@/components/ui/slider';
 import { 
   MousePointerClick, Eye, Clock, PlayCircle, ArrowLeft, 
-  Smartphone, Monitor, Tablet, PauseCircle, X, MousePointer2, Loader2 
+  Smartphone, Monitor, Tablet, PauseCircle, X, MousePointer2, Loader2, Map
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-// Reutilizando o renderizador de blocos de forma simplificada
 const renderHTML = (html: string, fallback: string) => {
   if (!html || html === '<p><br></p>') return fallback;
   return html;
@@ -119,7 +118,7 @@ export default function OrcamentoAnalytics() {
   const [analytics, setAnalytics] = useState<any[]>([]);
   const [tracking, setTracking] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'heatmap' | 'replay'>('heatmap');
+  const [isHeatmapOpen, setIsHeatmapOpen] = useState(false);
   
   // Replay State
   const [playingSession, setPlayingSession] = useState<any>(null);
@@ -135,7 +134,7 @@ export default function OrcamentoAnalytics() {
 
   useEffect(() => {
     fetchAnalytics();
-    const interval = setInterval(fetchAnalytics, 15000); // Atualiza a cada 15s
+    const interval = setInterval(fetchAnalytics, 15000); 
     return () => clearInterval(interval);
   }, [id]);
 
@@ -159,51 +158,55 @@ export default function OrcamentoAnalytics() {
     }
   };
 
-  // Renderizar Heatmap
+  // Renderizar Heatmap em Tela Cheia
   useEffect(() => {
-    if (!loading && activeTab === 'heatmap' && tracking.length > 0 && heatmapCanvasRef.current && heatmapContainerRef.current) {
-      const canvas = heatmapCanvasRef.current;
-      const container = heatmapContainerRef.current;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+    if (isHeatmapOpen && tracking.length > 0 && heatmapCanvasRef.current && heatmapContainerRef.current) {
       
-      canvas.width = container.scrollWidth;
-      canvas.height = container.scrollHeight;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      const clicks = tracking.filter(t => t.event_type === 'click');
-      const moves = tracking.filter(t => t.event_type === 'mousemove');
-      
-      // Desenha o rastro do mouse (fraco)
-      moves.forEach(point => {
-        const x = point.x;
-        const y = point.y;
-        const gradient = ctx.createRadialGradient(x, y, 0, x, y, 15);
-        gradient.addColorStop(0, 'rgba(59, 130, 246, 0.08)'); 
-        gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(x, y, 15, 0, Math.PI * 2);
-        ctx.fill();
-      });
+      const drawHeatmap = () => {
+        const canvas = heatmapCanvasRef.current;
+        const container = heatmapContainerRef.current;
+        if (!canvas || !container) return;
+        
+        canvas.width = container.offsetWidth;
+        canvas.height = container.scrollHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        const clicks = tracking.filter(t => t.event_type === 'click');
+        const moves = tracking.filter(t => t.event_type === 'mousemove');
+        
+        // Movimentos do mouse (azul fraco)
+        moves.forEach(point => {
+          const gradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, 15);
+          gradient.addColorStop(0, 'rgba(59, 130, 246, 0.08)'); 
+          gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
+          ctx.fillStyle = gradient;
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, 15, 0, Math.PI * 2);
+          ctx.fill();
+        });
 
-      // Desenha os cliques (forte)
-      clicks.forEach(point => {
-        const x = point.x;
-        const y = point.y;
-        const gradient = ctx.createRadialGradient(x, y, 0, x, y, 25);
-        gradient.addColorStop(0, 'rgba(255, 69, 0, 0.8)'); 
-        gradient.addColorStop(0.5, 'rgba(255, 140, 0, 0.5)');
-        gradient.addColorStop(1, 'rgba(255, 140, 0, 0)');
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(x, y, 25, 0, Math.PI * 2);
-        ctx.fill();
-      });
+        // Cliques (Vermelho vivo)
+        clicks.forEach(point => {
+          const gradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, 30);
+          gradient.addColorStop(0, 'rgba(255, 0, 0, 0.8)'); 
+          gradient.addColorStop(0.4, 'rgba(255, 69, 0, 0.6)');
+          gradient.addColorStop(1, 'rgba(255, 69, 0, 0)');
+          ctx.fillStyle = gradient;
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, 30, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      };
+
+      // Pequeno atraso pra garantir que o DOM renderizou completamente as alturas
+      setTimeout(drawHeatmap, 200);
     }
-  }, [loading, tracking, orcamento, activeTab]);
+  }, [isHeatmapOpen, tracking]);
 
-  // Player de Replay
+  // Loop de Animação do Replay
   useEffect(() => {
     if (!isPlaying || !playingSession) return;
     
@@ -234,7 +237,7 @@ export default function OrcamentoAnalytics() {
     return () => cancelAnimationFrame(animationFrameId);
   }, [isPlaying, playingSession, playbackSpeed]);
 
-  // Sincronizar Replay com a Tela
+  // Sincronizar estado da animação
   useEffect(() => {
     if (!playingSession) return;
     
@@ -289,8 +292,7 @@ export default function OrcamentoAnalytics() {
 
   if (loading) return <Layout><div className="flex h-full items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div></Layout>;
 
-  const clicks = tracking.filter(t => t.event_type === 'click').length;
-  // Simplificando o tempo médio com base na duração dos eventos de cada sessão
+  const clicksCount = tracking.filter(t => t.event_type === 'click').length;
   const totalDurationMs = analytics.reduce((acc, session) => {
     const events = session.replay_data?.events || [];
     if (events.length > 0) return acc + events[events.length - 1].timeOffset;
@@ -307,40 +309,48 @@ export default function OrcamentoAnalytics() {
     <Layout>
       <div className="max-w-7xl mx-auto flex flex-col h-full space-y-6">
         {/* Cabeçalho */}
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/orcamentos')} className="p-2 bg-white border border-gray-200 rounded-full hover:bg-gray-50 transition-colors">
-            <ArrowLeft className="w-5 h-5 text-gray-600" />
-          </button>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-1">Analytics da Proposta</h1>
-            <p className="text-sm text-gray-500">{orcamento?.name}</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <button onClick={() => navigate('/orcamentos')} className="p-2 bg-white border border-gray-200 rounded-full hover:bg-gray-50 transition-colors">
+              <ArrowLeft className="w-5 h-5 text-gray-600" />
+            </button>
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-1">Analytics da Proposta</h1>
+              <p className="text-sm text-gray-500">{orcamento?.name}</p>
+            </div>
           </div>
+          <button 
+            onClick={() => setIsHeatmapOpen(true)}
+            className="px-5 py-2.5 bg-orange-400 text-white font-semibold rounded-lg hover:bg-orange-500 transition-colors flex items-center justify-center gap-2 shadow-sm whitespace-nowrap"
+          >
+            <Map className="w-4 h-4" /> Ver Mapa de Calor em Tela Cheia
+          </button>
         </div>
 
         {/* Métricas */}
-        <div className="grid gap-6 md:grid-cols-4">
-          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-gray-500">Visualizações</span>
               <Eye className="w-5 h-5 text-blue-500" />
             </div>
             <div className="text-3xl font-bold text-gray-900">{orcamento?.view_count || 0}</div>
           </div>
-          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-gray-500">Cliques Totais</span>
               <MousePointerClick className="w-5 h-5 text-orange-500" />
             </div>
-            <div className="text-3xl font-bold text-gray-900">{clicks}</div>
+            <div className="text-3xl font-bold text-gray-900">{clicksCount}</div>
           </div>
-          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-gray-500">Tempo Médio Gasto</span>
               <Clock className="w-5 h-5 text-green-500" />
             </div>
             <div className="text-3xl font-bold text-gray-900">{avgTimeMinutes} min</div>
           </div>
-          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium text-gray-500">Sessões Gravadas</span>
               <PlayCircle className="w-5 h-5 text-purple-500" />
@@ -349,66 +359,14 @@ export default function OrcamentoAnalytics() {
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex bg-gray-100/80 p-1 rounded-xl w-full max-w-[400px]">
-          <button 
-            onClick={() => setActiveTab('heatmap')}
-            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'heatmap' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            Mapa de Calor
-          </button>
-          <button 
-            onClick={() => setActiveTab('replay')}
-            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'replay' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            Gravações de Tela
-          </button>
-        </div>
-
-        {/* Heatmap Tab */}
-        {activeTab === 'heatmap' && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex-1 flex flex-col">
-            <div className="p-6 border-b border-gray-100">
-              <h3 className="font-bold text-gray-900 text-lg">Mapa de Calor (Heatmap)</h3>
-              <p className="text-sm text-gray-500">Visualize onde seus clientes movem o mouse e clicam na proposta.</p>
-            </div>
-            <div className="flex-1 p-6 bg-gray-50 flex justify-center overflow-hidden">
-              <div 
-                className="relative w-full max-h-[800px] overflow-y-auto shadow-xl border border-gray-200 rounded-xl" 
-                ref={heatmapContainerRef}
-                style={{ backgroundColor: globalSettings.pageBackgroundColor || '#f3f4f6', maxWidth: globalSettings.maxWidth }}
-              >
-                {/* O orçamento renderizado apenas como fundo */}
-                <div className="pointer-events-none opacity-40">
-                  <div style={{ backgroundColor: globalSettings.backgroundColor }}>
-                    {renderSections.map((s: any) => (
-                      <PreviewBlock key={s.id} section={s} />
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Canvas sobreposto (Heatmap) */}
-                <canvas 
-                  ref={heatmapCanvasRef} 
-                  className="absolute top-0 left-0 pointer-events-none z-50 mix-blend-multiply" 
-                />
-                
-                {tracking.length === 0 && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-50">
-                    <p className="text-gray-500 font-medium">Aguardando as interações dos seus clientes...</p>
-                  </div>
-                )}
-              </div>
-            </div>
+        {/* Sessões de Replay */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 flex-1 flex flex-col overflow-hidden">
+          <div className="p-6 border-b border-gray-100 bg-gray-50/50">
+            <h3 className="font-bold text-gray-900 text-lg mb-1">Sessões de Clientes Gravadas</h3>
+            <p className="text-sm text-gray-500">Assista em tempo real como seus clientes navegam na proposta, rolam a página e onde clicam.</p>
           </div>
-        )}
 
-        {/* Replay Tab */}
-        {activeTab === 'replay' && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <h3 className="font-bold text-gray-900 text-lg mb-1">Sessões de Clientes</h3>
-            <p className="text-sm text-gray-500 mb-6">Assista em tempo real como seus clientes navegam na proposta.</p>
-
+          <div className="p-6 flex-1 overflow-y-auto">
             {analytics.length > 0 ? (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {analytics.map((session) => {
@@ -417,7 +375,7 @@ export default function OrcamentoAnalytics() {
                   const duration = eventsCount > 0 ? session.replay_data.events[eventsCount - 1].timeOffset : 0;
                   
                   return (
-                    <div key={session.id} className="border border-gray-200 rounded-xl p-5 hover:border-orange-300 hover:shadow-md transition-all bg-gray-50/50 flex flex-col justify-between">
+                    <div key={session.id} className="border border-gray-200 rounded-xl p-5 hover:border-orange-300 hover:shadow-md transition-all bg-white flex flex-col justify-between">
                       <div className="flex items-start gap-4 mb-6">
                         <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center text-orange-500 shrink-0">
                           <PlayCircle className="w-6 h-6" />
@@ -427,39 +385,85 @@ export default function OrcamentoAnalytics() {
                             {new Date(session.created_at).toLocaleString('pt-BR')}
                           </p>
                           <div className="flex items-center gap-2">
-                            <span className="flex items-center gap-1 text-[11px] font-semibold bg-white border border-gray-200 px-2 py-0.5 rounded-full capitalize text-gray-600">
+                            <span className="flex items-center gap-1 text-[11px] font-semibold bg-gray-50 border border-gray-200 px-2 py-0.5 rounded-full capitalize text-gray-600">
                               {getDeviceIcon(device)} {device}
                             </span>
-                            <span className="text-xs text-gray-500">{formatTime(duration)}</span>
+                            <span className="text-xs text-gray-500 font-medium bg-gray-50 px-2 py-0.5 rounded-full border border-gray-200">{formatTime(duration)}</span>
                           </div>
                         </div>
                       </div>
                       <button 
                         onClick={() => handlePlaySession(session)}
-                        className="w-full py-2.5 bg-white border border-gray-200 text-gray-900 font-semibold rounded-lg hover:bg-orange-50 hover:border-orange-200 hover:text-orange-600 transition-colors shadow-sm disabled:opacity-50"
+                        className="w-full py-2.5 bg-white border border-gray-200 text-gray-900 font-bold rounded-lg hover:bg-orange-50 hover:border-orange-200 hover:text-orange-600 transition-colors shadow-sm disabled:opacity-50"
                         disabled={eventsCount === 0}
                       >
-                        Assistir Replay
+                        Assistir Gravação
                       </button>
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="text-center py-16 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
-                <PlayCircle className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                <p className="font-bold text-gray-900">Nenhuma gravação disponível</p>
-                <p className="text-sm text-gray-500 mt-1">Envie o link do orçamento para os clientes para iniciar a gravação de tela invisível (Clarity).</p>
+              <div className="text-center py-20 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50/50">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <PlayCircle className="w-8 h-8 text-gray-400" />
+                </div>
+                <p className="font-bold text-gray-900 text-lg">Nenhuma gravação disponível</p>
+                <p className="text-sm text-gray-500 mt-2 max-w-md mx-auto">Envie o link do orçamento para os clientes. Assim que eles acessarem a página, a gravação invisível começará a aparecer aqui.</p>
               </div>
             )}
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Modal Replay Player */}
+      {/* MODAL: Heatmap Fullscreen */}
+      {isHeatmapOpen && (
+        <div className="fixed inset-0 z-[100] bg-[#f8fafc] flex flex-col animate-in fade-in zoom-in-95 duration-200">
+          <div className="h-16 bg-white border-b px-6 flex items-center justify-between shrink-0 shadow-sm z-50">
+            <div className="flex items-center gap-4">
+              <h2 className="font-bold text-lg text-gray-900">Mapa de Calor (Heatmap)</h2>
+              <span className="bg-orange-100 text-orange-600 px-3 py-1 rounded-full text-xs font-bold border border-orange-200">
+                {clicksCount} cliques registrados
+              </span>
+            </div>
+            <button onClick={() => setIsHeatmapOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+              <X className="w-6 h-6 text-gray-600" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-6 sm:p-10 custom-scrollbar flex justify-center w-full">
+            <div
+              id="proposal-container"
+              ref={heatmapContainerRef}
+              className="relative w-full shadow-2xl rounded-2xl overflow-hidden transition-all"
+              style={{ maxWidth: globalSettings.maxWidth, backgroundColor: globalSettings.backgroundColor }}
+            >
+              <div className="pointer-events-none opacity-40">
+                {renderSections.map((s: any) => (
+                  <PreviewBlock key={s.id} section={s} />
+                ))}
+              </div>
+
+              <canvas
+                ref={heatmapCanvasRef}
+                className="absolute top-0 left-0 pointer-events-none z-50 mix-blend-multiply"
+              />
+
+              {tracking.length === 0 && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-sm z-50">
+                  <div className="bg-white px-6 py-4 rounded-xl shadow-lg border border-gray-200 font-bold text-gray-700">
+                    Aguardando interações dos clientes...
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Replay Player */}
       {playingSession && (
-        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex flex-col">
-          {/* Header */}
+        <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex flex-col animate-in fade-in duration-200">
           <div className="h-16 bg-black border-b border-white/10 flex items-center justify-between px-6 text-white shrink-0">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-full text-sm font-semibold">
@@ -467,7 +471,7 @@ export default function OrcamentoAnalytics() {
                 <span className="capitalize">{playingSession.replay_data?.device || 'Desktop'}</span>
               </div>
               <span className="text-white/60 text-sm font-medium hidden sm:block">
-                Visualização gravada em {new Date(playingSession.created_at).toLocaleString('pt-BR')}
+                Visualização de {new Date(playingSession.created_at).toLocaleString('pt-BR')}
               </span>
             </div>
             <button onClick={closePlayer} className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition-colors">
@@ -475,10 +479,9 @@ export default function OrcamentoAnalytics() {
             </button>
           </div>
 
-          {/* Player Area */}
           <div className="flex-1 relative flex items-center justify-center p-4 sm:p-8 overflow-hidden">
             <div 
-              className="bg-white rounded-xl overflow-hidden relative shadow-2xl transition-all duration-300"
+              className="bg-white rounded-xl overflow-hidden relative shadow-2xl transition-all duration-300 flex flex-col"
               style={{
                 width: playingSession.replay_data?.device === 'mobile' ? '375px' : playingSession.replay_data?.device === 'tablet' ? '768px' : '100%',
                 maxWidth: globalSettings.maxWidth,
@@ -487,39 +490,40 @@ export default function OrcamentoAnalytics() {
                 backgroundColor: globalSettings.pageBackgroundColor || '#f3f4f6'
               }}
             >
-              {/* Scrollable Container Fake */}
               <div 
                 ref={replayContainerRef}
-                className="w-full h-full overflow-hidden relative shadow-xl mx-auto"
-                style={{ maxWidth: globalSettings.maxWidth, backgroundColor: globalSettings.backgroundColor }}
+                className="w-full h-full overflow-y-auto relative shadow-xl mx-auto custom-scrollbar"
               >
-                <div className="pointer-events-none select-none">
-                  {renderSections.map((s: any) => (
-                    <PreviewBlock key={s.id} section={s} />
+                <div 
+                  id="proposal-container" 
+                  className="w-full relative mx-auto" 
+                  style={{ maxWidth: globalSettings.maxWidth, backgroundColor: globalSettings.backgroundColor, minHeight: '100%' }}
+                >
+                  <div className="pointer-events-none select-none">
+                    {renderSections.map((s: any) => (
+                      <PreviewBlock key={s.id} section={s} />
+                    ))}
+                  </div>
+
+                  <div 
+                    className="absolute z-[9999] pointer-events-none transition-all duration-75 ease-linear"
+                    style={{ left: cursorPos.x, top: cursorPos.y, transform: 'translate(-50%, -50%)' }}
+                  >
+                    <MousePointer2 className="w-7 h-7 text-black fill-white drop-shadow-lg" />
+                  </div>
+
+                  {activeClicks.map((click, i) => (
+                    <div 
+                      key={`${click.timeOffset}-${i}`}
+                      className="absolute z-[9998] w-12 h-12 rounded-full border-4 border-orange-500 pointer-events-none animate-ping"
+                      style={{ left: click.x, top: click.y, transform: 'translate(-50%, -50%)' }}
+                    />
                   ))}
                 </div>
-                
-                {/* Mouse Falso */}
-                <div 
-                  className="absolute z-[9999] pointer-events-none transition-all duration-75 ease-linear"
-                  style={{ left: cursorPos.x, top: cursorPos.y, transform: 'translate(-50%, -50%)' }}
-                >
-                  <MousePointer2 className="w-6 h-6 text-black fill-white drop-shadow-md" />
-                </div>
-
-                {/* Cliques Falsos */}
-                {activeClicks.map((click, i) => (
-                  <div 
-                    key={`${click.timeOffset}-${i}`}
-                    className="absolute z-[9998] w-10 h-10 rounded-full border-2 border-orange-500 pointer-events-none animate-ping"
-                    style={{ left: click.x, top: click.y, transform: 'translate(-50%, -50%)' }}
-                  />
-                ))}
               </div>
             </div>
           </div>
 
-          {/* Controls Footer */}
           <div className="h-24 bg-black border-t border-white/10 px-6 flex flex-col justify-center gap-3 shrink-0">
             <div className="flex items-center gap-4 max-w-3xl mx-auto w-full">
               <span className="text-white/60 text-xs font-mono w-12 text-right">
