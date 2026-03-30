@@ -191,6 +191,48 @@ const PreviewBlock = ({ section }: { section: any }) => {
     );
   }
 
+  if (section.type === 'button') {
+    const handleApprove = (e: React.MouseEvent) => {
+      e.preventDefault();
+      toast.success(section.buttonApproveMessage || "Orçamento aprovado com sucesso!");
+    };
+
+    const handleScroll = (e: React.MouseEvent) => {
+      e.preventDefault();
+      if (section.buttonScrollTarget) {
+        document.getElementById(section.buttonScrollTarget)?.scrollIntoView({ behavior: 'smooth' });
+      }
+    };
+
+    let href: string | undefined = undefined;
+    let onClick: ((e: React.MouseEvent) => void) | undefined = undefined;
+
+    if (section.buttonAction === 'whatsapp') {
+      const num = (section.buttonWhatsappNumber || '').replace(/\D/g, '');
+      const txt = encodeURIComponent(section.buttonWhatsappText || '');
+      href = `https://wa.me/${num}?text=${txt}`;
+    } else if (section.buttonAction === 'approve') {
+      onClick = handleApprove;
+    } else if (section.buttonAction === 'scroll') {
+      href = `#${section.buttonScrollTarget}`;
+      onClick = handleScroll;
+    }
+
+    return (
+      <div style={baseStyle} className={`w-full flex justify-${styles.align === 'left' ? 'start' : styles.align === 'right' ? 'end' : 'center'}`}>
+        <a
+          href={href}
+          onClick={onClick}
+          target={section.buttonAction === 'whatsapp' ? '_blank' : '_self'}
+          style={{ backgroundColor: styles.buttonColor || '#f97316', color: styles.buttonTextColor || '#ffffff' }}
+          className="px-8 py-4 rounded-full font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all inline-block cursor-pointer"
+        >
+          {section.buttonText || 'Clique Aqui'}
+        </a>
+      </div>
+    );
+  }
+
   if (section.type === 'separator') {
     return (
       <div style={{ ...baseStyle, padding: `${section.height || 40}px 0` }} className="w-full flex items-center justify-center">
@@ -247,6 +289,7 @@ export default function OrcamentoPublicView() {
       <style dangerouslySetInnerHTML={{__html: `
         @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,700;1,400&family=Montserrat:ital,wght@0,400;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
         .title-rich-text p { margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
       `}} />
       <div 
         className="min-h-screen font-sans text-gray-900 flex flex-col items-center justify-start sm:py-12 transition-colors"
@@ -291,7 +334,9 @@ export default function OrcamentoPublicView() {
             }}
           >
             {renderSections.map((s: any) => (
-              <PreviewBlock key={s.id} section={s} />
+              <div key={s.id} id={s.id}>
+                <PreviewBlock section={s} />
+              </div>
             ))}
           </div>
         )}

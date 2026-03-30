@@ -9,7 +9,7 @@ import {
   ArrowLeft, Save, Loader2, Image as ImageIcon, Type, DollarSign, 
   Trash2, Plus, FileUp, Settings, Link as LinkIcon, ArrowUp, ArrowDown,
   LayoutTemplate, Video, Minus, Columns, ChevronDown, Palette, AlignLeft, X, Layers,
-  UploadCloud, ExternalLink, CheckCircle2
+  UploadCloud, ExternalLink, CheckCircle2, MousePointerClick
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -233,6 +233,48 @@ const PreviewBlock = ({ section }: { section: any }) => {
     );
   }
 
+  if (section.type === 'button') {
+    const handleApprove = (e: React.MouseEvent) => {
+      e.preventDefault();
+      toast.success(section.buttonApproveMessage || "Orçamento aprovado com sucesso!");
+    };
+
+    const handleScroll = (e: React.MouseEvent) => {
+      e.preventDefault();
+      if (section.buttonScrollTarget) {
+        document.getElementById(section.buttonScrollTarget)?.scrollIntoView({ behavior: 'smooth' });
+      }
+    };
+
+    let href: string | undefined = undefined;
+    let onClick: ((e: React.MouseEvent) => void) | undefined = undefined;
+
+    if (section.buttonAction === 'whatsapp') {
+      const num = (section.buttonWhatsappNumber || '').replace(/\D/g, '');
+      const txt = encodeURIComponent(section.buttonWhatsappText || '');
+      href = `https://wa.me/${num}?text=${txt}`;
+    } else if (section.buttonAction === 'approve') {
+      onClick = handleApprove;
+    } else if (section.buttonAction === 'scroll') {
+      href = `#${section.buttonScrollTarget}`;
+      onClick = handleScroll;
+    }
+
+    return (
+      <div style={baseStyle} className={`w-full flex justify-${styles.align === 'left' ? 'start' : styles.align === 'right' ? 'end' : 'center'}`}>
+        <a
+          href={href}
+          onClick={onClick}
+          target={section.buttonAction === 'whatsapp' ? '_blank' : '_self'}
+          style={{ backgroundColor: styles.buttonColor || '#f97316', color: styles.buttonTextColor || '#ffffff' }}
+          className="px-8 py-4 rounded-full font-bold text-lg shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all inline-block cursor-pointer"
+        >
+          {section.buttonText || 'Clique Aqui'}
+        </a>
+      </div>
+    );
+  }
+
   if (section.type === 'separator') {
     return (
       <div style={{ ...baseStyle, padding: `${section.height || 40}px 0` }} className="w-full flex items-center justify-center">
@@ -353,6 +395,14 @@ export default function OrcamentoEditor() {
     if (type === 'two-columns') { newSection.title = 'Nossa Solução'; newSection.content = '<p>Detalhes do serviço...</p>'; newSection.imageUrl = ''; newSection.imagePosition = 'right'; }
     if (type === 'gallery') { newSection.title = 'Portfólio'; newSection.images = []; }
     if (type === 'video') { newSection.title = 'Apresentação'; newSection.videoUrl = ''; }
+    if (type === 'button') {
+      newSection.buttonText = 'Aprovar Orçamento';
+      newSection.buttonAction = 'approve';
+      newSection.buttonApproveMessage = 'Muito obrigado! Entraremos em contato em breve.';
+      newSection.styles.buttonColor = '#f97316';
+      newSection.styles.buttonTextColor = '#ffffff';
+      newSection.styles.align = 'center';
+    }
     if (type === 'separator') { newSection.height = 40; newSection.showLine = true; }
     
     setSections([...sections, newSection]);
@@ -465,8 +515,6 @@ export default function OrcamentoEditor() {
   };
 
   const activeSection = sections.find(s => s.id === selectedId);
-
-  if (loading) return <Layout><div className="flex h-full items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div></Layout>;
 
   return (
     <Layout>
@@ -612,7 +660,10 @@ export default function OrcamentoEditor() {
                       <button onClick={() => addSection('video')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group shadow-sm">
                         <Video className="w-5 h-5 mb-2" /> <span className="text-[11px] font-bold">Vídeo</span>
                       </button>
-                      <button onClick={() => addSection('separator')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group col-span-2 shadow-sm">
+                      <button onClick={() => addSection('button')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group shadow-sm">
+                        <MousePointerClick className="w-5 h-5 mb-2" /> <span className="text-[11px] font-bold">Botão CTA</span>
+                      </button>
+                      <button onClick={() => addSection('separator')} className="flex flex-col items-center justify-center py-4 bg-white border border-gray-200 rounded-xl hover:border-orange-400 hover:text-orange-500 transition-all text-gray-500 group shadow-sm">
                         <Minus className="w-5 h-5 mb-2" /> <span className="text-[11px] font-bold">Separador</span>
                       </button>
                     </div>
@@ -736,6 +787,85 @@ export default function OrcamentoEditor() {
                               className="bg-white rounded-lg shadow-sm"
                             />
                           </div>
+                        )}
+
+                        {activeSection.type === 'button' && (
+                          <>
+                            <div>
+                              <label className="text-xs font-bold text-gray-500 mb-1 block">Texto do Botão</label>
+                              <input 
+                                value={activeSection.buttonText || ''} 
+                                onChange={e => updateSection(activeSection.id, { buttonText: e.target.value })} 
+                                className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none shadow-sm" 
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs font-bold text-gray-500 mb-1 block">Ação do Botão</label>
+                              <select 
+                                value={activeSection.buttonAction || 'approve'} 
+                                onChange={e => updateSection(activeSection.id, { buttonAction: e.target.value })} 
+                                className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none shadow-sm"
+                              >
+                                <option value="approve">Aprovar Orçamento (Mensagem)</option>
+                                <option value="whatsapp">Enviar WhatsApp</option>
+                                <option value="scroll">Rolar para Seção (Âncora)</option>
+                              </select>
+                            </div>
+
+                            {activeSection.buttonAction === 'approve' && (
+                              <div>
+                                <label className="text-xs font-bold text-gray-500 mb-1 block">Mensagem de Sucesso (Toast)</label>
+                                <input 
+                                  value={activeSection.buttonApproveMessage || ''} 
+                                  onChange={e => updateSection(activeSection.id, { buttonApproveMessage: e.target.value })} 
+                                  className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none shadow-sm" 
+                                  placeholder="Ex: Muito obrigado! Entraremos em contato."
+                                />
+                              </div>
+                            )}
+
+                            {activeSection.buttonAction === 'whatsapp' && (
+                              <div className="grid grid-cols-1 gap-4">
+                                <div>
+                                  <label className="text-xs font-bold text-gray-500 mb-1 block">Número do WhatsApp</label>
+                                  <input 
+                                    value={activeSection.buttonWhatsappNumber || ''} 
+                                    onChange={e => updateSection(activeSection.id, { buttonWhatsappNumber: e.target.value })} 
+                                    className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none shadow-sm" 
+                                    placeholder="Ex: 5511999999999" 
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-xs font-bold text-gray-500 mb-1 block">Texto Pré-definido da Mensagem</label>
+                                  <textarea 
+                                    value={activeSection.buttonWhatsappText || ''} 
+                                    onChange={e => updateSection(activeSection.id, { buttonWhatsappText: e.target.value })} 
+                                    className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none shadow-sm min-h-[80px]" 
+                                    placeholder="Ex: Olá, quero aprovar o orçamento..." 
+                                  />
+                                </div>
+                              </div>
+                            )}
+
+                            {activeSection.buttonAction === 'scroll' && (
+                              <div>
+                                <label className="text-xs font-bold text-gray-500 mb-1 block">Rolar para qual seção?</label>
+                                <select 
+                                  value={activeSection.buttonScrollTarget || ''} 
+                                  onChange={e => updateSection(activeSection.id, { buttonScrollTarget: e.target.value })} 
+                                  className="w-full text-sm p-2.5 bg-white border border-gray-200 rounded-lg outline-none shadow-sm"
+                                >
+                                  <option value="">Selecione a seção destino...</option>
+                                  {sections.filter(s => s.id !== activeSection.id).map(s => {
+                                    const sectionName = s.title ? s.title.replace(/<[^>]*>?/gm, '').substring(0,25) : s.id.substring(0,8);
+                                    return (
+                                      <option key={s.id} value={s.id}>{s.type.toUpperCase()} - {sectionName}</option>
+                                    );
+                                  })}
+                                </select>
+                              </div>
+                            )}
+                          </>
                         )}
 
                         {activeSection.type === 'two-columns' && (
@@ -971,6 +1101,38 @@ export default function OrcamentoEditor() {
                     {/* ABA DE ESTILO COM TIPOGRAFIA AVANÇADA */}
                     {activeTab === 'style' && activeSection && (
                       <div className="space-y-5 animate-in fade-in">
+
+                        {activeSection.type === 'button' && (
+                          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                            <h4 className="text-[11px] font-bold uppercase text-gray-400 tracking-wider mb-2">Estilo do Botão</h4>
+                            
+                            <div>
+                              <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">Cor do Botão</label>
+                              <div className="flex gap-2">
+                                <input type="color" value={activeSection.styles?.buttonColor || '#f97316'} onChange={e => updateStyle(activeSection.id, 'buttonColor', e.target.value)} className="h-10 w-12 rounded cursor-pointer border border-gray-300 p-0.5 bg-white" />
+                                <input type="text" value={activeSection.styles?.buttonColor || '#f97316'} onChange={e => updateStyle(activeSection.id, 'buttonColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none focus:border-orange-400 bg-white" />
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">Cor do Texto</label>
+                              <div className="flex gap-2">
+                                <input type="color" value={activeSection.styles?.buttonTextColor || '#ffffff'} onChange={e => updateStyle(activeSection.id, 'buttonTextColor', e.target.value)} className="h-10 w-12 rounded cursor-pointer border border-gray-300 p-0.5 bg-white" />
+                                <input type="text" value={activeSection.styles?.buttonTextColor || '#ffffff'} onChange={e => updateStyle(activeSection.id, 'buttonTextColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none focus:border-orange-400 bg-white" />
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="text-xs font-bold text-gray-700 mb-1.5 block">Alinhamento</label>
+                              <select value={activeSection.styles?.align || 'center'} onChange={e => updateStyle(activeSection.id, 'align', e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg p-2.5 focus:outline-none focus:border-orange-400 bg-white">
+                                <option value="left">Esquerda</option>
+                                <option value="center">Centro</option>
+                                <option value="right">Direita</option>
+                              </select>
+                            </div>
+                          </div>
+                        )}
+
                         <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
                           <h4 className="text-[11px] font-bold uppercase text-gray-400 tracking-wider mb-2">Tipografia (Geral)</h4>
                           
@@ -988,17 +1150,19 @@ export default function OrcamentoEditor() {
                             </select>
                           </div>
 
-                          <div>
-                            <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">
-                              Cor Padrão do Texto 
-                              <span className="font-normal text-gray-400 uppercase">{activeSection.styles?.textColor || '#111827'}</span>
-                            </label>
-                            <div className="flex gap-2">
-                              <input type="color" value={activeSection.styles?.textColor || '#111827'} onChange={e => updateStyle(activeSection.id, 'textColor', e.target.value)} className="h-10 w-12 rounded cursor-pointer border border-gray-300 p-0.5" />
-                              <input type="text" value={activeSection.styles?.textColor || '#111827'} onChange={e => updateStyle(activeSection.id, 'textColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none" />
+                          {activeSection.type !== 'button' && (
+                            <div>
+                              <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">
+                                Cor Padrão do Texto 
+                                <span className="font-normal text-gray-400 uppercase">{activeSection.styles?.textColor || '#111827'}</span>
+                              </label>
+                              <div className="flex gap-2">
+                                <input type="color" value={activeSection.styles?.textColor || '#111827'} onChange={e => updateStyle(activeSection.id, 'textColor', e.target.value)} className="h-10 w-12 rounded cursor-pointer border border-gray-300 p-0.5" />
+                                <input type="text" value={activeSection.styles?.textColor || '#111827'} onChange={e => updateStyle(activeSection.id, 'textColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none" />
+                              </div>
+                              <p className="text-[10px] text-gray-400 mt-1">Essa cor afeta os textos e títulos normais, mas pode ser sobrescrita pelo editor de texto.</p>
                             </div>
-                            <p className="text-[10px] text-gray-400 mt-1">Essa cor afeta os textos e títulos normais, mas pode ser sobrescrita pelo editor de texto.</p>
-                          </div>
+                          )}
 
                           {['cover', 'pricing', 'two-columns', 'gallery', 'video'].includes(activeSection.type) && (
                             <div>
@@ -1027,11 +1191,11 @@ export default function OrcamentoEditor() {
                           <div>
                             <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">
                               Cor de Fundo 
-                              <span className="font-normal text-gray-400 uppercase">{activeSection.styles?.backgroundColor || '#ffffff'}</span>
+                              <span className="font-normal text-gray-400 uppercase">{activeSection.styles?.backgroundColor || 'transparent'}</span>
                             </label>
                             <div className="flex gap-2">
                               <input type="color" value={activeSection.styles?.backgroundColor || '#ffffff'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="h-10 w-12 rounded cursor-pointer border border-gray-300 p-0.5 bg-white" />
-                              <input type="text" value={activeSection.styles?.backgroundColor || '#ffffff'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none focus:border-orange-400 bg-white" />
+                              <input type="text" value={activeSection.styles?.backgroundColor || 'transparent'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none focus:border-orange-400 bg-white" />
                             </div>
                           </div>
 
@@ -1122,6 +1286,7 @@ export default function OrcamentoEditor() {
                     sections.map(s => (
                       <div 
                         key={s.id} 
+                        id={s.id}
                         className={`w-full relative group cursor-pointer transition-all ${selectedId === s.id ? 'ring-[3px] ring-inset ring-orange-500 z-10 shadow-xl' : 'hover:ring-[3px] hover:ring-inset hover:ring-blue-400/50 z-0'}`} 
                         onClick={() => { setSelectedId(s.id); setActiveTab('content'); }}
                       >
@@ -1167,6 +1332,9 @@ export default function OrcamentoEditor() {
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => addSection('video')} className="cursor-pointer py-3 rounded-lg focus:bg-orange-50 font-medium text-gray-700">
                             <Video className="w-4 h-4 mr-3 text-orange-500" /> Vídeo
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => addSection('button')} className="cursor-pointer py-3 rounded-lg focus:bg-orange-50 font-medium text-gray-700">
+                            <MousePointerClick className="w-4 h-4 mr-3 text-orange-500" /> Botão CTA
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => addSection('separator')} className="cursor-pointer py-3 rounded-lg focus:bg-orange-50 font-medium text-gray-700">
                             <Minus className="w-4 h-4 mr-3 text-orange-500" /> Separador
@@ -1222,6 +1390,7 @@ export default function OrcamentoEditor() {
                       {s.type === 'two-columns' && <Columns className={`w-4 h-4 ${selectedId === s.id ? 'text-orange-500' : 'text-gray-400'}`} />}
                       {s.type === 'gallery' && <ImageIcon className={`w-4 h-4 ${selectedId === s.id ? 'text-orange-500' : 'text-gray-400'}`} />}
                       {s.type === 'video' && <Video className={`w-4 h-4 ${selectedId === s.id ? 'text-orange-500' : 'text-gray-400'}`} />}
+                      {s.type === 'button' && <MousePointerClick className={`w-4 h-4 ${selectedId === s.id ? 'text-orange-500' : 'text-gray-400'}`} />}
                       {s.type === 'separator' && <Minus className={`w-4 h-4 ${selectedId === s.id ? 'text-orange-500' : 'text-gray-400'}`} />}
                       
                       <span className={`font-semibold text-sm capitalize ${selectedId === s.id ? 'text-orange-900' : 'text-gray-700'}`}>
