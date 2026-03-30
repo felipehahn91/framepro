@@ -8,6 +8,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 
 import Index from "./pages/Index";
 import Oportunidades from "./pages/Oportunidades";
+import Clientes from "./pages/Clientes";
 import Login from "./pages/Login";
 import LinkFormPage from "./pages/LinkFormPage";
 import NotFound from "./pages/NotFound";
@@ -29,6 +30,7 @@ const App = () => (
             {/* Rotas Privadas */}
             <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="/oportunidades" element={<ProtectedRoute><Oportunidades /></ProtectedRoute>} />
+            <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
             
             {/* Fallback */}
             <Route path="*" element={<NotFound />} />
