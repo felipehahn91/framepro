@@ -9,7 +9,7 @@ import {
   ArrowLeft, Save, Loader2, Image as ImageIcon, Type, DollarSign, 
   Trash2, Plus, FileUp, Settings, Link as LinkIcon, ArrowUp, ArrowDown,
   LayoutTemplate, Video, Minus, Columns, ChevronDown, Palette, AlignLeft, X, Layers,
-  UploadCloud, ExternalLink
+  UploadCloud, ExternalLink, Maximize
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -30,7 +30,6 @@ const quillModules = {
   ]
 };
 
-// Toolbar menor específica para Títulos e Subtítulos
 const titleQuillModules = {
   toolbar: [
     ['bold', 'italic', 'underline'],
@@ -45,7 +44,6 @@ const renderHTML = (html: string, fallback: string) => {
   return html;
 };
 
-// --- PREVIEW BLOCK COM ESTILOS DINÂMICOS ---
 const PreviewBlock = ({ section }: { section: any }) => {
   const styles = section.styles || {};
   
@@ -215,11 +213,15 @@ export default function OrcamentoEditor() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [orcamento, setOrcamento] = useState<any>(null);
+  
+  const [globalSettings, setGlobalSettings] = useState({ backgroundColor: '#ffffff', maxWidth: '900px' });
   const [sections, setSections] = useState<any[]>([]);
+  
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'content' | 'style'>('content');
 
   const isPDFMode = orcamento?.type === 'pdf';
+  const pdfSection = sections.find(s => s.type === 'pdf');
 
   useEffect(() => {
     if (user && id) loadData();
@@ -231,8 +233,21 @@ export default function OrcamentoEditor() {
       if (error) throw error;
       
       setOrcamento(data);
-      setSections(data.sections || []);
-      if (data.sections?.length > 0) setSelectedId(data.sections[0].id);
+      
+      const loadedSections = data.sections || [];
+      const globalSec = loadedSections.find((s: any) => s.type === 'global-settings');
+      
+      if (globalSec) {
+        setGlobalSettings(globalSec.styles || { backgroundColor: '#ffffff', maxWidth: '900px' });
+        setSections(loadedSections.filter((s: any) => s.type !== 'global-settings'));
+      } else {
+        setGlobalSettings({ backgroundColor: '#ffffff', maxWidth: '900px' });
+        setSections(loadedSections);
+      }
+
+      if (loadedSections.length > 0 && loadedSections[0].type !== 'global-settings') {
+        setSelectedId(loadedSections[0].id);
+      }
     } catch (error) {
       toast.error("Orçamento não encontrado.");
       navigate('/orcamentos');
@@ -244,11 +259,17 @@ export default function OrcamentoEditor() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      const sectionsToSave = [
+        { id: 'global', type: 'global-settings', styles: globalSettings },
+        ...sections
+      ];
+
       await supabase.from('orcamentos').update({
         name: orcamento.name,
-        sections: sections,
+        sections: sectionsToSave,
         updated_at: new Date().toISOString()
       }).eq('id', id);
+      
       toast.success("Orçamento salvo com sucesso!");
     } catch (error) {
       toast.error("Erro ao salvar.");
@@ -269,7 +290,7 @@ export default function OrcamentoEditor() {
       id: crypto.randomUUID(), 
       type,
       styles: { 
-        backgroundColor: '#ffffff', 
+        backgroundColor: 'transparent', 
         textColor: '#111827', 
         padding: 40, 
         backgroundImage: '',
@@ -325,7 +346,7 @@ export default function OrcamentoEditor() {
     if (selectedId === id) setSelectedId(null);
   };
 
-  // Generic Image Upload
+  // Image Uploads
   const handleImageUpload = async (file: File, callback: (url: string) => void) => {
     if (!file.type.startsWith('image/')) return toast.error("Apenas imagens são permitidas.");
     if (file.size > 5 * 1024 * 1024) return toast.error("A imagem deve ter no máximo 5MB.");
@@ -348,7 +369,6 @@ export default function OrcamentoEditor() {
     }
   };
 
-  // Multiple Gallery Upload
   const handleGalleryUpload = async (files: FileList, sectionId: string) => {
     const toastId = toast.loading(`Fazendo upload de ${files.length} imagem(ns)...`);
     try {
@@ -392,7 +412,10 @@ export default function OrcamentoEditor() {
       const { error } = await supabase.storage.from('contract_images').upload(filePath, file);
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('contract_images').getPublicUrl(filePath);
-      updateSection(sections[0].id, { fileUrl: publicUrl });
+      
+      if (pdfSection) {
+        updateSection(pdfSection.id, { fileUrl: publicUrl });
+      }
       toast.success("PDF carregado!");
     } catch (e) {
       toast.error("Erro no upload.");
@@ -410,15 +433,12 @@ export default function OrcamentoEditor() {
         .ql-toolbar { border-radius: 8px 8px 0 0; border-color: #e5e7eb !important; background: #fafafa; }
         .ql-container { border-radius: 0 0 8px 8px; border-color: #e5e7eb !important; font-family: inherit; font-size: 14px; background: white; min-height: 150px; }
         
-        /* Estilos específicos para o Quill menor (Títulos) */
         .title-quill .ql-container { min-height: 60px; height: auto; }
         .title-quill .ql-editor { min-height: 60px; padding: 12px; }
-        
-        /* Remove a margem padrão do parágrafo gerado pelo Quill no preview */
         .title-rich-text p { margin: 0; padding: 0; }
       `}} />
       <div className="flex flex-col h-[calc(100vh-6rem)]">
-        {/* Topbar: Minimalista */}
+        {/* Topbar */}
         <div className="bg-white border border-gray-200 p-4 rounded-xl shadow-sm flex items-center justify-between mb-4 shrink-0">
           <div className="flex items-center gap-4">
             <button onClick={() => navigate('/orcamentos')} className="text-gray-500 hover:text-gray-900 transition-colors">
@@ -446,14 +466,27 @@ export default function OrcamentoEditor() {
           </div>
         </div>
 
-        {/* Workspace Elementor Style */}
+        {/* Workspace */}
         <div className="flex-1 flex overflow-hidden bg-gray-100 rounded-xl border border-gray-200">
           
           {/* SIDEBAR ESQUERDA */}
           <div className="w-[340px] bg-white border-r border-gray-200 flex flex-col shrink-0 z-10 shadow-[2px_0_10px_rgba(0,0,0,0.02)]">
             
             <div className="p-4 border-b border-gray-200 bg-white flex flex-col gap-3 shadow-sm z-10 relative">
-              {activeSection ? (
+              {selectedId === 'global' ? (
+                <>
+                  <button 
+                    onClick={() => setSelectedId(null)} 
+                    className="flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-orange-500 transition-colors w-fit"
+                  >
+                    <ArrowLeft className="w-4 h-4" /> Voltar aos Blocos
+                  </button>
+                  <div className="flex items-center gap-2 text-gray-900 font-bold text-base">
+                    <Settings className="w-5 h-5 text-orange-500" /> 
+                    <span>Configurações da Página</span>
+                  </div>
+                </>
+              ) : activeSection ? (
                 <>
                   <button 
                     onClick={() => setSelectedId(null)} 
@@ -473,10 +506,35 @@ export default function OrcamentoEditor() {
               )}
             </div>
 
-            {/* Corpo da Sidebar */}
+            {/* Corpo da Sidebar Esquerda */}
             <div className="flex-1 overflow-y-auto custom-scrollbar bg-gray-50/30">
               
-              {!activeSection && !isPDFMode ? (
+              {selectedId === 'global' ? (
+                <div className="p-4 space-y-5 animate-in fade-in">
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                    <h4 className="text-[11px] font-bold uppercase text-gray-400 tracking-wider mb-2">Fundo da Página</h4>
+                    <div>
+                      <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">Cor de Fundo</label>
+                      <div className="flex gap-2">
+                        <input type="color" value={globalSettings.backgroundColor} onChange={e => setGlobalSettings({...globalSettings, backgroundColor: e.target.value})} className="h-10 w-12 rounded cursor-pointer border border-gray-300 p-0.5 bg-white" />
+                        <input type="text" value={globalSettings.backgroundColor} onChange={e => setGlobalSettings({...globalSettings, backgroundColor: e.target.value})} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none focus:border-orange-400 bg-white" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                    <h4 className="text-[11px] font-bold uppercase text-gray-400 tracking-wider mb-2">Dimensões</h4>
+                    <div>
+                      <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">Largura do Conteúdo</label>
+                      <select value={globalSettings.maxWidth} onChange={e => setGlobalSettings({...globalSettings, maxWidth: e.target.value})} className="w-full text-sm border border-gray-200 rounded-lg p-2.5 focus:outline-none focus:border-orange-400 bg-white">
+                        <option value="800px">Estreito (800px)</option>
+                        <option value="900px">Padrão (900px)</option>
+                        <option value="1100px">Largo (1100px)</option>
+                        <option value="100%">Tela Cheia (100%)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              ) : !activeSection && !isPDFMode ? (
                 <div className="p-4 space-y-6">
                   <div>
                     <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Adicionar Bloco</h3>
@@ -504,22 +562,16 @@ export default function OrcamentoEditor() {
                       </button>
                     </div>
                   </div>
-                  <div className="bg-orange-50 border border-orange-100 p-4 rounded-xl">
-                    <p className="text-sm text-orange-800">
-                      <strong>Dica:</strong> Clique em qualquer bloco no centro da tela para editar seu conteúdo, ou use a aba de Estilo para mudar fontes e cores.
-                    </p>
-                  </div>
                 </div>
               ) : isPDFMode ? (
                 <div className="p-4 space-y-8">
-                  {/* ... PDF controls (mantidos) ... */}
                   <div className="space-y-3">
                     <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Arquivo PDF</label>
-                    {sections[0]?.fileUrl ? (
+                    {pdfSection?.fileUrl ? (
                       <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-center">
                         <FileUp className="w-6 h-6 text-green-500 mx-auto mb-2" />
                         <p className="text-sm font-semibold text-green-700 mb-2">PDF Carregado</p>
-                        <button onClick={() => updateSection(sections[0].id, { fileUrl: '' })} className="text-[11px] font-bold text-red-500 hover:underline">REMOVER ARQUIVO</button>
+                        <button onClick={() => updateSection(pdfSection.id, { fileUrl: '' })} className="text-[11px] font-bold text-red-500 hover:underline">REMOVER ARQUIVO</button>
                       </div>
                     ) : (
                       <label className="border-2 border-dashed border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors rounded-lg p-6 flex flex-col items-center cursor-pointer text-center">
@@ -533,39 +585,41 @@ export default function OrcamentoEditor() {
                     <div className="flex items-center justify-between">
                       <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Botões de Ação (CTAs)</label>
                       <button onClick={() => {
-                        const ctas = sections[0].ctas || [];
-                        updateSection(sections[0].id, { ctas: [...ctas, { label: 'Aprovar Orçamento', link: '', color: '#22c55e' }] });
+                        if (pdfSection) {
+                          const ctas = pdfSection.ctas || [];
+                          updateSection(pdfSection.id, { ctas: [...ctas, { label: 'Aprovar Orçamento', link: '', color: '#22c55e' }] });
+                        }
                       }} className="p-1 bg-orange-100 text-orange-600 rounded hover:bg-orange-200"><Plus className="w-4 h-4" /></button>
                     </div>
                     <div className="space-y-3">
-                      {sections[0]?.ctas?.map((cta: any, idx: number) => (
+                      {pdfSection?.ctas?.map((cta: any, idx: number) => (
                         <div key={idx} className="bg-white border border-gray-200 p-3 rounded-lg shadow-sm relative group space-y-3">
                           <button onClick={() => {
-                            const newCtas = [...sections[0].ctas]; newCtas.splice(idx, 1);
-                            updateSection(sections[0].id, { ctas: newCtas });
+                            const newCtas = [...pdfSection.ctas]; newCtas.splice(idx, 1);
+                            updateSection(pdfSection.id, { ctas: newCtas });
                           }} className="absolute top-2 right-2 text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button>
                           
                           <div>
                             <label className="text-[10px] font-semibold text-gray-400">Texto</label>
                             <input value={cta.label} onChange={e => {
-                                const newCtas = [...sections[0].ctas]; newCtas[idx].label = e.target.value;
-                                updateSection(sections[0].id, { ctas: newCtas });
+                                const newCtas = [...pdfSection.ctas]; newCtas[idx].label = e.target.value;
+                                updateSection(pdfSection.id, { ctas: newCtas });
                               }} className="w-full text-sm font-semibold border-b border-gray-200 focus:border-orange-400 outline-none pb-1"
                             />
                           </div>
                           <div>
                             <label className="text-[10px] font-semibold text-gray-400">Link</label>
                             <input value={cta.link} onChange={e => {
-                                const newCtas = [...sections[0].ctas]; newCtas[idx].link = e.target.value;
-                                updateSection(sections[0].id, { ctas: newCtas });
+                                const newCtas = [...pdfSection.ctas]; newCtas[idx].link = e.target.value;
+                                updateSection(pdfSection.id, { ctas: newCtas });
                               }} placeholder="https://" className="w-full text-xs bg-gray-50 border border-gray-200 rounded px-2 py-1.5 outline-none focus:border-orange-400"
                             />
                           </div>
                           <div>
                             <label className="text-[10px] font-semibold text-gray-400">Cor do Botão</label>
                             <input type="color" value={cta.color} onChange={e => {
-                                const newCtas = [...sections[0].ctas]; newCtas[idx].color = e.target.value;
-                                updateSection(sections[0].id, { ctas: newCtas });
+                                const newCtas = [...pdfSection.ctas]; newCtas[idx].color = e.target.value;
+                                updateSection(pdfSection.id, { ctas: newCtas });
                               }} className="w-full h-8 rounded cursor-pointer border-none p-0"
                             />
                           </div>
@@ -852,11 +906,11 @@ export default function OrcamentoEditor() {
                           <div>
                             <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">
                               Cor de Fundo 
-                              <span className="font-normal text-gray-400 uppercase">{activeSection.styles?.backgroundColor || '#ffffff'}</span>
+                              <span className="font-normal text-gray-400 uppercase">{activeSection.styles?.backgroundColor || 'transparent'}</span>
                             </label>
                             <div className="flex gap-2">
-                              <input type="color" value={activeSection.styles?.backgroundColor || '#ffffff'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="h-10 w-12 rounded cursor-pointer border border-gray-300 p-0.5" />
-                              <input type="text" value={activeSection.styles?.backgroundColor || '#ffffff'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none focus:border-orange-400" />
+                              <input type="color" value={activeSection.styles?.backgroundColor || '#ffffff'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="h-10 w-12 rounded cursor-pointer border border-gray-300 p-0.5 bg-white" />
+                              <input type="text" value={activeSection.styles?.backgroundColor || 'transparent'} onChange={e => updateStyle(activeSection.id, 'backgroundColor', e.target.value)} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none focus:border-orange-400 bg-white" />
                             </div>
                           </div>
 
@@ -903,22 +957,28 @@ export default function OrcamentoEditor() {
           {/* CANVAS AREA (Centro - Preview da Folha) */}
           <div className="flex-1 bg-gray-200/50 overflow-y-auto p-4 sm:p-8 flex justify-center relative custom-scrollbar">
             
-            <div className="w-full max-w-[850px] min-h-[1000px] bg-white shadow-2xl border border-gray-200 flex flex-col relative transition-all mb-20">
+            <div 
+              className="w-full min-h-[1000px] shadow-2xl border border-gray-200 flex flex-col relative transition-all mb-20 overflow-hidden"
+              style={{
+                maxWidth: globalSettings.maxWidth,
+                backgroundColor: globalSettings.backgroundColor
+              }}
+            >
               
               {isPDFMode ? (
                 <div className="w-full h-full relative flex-1 flex flex-col">
-                  {sections[0]?.fileUrl ? (
-                    <iframe src={`${sections[0].fileUrl}#toolbar=0`} className="w-full flex-1 border-0" title="PDF Preview" />
+                  {pdfSection?.fileUrl ? (
+                    <iframe src={`${pdfSection.fileUrl}#toolbar=0`} className="w-full flex-1 border-0" title="PDF Preview" />
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-gray-400 bg-gray-50">
                       <FileUp className="w-16 h-16 mb-4 text-gray-300" />
                       <p className="font-medium text-lg text-gray-500">Faça upload de um PDF no menu lateral</p>
                     </div>
                   )}
-                  {sections[0]?.ctas?.length > 0 && sections[0]?.fileUrl && (
+                  {pdfSection?.ctas?.length > 0 && pdfSection?.fileUrl && (
                     <div className="absolute bottom-8 left-0 right-0 flex justify-center pointer-events-none">
                       <div className="bg-white/90 backdrop-blur-md px-6 py-4 rounded-2xl shadow-2xl border border-gray-200 flex gap-4 pointer-events-auto">
-                        {sections[0].ctas.map((cta: any, i: number) => (
+                        {pdfSection.ctas.map((cta: any, i: number) => (
                           <div key={i} style={{ backgroundColor: cta.color || '#22c55e' }} className="px-6 py-3 rounded-xl font-bold text-white shadow-md cursor-pointer hover:-translate-y-1 transition-transform">
                             {cta.label}
                           </div>
@@ -1001,10 +1061,26 @@ export default function OrcamentoEditor() {
             <div className="w-[280px] bg-white border-l border-gray-200 flex flex-col shrink-0 z-10 shadow-[-2px_0_10px_rgba(0,0,0,0.02)]">
               <div className="p-4 border-b border-gray-100 flex items-center gap-2 bg-gray-50/50">
                 <Layers className="w-4 h-4 text-gray-600" />
-                <h2 className="font-bold text-gray-800 text-sm uppercase tracking-wider">Camadas</h2>
+                <h2 className="font-bold text-gray-800 text-sm uppercase tracking-wider">Navegador</h2>
               </div>
               
               <div className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar bg-gray-50/30">
+                <div 
+                  onClick={() => { setSelectedId('global'); setActiveTab('style'); }}
+                  className={`flex items-center justify-between px-3 py-3 rounded-lg border cursor-pointer transition-all mb-4 ${
+                    selectedId === 'global' ? 'border-orange-400 bg-orange-50 shadow-sm' : 'border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Settings className={`w-4 h-4 ${selectedId === 'global' ? 'text-orange-500' : 'text-gray-400'}`} />
+                    <span className={`font-semibold text-sm ${selectedId === 'global' ? 'text-orange-900' : 'text-gray-700'}`}>
+                      Configurações da Página
+                    </span>
+                  </div>
+                </div>
+
+                <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2">Camadas (Blocos)</h3>
+                
                 {sections.map((s, idx) => (
                   <div 
                     key={s.id} 

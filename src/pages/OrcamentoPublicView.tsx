@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, AlertCircle, ImageIcon, Video } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 
 const renderHTML = (html: string, fallback: string) => {
   if (!html || html === '<p><br></p>') return fallback;
@@ -192,7 +192,14 @@ export default function OrcamentoPublicView() {
   if (!orcamento) return <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50"><AlertCircle className="w-16 h-16 text-gray-300 mb-4" /><h2 className="text-2xl font-bold">Proposta Indisponível</h2><p className="text-gray-500">O link acessado é inválido ou expirou.</p></div>;
 
   const isPDFMode = orcamento.type === 'pdf';
-  const sections = orcamento.sections || [];
+  
+  // Extrair configurações globais e seções reais
+  const loadedSections = orcamento.sections || [];
+  const globalSec = loadedSections.find((s: any) => s.type === 'global-settings');
+  const globalSettings = globalSec?.styles || { backgroundColor: '#ffffff', maxWidth: '900px' };
+  const renderSections = loadedSections.filter((s: any) => s.type !== 'global-settings');
+  
+  const pdfSection = loadedSections.find((s: any) => s.type === 'pdf');
 
   return (
     <>
@@ -200,21 +207,21 @@ export default function OrcamentoPublicView() {
         @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,700;1,400&family=Montserrat:ital,wght@0,400;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
         .title-rich-text p { margin: 0; padding: 0; }
       `}} />
-      <div className="min-h-screen bg-gray-100 font-sans text-gray-900 flex flex-col items-center justify-start sm:py-12">
+      <div className="min-h-screen bg-gray-100/50 font-sans text-gray-900 flex flex-col items-center justify-start sm:py-12">
         {isPDFMode ? (
           // Visualização Modo PDF
           <div className="w-full h-[100dvh] sm:h-[90vh] sm:max-w-4xl sm:rounded-3xl sm:shadow-2xl overflow-hidden relative flex flex-col bg-white">
-            {sections[0]?.fileUrl ? (
-              <iframe src={`${sections[0].fileUrl}#toolbar=0`} className="w-full flex-1 border-0" title="Proposta PDF" />
+            {pdfSection?.fileUrl ? (
+              <iframe src={`${pdfSection.fileUrl}#toolbar=0`} className="w-full flex-1 border-0" title="Proposta PDF" />
             ) : (
               <div className="flex-1 flex items-center justify-center">O arquivo PDF não foi encontrado.</div>
             )}
             
             {/* CTAs Fixed na base da tela para o cliente */}
-            {sections[0]?.ctas?.length > 0 && sections[0]?.fileUrl && (
+            {pdfSection?.ctas?.length > 0 && pdfSection?.fileUrl && (
               <div className="absolute bottom-6 left-0 right-0 flex justify-center z-50 px-4 pointer-events-none">
                 <div className="bg-white/90 backdrop-blur-md px-6 py-4 rounded-2xl shadow-2xl border border-gray-200 flex flex-wrap justify-center gap-4 pointer-events-auto max-w-2xl w-full">
-                  {sections[0].ctas.map((cta: any, i: number) => (
+                  {pdfSection.ctas.map((cta: any, i: number) => (
                     <button 
                       key={i} 
                       onClick={() => {
@@ -235,8 +242,14 @@ export default function OrcamentoPublicView() {
           </div>
         ) : (
           // Visualização Modo Construtor (Design limpo como landing page)
-          <div className="w-full max-w-[900px] bg-white sm:rounded-3xl shadow-2xl min-h-screen sm:min-h-0 flex flex-col overflow-hidden">
-            {sections.map((s: any) => (
+          <div 
+            className="w-full sm:rounded-3xl shadow-2xl min-h-screen sm:min-h-0 flex flex-col overflow-hidden transition-all"
+            style={{ 
+              maxWidth: globalSettings.maxWidth,
+              backgroundColor: globalSettings.backgroundColor
+            }}
+          >
+            {renderSections.map((s: any) => (
               <PreviewBlock key={s.id} section={s} />
             ))}
           </div>
