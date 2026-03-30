@@ -27,11 +27,11 @@ export const initTracking = (orcamentoId: string, sessionId: string, device: str
     if (container) {
       const rect = container.getBoundingClientRect();
       return {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top // Isso resolve o problema de scroll
+        x: Math.round(e.clientX - rect.left),
+        y: Math.round(e.clientY - rect.top) // Isso resolve o problema de scroll
       };
     }
-    return { x: e.pageX, y: e.pageY };
+    return { x: Math.round(e.pageX), y: Math.round(e.pageY) };
   };
 
   const recordEvent = (type: string, data: any) => {
@@ -47,7 +47,9 @@ export const initTracking = (orcamentoId: string, sessionId: string, device: str
         x: data.x,
         y: data.y,
         timestamp: timeOffset
-      }).then();
+      }).then(({ error }) => {
+        if (error) console.error(error);
+      });
     }
   };
 
@@ -85,7 +87,9 @@ export const initTracking = (orcamentoId: string, sessionId: string, device: str
     if (analyticsRowId && sessionEvents.length > 0) {
       supabase.from('orcamento_analytics').update({
         replay_data: { device, events: [...sessionEvents] }
-      }).eq('id', analyticsRowId).then();
+      }).eq('id', analyticsRowId).then(({ error }) => {
+        if (error) console.error(error);
+      });
     }
   }, 5000);
 
@@ -100,7 +104,9 @@ export const initTracking = (orcamentoId: string, sessionId: string, device: str
     if (analyticsRowId && sessionEvents.length > 0) {
       supabase.from('orcamento_analytics').update({
         replay_data: { device, events: [...sessionEvents] }
-      }).eq('id', analyticsRowId).then();
+      }).eq('id', analyticsRowId).then(({ error }) => {
+        if (error) console.error(error);
+      });
     }
   };
 };

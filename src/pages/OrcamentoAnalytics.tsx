@@ -109,7 +109,6 @@ const PreviewBlock = ({ section }: { section: any }) => {
   return null;
 };
 
-
 export default function OrcamentoAnalytics() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -179,30 +178,35 @@ export default function OrcamentoAnalytics() {
         
         // Movimentos do mouse (azul fraco)
         moves.forEach(point => {
-          const gradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, 15);
-          gradient.addColorStop(0, 'rgba(59, 130, 246, 0.08)'); 
+          const gradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, 20);
+          gradient.addColorStop(0, 'rgba(59, 130, 246, 0.1)'); 
           gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
           ctx.fillStyle = gradient;
           ctx.beginPath();
-          ctx.arc(point.x, point.y, 15, 0, Math.PI * 2);
+          ctx.arc(point.x, point.y, 20, 0, Math.PI * 2);
           ctx.fill();
         });
 
         // Cliques (Vermelho vivo)
         clicks.forEach(point => {
-          const gradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, 30);
-          gradient.addColorStop(0, 'rgba(255, 0, 0, 0.8)'); 
-          gradient.addColorStop(0.4, 'rgba(255, 69, 0, 0.6)');
+          // Aumentei o raio para 35 para o clique ficar mais proeminente e visível
+          const gradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, 35);
+          gradient.addColorStop(0, 'rgba(255, 0, 0, 0.9)'); 
+          gradient.addColorStop(0.3, 'rgba(255, 69, 0, 0.7)');
           gradient.addColorStop(1, 'rgba(255, 69, 0, 0)');
           ctx.fillStyle = gradient;
           ctx.beginPath();
-          ctx.arc(point.x, point.y, 30, 0, Math.PI * 2);
+          ctx.arc(point.x, point.y, 35, 0, Math.PI * 2);
           ctx.fill();
         });
       };
 
-      // Pequeno atraso pra garantir que o DOM renderizou completamente as alturas
-      setTimeout(drawHeatmap, 200);
+      // Aumentei o timeout para garantir que as fontes e imagens tenham carregado antes de pegar a altura real
+      setTimeout(drawHeatmap, 500);
+      
+      // Um event listener opcional caso a janela mude de tamanho
+      window.addEventListener('resize', drawHeatmap);
+      return () => window.removeEventListener('resize', drawHeatmap);
     }
   }, [isHeatmapOpen, tracking]);
 
@@ -431,11 +435,11 @@ export default function OrcamentoAnalytics() {
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 sm:p-10 custom-scrollbar flex justify-center w-full">
+          <div className="flex-1 overflow-y-auto p-6 sm:p-10 custom-scrollbar flex justify-center items-start w-full">
             <div
               id="proposal-container"
               ref={heatmapContainerRef}
-              className="relative w-full shadow-2xl rounded-2xl overflow-hidden transition-all"
+              className="relative w-full shadow-2xl rounded-2xl overflow-hidden transition-all h-fit pb-10"
               style={{ maxWidth: globalSettings.maxWidth, backgroundColor: globalSettings.backgroundColor }}
             >
               <div className="pointer-events-none opacity-40">
