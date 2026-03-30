@@ -16,7 +16,7 @@ interface Contract {
   status: string;
   signature_status: string;
   share_token: string;
-  clients?: { name: string };
+  opportunities?: { name: string };
 }
 
 export default function Contratos() {
@@ -35,7 +35,7 @@ export default function Contratos() {
     try {
       const { data, error } = await supabase
         .from('contracts')
-        .select('*, clients:client_id(name)')
+        .select('*, opportunities(name)')
         .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
 
@@ -51,7 +51,7 @@ export default function Contratos() {
   const filteredContracts = useMemo(() => {
     if (!searchQuery) return contracts;
     return contracts.filter(c => 
-      c.clients?.name.toLowerCase().includes(searchQuery.toLowerCase())
+      c.opportunities?.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [contracts, searchQuery]);
 
@@ -136,7 +136,7 @@ export default function Contratos() {
                   </div>
                   
                   <div className="flex-1">
-                    <h3 className="font-bold text-gray-900 text-lg mb-1 truncate">{contract.clients?.name || 'Cliente não definido'}</h3>
+                    <h3 className="font-bold text-gray-900 text-lg mb-1 truncate">{contract.opportunities?.name || 'Cliente não definido'}</h3>
                     <p className="text-gray-500 text-sm mb-4">Início: {new Date(contract.start_date).toLocaleDateString('pt-BR')}</p>
                   </div>
 

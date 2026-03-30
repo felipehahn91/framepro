@@ -24,11 +24,14 @@ export default function ContractPublicView() {
     try {
       const { data, error } = await supabase
         .from('contracts')
-        .select('*, clients:client_id(name), users:user_id(raw_user_meta_data)')
+        .select('*, opportunities(name)')
         .eq('share_token', token)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase Error:", error);
+        throw error;
+      }
       setContract(data);
     } catch (error) {
       toast.error("Contrato não encontrado ou indisponível.");
@@ -48,7 +51,7 @@ export default function ContractPublicView() {
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`Contrato_${contract.clients?.name || 'Documento'}.pdf`);
+      pdf.save(`Contrato_${contract.opportunities?.name || 'Documento'}.pdf`);
       toast.success("PDF baixado!");
     } catch (error) {
       toast.error("Erro ao gerar PDF.");
@@ -88,7 +91,8 @@ export default function ContractPublicView() {
   if (!contract) return <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50"><h2 className="text-2xl font-bold">Contrato Inválido</h2><p className="text-gray-500">O link expirou ou não existe.</p></div>;
 
   const isSigned = !!contract.client_signature;
-  const supplierName = contract.users?.raw_user_meta_data?.first_name || 'Fornecedor';
+  const clientName = contract.opportunities?.name || 'Contratante';
+  const supplierName = 'Fornecedor';
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 font-sans text-gray-900">
@@ -160,7 +164,7 @@ export default function ContractPublicView() {
                     </div>
                   )}
                 </div>
-                <p className="font-bold text-lg text-center">{contract.clients?.name}</p>
+                <p className="font-bold text-lg text-center">{clientName}</p>
                 <p className="text-sm text-gray-500 uppercase tracking-widest mt-1">Contratante</p>
                 
                 {!isSigned && (
