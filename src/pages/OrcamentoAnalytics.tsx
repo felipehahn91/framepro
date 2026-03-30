@@ -109,6 +109,7 @@ const PreviewBlock = ({ section }: { section: any }) => {
   return null;
 };
 
+
 export default function OrcamentoAnalytics() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -117,10 +118,14 @@ export default function OrcamentoAnalytics() {
   const [analytics, setAnalytics] = useState<any[]>([]);
   const [tracking, setTracking] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isHeatmapOpen, setIsHeatmapOpen] = useState(false);
   
-  // Replay State
+  // Modais de Visualização
+  const [isHeatmapOpen, setIsHeatmapOpen] = useState(false);
+  const [heatmapDevice, setHeatmapDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+  
   const [playingSession, setPlayingSession] = useState<any>(null);
+  
+  // Controle do Player
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
@@ -157,15 +162,22 @@ export default function OrcamentoAnalytics() {
     }
   };
 
+  // Pega o device correto pra cada sessão
+  const getDeviceForSession = (sessionId: string) => {
+    const session = analytics.find(s => s.session_id === sessionId);
+    return session?.device || 'desktop';
+  };
+
   // Renderizar Heatmap em Tela Cheia
   useEffect(() => {
-    if (isHeatmapOpen && tracking.length > 0 && heatmapCanvasRef.current && heatmapContainerRef.current) {
+    if (isHeatmapOpen && heatmapCanvasRef.current && heatmapContainerRef.current) {
       
       const drawHeatmap = () => {
         const canvas = heatmapCanvasRef.current;
         const container = heatmapContainerRef.current;
         if (!canvas || !container) return;
         
+        // Define o tamanho real baseado no scroll
         canvas.width = container.offsetWidth;
         canvas.height = container.scrollHeight;
         const ctx = canvas.getContext('2d');
@@ -173,23 +185,25 @@ export default function OrcamentoAnalytics() {
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        const clicks = tracking.filter(t => t.event_type === 'click');
-        const moves = tracking.filter(t => t.event_type === 'mousemove');
+        // Filtramos os cliques apenas para o device selecionado para garantir precisão
+        const heatmapTracking = tracking.filter(t => getDeviceForSession(t.session_id) === heatmapDevice);
+        
+        const clicks = heatmapTracking.filter(t => t.event_type === 'click');
+        const moves = heatmapTracking.filter(t => t.event_type === 'mousemove');
         
         // Movimentos do mouse (azul fraco)
         moves.forEach(point => {
-          const gradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, 20);
-          gradient.addColorStop(0, 'rgba(59, 130, 246, 0.1)'); 
+          const gradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, 15);
+          gradient.addColorStop(0, 'rgba(59, 130, 246, 0.08)'); 
           gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
           ctx.fillStyle = gradient;
           ctx.beginPath();
-          ctx.arc(point.x, point.y, 20, 0, Math.PI * 2);
+          ctx.arc(point.x, point.y, 15, 0, Math.PI * 2);
           ctx.fill();
         });
 
         // Cliques (Vermelho vivo)
         clicks.forEach(point => {
-          // Aumentei o raio para 35 para o clique ficar mais proeminente e visível
           const gradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, 35);
           gradient.addColorStop(0, 'rgba(255, 0, 0, 0.9)'); 
           gradient.addColorStop(0.3, 'rgba(255, 69, 0, 0.7)');
@@ -201,21 +215,20 @@ export default function OrcamentoAnalytics() {
         });
       };
 
-      // Aumentei o timeout para garantir que as fontes e imagens tenham carregado antes de pegar a altura real
+      // Aguardamos 500ms para ter certeza que as imagens e fontes carregaram e a altura está 100% certa
       setTimeout(drawHeatmap, 500);
-      
-      // Um event listener opcional caso a janela mude de tamanho
-      window.addEventListener('resize', drawHeatmap);
-      return () => window.removeEventListener('resize', drawHeatmap);
     }
-  }, [isHeatmapOpen, tracking]);
+  }, [isHeatmapOpen, tracking, heatmapDevice]);
 
   // Loop de Animação do Replay
   useEffect(() => {
     if (!isPlaying || !playingSession) return;
     
     const events = playingSession.replay_data?.events || [];
-    if (events.length === 0) return;
+    if (events.length === 0) {
+      setIsPlaying(false);
+      return;
+    }
     
     const duration = events[events.length - 1].timeOffset;
     let animationFrameId: number;
@@ -261,6 +274,7 @@ export default function OrcamentoAnalytics() {
       }
     }
 
+    // Só atualizamos o mouse se tiver evento, no mobile não vai ter mousemove, então fica escondido.
     setCursorPos(currentMouse);
     setActiveClicks(currentClicks);
     
@@ -297,6 +311,8 @@ export default function OrcamentoAnalytics() {
   if (loading) return <Layout><div className="flex h-full items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div></Layout>;
 
   const clicksCount = tracking.filter(t => t.event_type === 'click').length;
+  const heatmapClicksCount = tracking.filter(t => t.event_type === 'click' && getDeviceForSession(t.session_id) === heatmapDevice).length;
+  
   const totalDurationMs = analytics.reduce((acc, session) => {
     const events = session.replay_data?.events || [];
     if (events.length > 0) return acc + events[events.length - 1].timeOffset;
@@ -312,6 +328,7 @@ export default function OrcamentoAnalytics() {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto flex flex-col h-full space-y-6">
+        
         {/* Cabeçalho */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -374,7 +391,7 @@ export default function OrcamentoAnalytics() {
             {analytics.length > 0 ? (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {analytics.map((session) => {
-                  const device = session.replay_data?.device || 'desktop';
+                  const device = session.device || session.replay_data?.device || 'desktop';
                   const eventsCount = session.replay_data?.events?.length || 0;
                   const duration = eventsCount > 0 ? session.replay_data.events[eventsCount - 1].timeOffset : 0;
                   
@@ -423,24 +440,52 @@ export default function OrcamentoAnalytics() {
       {/* MODAL: Heatmap Fullscreen */}
       {isHeatmapOpen && (
         <div className="fixed inset-0 z-[100] bg-[#f8fafc] flex flex-col animate-in fade-in zoom-in-95 duration-200">
-          <div className="h-16 bg-white border-b px-6 flex items-center justify-between shrink-0 shadow-sm z-50">
+          <div className="h-16 bg-white border-b px-6 flex flex-col sm:flex-row items-start sm:items-center justify-between shrink-0 shadow-sm z-50 py-2 sm:py-0">
             <div className="flex items-center gap-4">
               <h2 className="font-bold text-lg text-gray-900">Mapa de Calor (Heatmap)</h2>
-              <span className="bg-orange-100 text-orange-600 px-3 py-1 rounded-full text-xs font-bold border border-orange-200">
-                {clicksCount} cliques registrados
+              <span className="bg-orange-100 text-orange-600 px-3 py-1 rounded-full text-xs font-bold border border-orange-200 hidden sm:block">
+                {heatmapClicksCount} cliques neste dispositivo
               </span>
             </div>
-            <button onClick={() => setIsHeatmapOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-              <X className="w-6 h-6 text-gray-600" />
-            </button>
+            
+            <div className="flex items-center gap-4 w-full sm:w-auto mt-2 sm:mt-0 justify-between">
+              <div className="flex items-center bg-gray-100 p-1 rounded-lg">
+                <button 
+                  onClick={() => setHeatmapDevice('desktop')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-colors ${heatmapDevice === 'desktop' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  <Monitor className="w-4 h-4" /> Desktop
+                </button>
+                <button 
+                  onClick={() => setHeatmapDevice('tablet')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-colors ${heatmapDevice === 'tablet' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  <Tablet className="w-4 h-4" /> Tablet
+                </button>
+                <button 
+                  onClick={() => setHeatmapDevice('mobile')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 transition-colors ${heatmapDevice === 'mobile' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  <Smartphone className="w-4 h-4" /> Mobile
+                </button>
+              </div>
+
+              <button onClick={() => setIsHeatmapOpen(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
+            </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 sm:p-10 custom-scrollbar flex justify-center items-start w-full">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-10 custom-scrollbar flex justify-center items-start w-full">
             <div
               id="proposal-container"
               ref={heatmapContainerRef}
-              className="relative w-full shadow-2xl rounded-2xl overflow-hidden transition-all h-fit pb-10"
-              style={{ maxWidth: globalSettings.maxWidth, backgroundColor: globalSettings.backgroundColor }}
+              className="relative shadow-2xl rounded-2xl overflow-hidden transition-all h-fit pb-10 bg-white mx-auto"
+              style={{ 
+                width: heatmapDevice === 'mobile' ? '375px' : heatmapDevice === 'tablet' ? '768px' : '100%',
+                maxWidth: globalSettings.maxWidth, 
+                backgroundColor: globalSettings.backgroundColor 
+              }}
             >
               <div className="pointer-events-none opacity-40">
                 {renderSections.map((s: any) => (
@@ -453,10 +498,11 @@ export default function OrcamentoAnalytics() {
                 className="absolute top-0 left-0 pointer-events-none z-50 mix-blend-multiply"
               />
 
-              {tracking.length === 0 && (
+              {heatmapClicksCount === 0 && (
                 <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-sm z-50">
-                  <div className="bg-white px-6 py-4 rounded-xl shadow-lg border border-gray-200 font-bold text-gray-700">
-                    Aguardando interações dos clientes...
+                  <div className="bg-white px-6 py-4 rounded-xl shadow-lg border border-gray-200 font-bold text-gray-700 flex flex-col items-center">
+                    <MousePointerClick className="w-8 h-8 text-gray-400 mb-2" />
+                    Nenhum clique registrado no {heatmapDevice}
                   </div>
                 </div>
               )}
@@ -471,8 +517,8 @@ export default function OrcamentoAnalytics() {
           <div className="h-16 bg-black border-b border-white/10 flex items-center justify-between px-6 text-white shrink-0">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-full text-sm font-semibold">
-                {getDeviceIcon(playingSession.replay_data?.device)}
-                <span className="capitalize">{playingSession.replay_data?.device || 'Desktop'}</span>
+                {getDeviceIcon(playingSession.device || playingSession.replay_data?.device)}
+                <span className="capitalize">{playingSession.device || playingSession.replay_data?.device || 'Desktop'}</span>
               </div>
               <span className="text-white/60 text-sm font-medium hidden sm:block">
                 Visualização de {new Date(playingSession.created_at).toLocaleString('pt-BR')}
@@ -487,7 +533,7 @@ export default function OrcamentoAnalytics() {
             <div 
               className="bg-white rounded-xl overflow-hidden relative shadow-2xl transition-all duration-300 flex flex-col"
               style={{
-                width: playingSession.replay_data?.device === 'mobile' ? '375px' : playingSession.replay_data?.device === 'tablet' ? '768px' : '100%',
+                width: (playingSession.device || playingSession.replay_data?.device) === 'mobile' ? '375px' : (playingSession.device || playingSession.replay_data?.device) === 'tablet' ? '768px' : '100%',
                 maxWidth: globalSettings.maxWidth,
                 height: '100%',
                 maxHeight: '800px',
@@ -509,12 +555,14 @@ export default function OrcamentoAnalytics() {
                     ))}
                   </div>
 
-                  <div 
-                    className="absolute z-[9999] pointer-events-none transition-all duration-75 ease-linear"
-                    style={{ left: cursorPos.x, top: cursorPos.y, transform: 'translate(-50%, -50%)' }}
-                  >
-                    <MousePointer2 className="w-7 h-7 text-black fill-white drop-shadow-lg" />
-                  </div>
+                  {cursorPos.x !== -100 && (
+                    <div 
+                      className="absolute z-[9999] pointer-events-none transition-all duration-75 ease-linear"
+                      style={{ left: cursorPos.x, top: cursorPos.y, transform: 'translate(-50%, -50%)' }}
+                    >
+                      <MousePointer2 className="w-7 h-7 text-black fill-white drop-shadow-lg" />
+                    </div>
+                  )}
 
                   {activeClicks.map((click, i) => (
                     <div 
