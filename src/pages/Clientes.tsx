@@ -3,11 +3,12 @@ import { Layout } from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
-  Search, Plus, Edit2, Trash2, Users, Loader2, X, Mail, Phone, Instagram
+  Search, Plus, Edit2, Trash2, Users, Loader2, X, Mail, Phone
 } from "lucide-react";
 import { toast } from "sonner";
+import ClientDetailPanel from "@/components/ClientDetailPanel";
 
-interface Client {
+export interface Client {
   id: string;
   name: string;
   email: string;
@@ -16,6 +17,7 @@ interface Client {
   created_at: string;
   pipeline_id: string | null;
   is_client: boolean;
+  observations: string;
 }
 
 export default function Clientes() {
@@ -28,6 +30,7 @@ export default function Clientes() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [viewingClient, setViewingClient] = useState<Client | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -44,7 +47,6 @@ export default function Clientes() {
   const fetchClients = async () => {
     setLoading(true);
     try {
-      // Clientes são oportunidades marcadas com is_client = true
       const { data, error } = await supabase
         .from('opportunities')
         .select('*')
@@ -53,7 +55,7 @@ export default function Clientes() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setClients(data || []);
+      setClients(data as Client[] || []);
     } catch (error) {
       toast.error("Erro ao carregar clientes.");
     } finally {
@@ -71,7 +73,9 @@ export default function Clientes() {
     );
   }, [clients, searchQuery]);
 
-  const handleOpenModal = (client?: Client) => {
+  const handleOpenEditModal = (client?: Client, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation(); // Evita abrir o painel lateral ao clicar no botão de editar
+    
     if (client) {
       setSelectedClient(client);
       setFormData({
@@ -94,7 +98,6 @@ export default function Clientes() {
     setIsSubmitting(true);
     try {
       if (selectedClient) {
-        // Atualizar
         const { data, error } = await supabase
           .from('opportunities')
           .update({
@@ -108,10 +111,17 @@ export default function Clientes() {
           .single();
 
         if (error) throw error;
-        setClients(prev => prev.map(c => c.id === selectedClient.id ? data as Client : c));
+        
+        const updatedClient = data as Client;
+        setClients(prev => prev.map(c => c.id === selectedClient.id ? updatedClient : c));
+        
+        // Se o painel lateral do cliente estiver aberto, atualiza ele também
+        if (viewingClient?.id === updatedClient.id) {
+          setViewingClient(updatedClient);
+        }
+        
         toast.success("Cliente atualizado com sucesso!");
       } else {
-        // Criar Novo
         const { data, error } = await supabase
           .from('opportunities')
           .insert({
@@ -121,7 +131,7 @@ export default function Clientes() {
             phone: formData.phone,
             instagram: formData.instagram,
             is_client: true,
-            pipeline_id: null // Origem Manual
+            pipeline_id: null
           })
           .select()
           .single();
@@ -138,7 +148,8 @@ export default function Clientes() {
     }
   };
 
-  const handleDeleteClick = (client: Client) => {
+  const handleDeleteClick = (client: Client, e: React.MouseEvent) => {
+    e.stopPropagation();
     setSelectedClient(client);
     setIsDeleteModalOpen(true);
   };
@@ -160,10 +171,12 @@ export default function Clientes() {
     }
   };
 
-  const getInitials = (name: string) => {
-    if (!name) return "CL";
-    return name.substring(0, 2).toUpperCase();
+  const handleUpdateFromPanel = (updatedClient: Client) => {
+    setClients(prev => prev.map(c => c.id === updatedClient.id ? updatedClient : c));
+    setViewingClient(updatedClient);
   };
+
+  const getInitials = (name: string) => name ? name.substring(0, 2).toUpperCase() : "CL";
 
   if (loading) {
     return (
@@ -179,11 +192,10 @@ export default function Clientes() {
     <Layout>
       <div className="max-w-7xl mx-auto flex flex-col h-full">
         
-        {/* Header Actions */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-1">Clientes</h1>
-            <p className="text-sm text-gray-500">Gerencie sua base de clientes</p>
+            <p className="text-sm text-gray-500">Gerencie sua base de clientes e anotações</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -197,7 +209,7 @@ export default function Clientes() {
               />
             </div>
             <button 
-              onClick={() => handleOpenModal()} 
+              onClick={() => handleOpenEditModal()} 
               className="px-4 py-2 bg-orange-400 text-white font-medium rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-2 shadow-sm whitespace-nowrap"
             >
               <Plus className="w-4 h-4" /> Novo cliente
@@ -205,7 +217,6 @@ export default function Clientes() {
           </div>
         </div>
 
-        {/* Table Container */}
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex-1 flex flex-col">
           <div className="overflow-x-auto flex-1">
             {filteredClients.length > 0 ? (
@@ -221,14 +232,18 @@ export default function Clientes() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {filteredClients.map((client) => (
-                    <tr key={client.id} className="hover:bg-gray-50/50 transition-colors group">
+                    <tr 
+                      key={client.id} 
+                      onClick={() => setViewingClient(client)}
+                      className="hover:bg-gray-50/80 transition-colors group cursor-pointer"
+                    >
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-xs shrink-0">
+                          <div className="w-9 h-9 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-xs shrink-0 border border-orange-200">
                             {getInitials(client.name)}
                           </div>
                           <div>
-                            <p className="text-sm font-semibold text-gray-900">{client.name}</p>
+                            <p className="text-sm font-semibold text-gray-900 group-hover:text-orange-600 transition-colors">{client.name}</p>
                             {client.instagram && <p className="text-xs text-gray-500">{client.instagram}</p>}
                           </div>
                         </div>
@@ -264,14 +279,14 @@ export default function Clientes() {
                       <td className="px-6 py-4 whitespace-nowrap text-right">
                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button 
-                            onClick={() => handleOpenModal(client)}
+                            onClick={(e) => handleOpenEditModal(client, e)}
                             className="p-1.5 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-md transition-colors"
                             title="Editar cliente"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button 
-                            onClick={() => handleDeleteClick(client)}
+                            onClick={(e) => handleDeleteClick(client, e)}
                             className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
                             title="Excluir cliente"
                           >
@@ -297,6 +312,18 @@ export default function Clientes() {
           </div>
         </div>
       </div>
+
+      {/* Slide-over de Detalhes do Cliente */}
+      <ClientDetailPanel 
+        isOpen={!!viewingClient}
+        client={viewingClient}
+        onClose={() => setViewingClient(null)}
+        onUpdate={handleUpdateFromPanel}
+        onEditClick={(c) => {
+          setViewingClient(null);
+          handleOpenEditModal(c);
+        }}
+      />
 
       {/* Modal Criar/Editar Cliente */}
       {isModalOpen && (
