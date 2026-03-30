@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
-  ResponsiveContainer, Legend, Cell 
+  ResponsiveContainer, Legend 
 } from "recharts";
 import { toast } from "sonner";
 
@@ -37,9 +37,18 @@ interface Transaction {
   status: string;
   is_installment: boolean;
   installment_count: number;
-  installments: Installment[] | null;
+  installments: Installment[] | null | any; // Any added to handle JSON string safely
   clients?: { name: string };
 }
+
+// Helper seguro para garantir que installments seja sempre um array
+const getInstallments = (t: Transaction): Installment[] => {
+  if (!t.is_installment || !t.installments) return [];
+  if (typeof t.installments === 'string') {
+    try { return JSON.parse(t.installments); } catch (e) { return []; }
+  }
+  return t.installments as Installment[];
+};
 
 export default function Financeiro() {
   const { user } = useAuth();
@@ -49,7 +58,8 @@ export default function Financeiro() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   
-  const [period, setPeriod] = useState("30d");
+  // Alterado o padrão para 'this_month' para visualizar os vencimentos futuros do mês
+  const [period, setPeriod] = useState("this_month");
   const [customDateRange, setCustomDateRange] = useState({ start: "", end: "" });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -89,19 +99,31 @@ export default function Financeiro() {
     }
   };
 
-  // --- Lógica de Data ---
+  // --- Lógica de Data Melhorada para incluir futuro ---
   const dateRange = useMemo(() => {
     const now = new Date();
-    let start = new Date();
-    let end = new Date(now);
-    end.setHours(23, 59, 59, 999);
+    let start = new Date(0);
+    let end = new Date("2100-01-01");
 
     switch (period) {
-      case '30d': start.setDate(now.getDate() - 30); break;
-      case '60d': start.setDate(now.getDate() - 60); break;
-      case '90d': start.setDate(now.getDate() - 90); break;
-      case '6m': start.setMonth(now.getMonth() - 6); break;
-      case '1y': start.setFullYear(now.getFullYear() - 1); break;
+      case 'this_month':
+        start = new Date(now.getFullYear(), now.getMonth(), 1);
+        end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        break;
+      case 'next_month':
+        start = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        end = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59, 999);
+        break;
+      case '30d':
+        start = new Date(now);
+        start.setDate(now.getDate() - 30);
+        end = new Date(now);
+        end.setHours(23, 59, 59, 999);
+        break;
+      case '1y':
+        start = new Date(now.getFullYear(), 0, 1);
+        end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+        break;
       case 'custom': 
         start = customDateRange.start ? new Date(customDateRange.start) : new Date(0);
         if (customDateRange.end) {
@@ -109,16 +131,21 @@ export default function Financeiro() {
           end.setHours(23, 59, 59, 999);
         }
         break;
-      default: start.setDate(now.getDate() - 30);
+      case 'all':
+      default:
+        start = new Date(0);
+        end = new Date("2100-01-01");
+        break;
     }
     return { start, end };
   }, [period, customDateRange]);
 
-  // --- Filtro Principal ---
+  // --- Filtro Principal Seguro ---
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
-      if (t.is_installment && t.installments) {
-        return t.installments.some(inst => {
+      const insts = getInstallments(t);
+      if (insts.length > 0) {
+        return insts.some(inst => {
           const iDate = new Date(inst.dueDate);
           return iDate >= dateRange.start && iDate <= dateRange.end;
         });
@@ -138,8 +165,9 @@ export default function Financeiro() {
       const tDate = new Date(t.date);
       const isPaid = t.status === 'Recebido';
       
-      if (t.is_installment && t.installments) {
-        t.installments.forEach(inst => {
+      const insts = getInstallments(t);
+      if (insts.length > 0) {
+        insts.forEach(inst => {
           const iDate = new Date(inst.dueDate);
           const iPaid = inst.status === 'Pago';
           
@@ -163,74 +191,74 @@ export default function Financeiro() {
     return { atual, passado, previsto };
   }, [transactions, dateRange]);
 
-  // --- Gráficos ---
+  // --- Gráficos (Agora mostram previsão futura de parcelamentos) ---
   const monthlyChartData = useMemo(() => {
     const months: Record<string, any> = {};
     const now = new Date();
-    for (let i = 5; i >= 0; i--) { // Últimos 6 meses para visual mais limpo
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const key = `${d.getMonth() + 1}/${d.getFullYear()}`;
+    // Monta o gráfico com 2 meses para trás e 3 meses para frente (previsão)
+    for (let i = -2; i <= 3; i++) { 
+      const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+      const key = `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
       months[key] = { name: key, Pago: 0, Pendente: 0, Atrasado: 0 };
     }
 
     transactions.forEach(t => {
-      if (t.is_installment && t.installments) {
-        t.installments.forEach(inst => {
+      const insts = getInstallments(t);
+      if (insts.length > 0) {
+        insts.forEach(inst => {
           const d = new Date(inst.dueDate);
-          if (d >= dateRange.start && d <= dateRange.end) {
-            const key = `${d.getMonth() + 1}/${d.getFullYear()}`;
-            if (months[key]) {
-              if (inst.status === 'Pago') months[key].Pago += inst.amount;
-              else if (d < new Date(new Date().setHours(0,0,0,0))) months[key].Atrasado += inst.amount;
-              else months[key].Pendente += inst.amount;
-            }
+          const key = `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+          if (months[key]) {
+            if (inst.status === 'Pago') months[key].Pago += inst.amount;
+            else if (d < new Date(new Date().setHours(0,0,0,0))) months[key].Atrasado += inst.amount;
+            else months[key].Pendente += inst.amount;
           }
         });
       } else {
         const d = new Date(t.date);
-        if (d >= dateRange.start && d <= dateRange.end) {
-          const key = `${d.getMonth() + 1}/${d.getFullYear()}`;
-          if (months[key]) {
-            if (t.status === 'Recebido') months[key].Pago += t.amount;
-            else if (t.status === 'Cancelado') { /* ignore */ }
-            else if (d < new Date(new Date().setHours(0,0,0,0))) months[key].Atrasado += t.amount;
-            else months[key].Pendente += t.amount;
-          }
+        const key = `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+        if (months[key]) {
+          if (t.status === 'Recebido') months[key].Pago += t.amount;
+          else if (t.status === 'Cancelado') { /* ignore */ }
+          else if (d < new Date(new Date().setHours(0,0,0,0))) months[key].Atrasado += t.amount;
+          else months[key].Pendente += t.amount;
         }
       }
     });
 
     return Object.values(months);
-  }, [transactions, dateRange]);
+  }, [transactions]);
 
   const annualChartData = useMemo(() => {
     const years: Record<string, any> = {};
     const currentYear = new Date().getFullYear();
-    for (let i = 4; i >= 0; i--) {
-      years[currentYear - i] = { name: (currentYear - i).toString(), Total: 0 };
+    // Mostra o ano passado, o atual e o próximo (para parcelamentos longos)
+    for (let i = -1; i <= 1; i++) {
+      const y = currentYear + i;
+      years[y.toString()] = { name: y.toString(), Total: 0 };
     }
 
     transactions.forEach(t => {
-      if (t.is_installment && t.installments) {
-        t.installments.forEach(inst => {
+      const insts = getInstallments(t);
+      if (insts.length > 0) {
+        insts.forEach(inst => {
           const d = new Date(inst.dueDate);
-          if (d >= dateRange.start && d <= dateRange.end && inst.status === 'Pago') {
+          if (inst.status === 'Pago') {
             const y = new Date(inst.paidDate || inst.dueDate).getFullYear();
-            if (years[y]) years[y].Total += inst.amount;
+            if (years[y.toString()]) years[y.toString()].Total += inst.amount;
           }
         });
       } else {
         const d = new Date(t.date);
-        if (d >= dateRange.start && d <= dateRange.end && t.status === 'Recebido') {
+        if (t.status === 'Recebido') {
           const y = d.getFullYear();
-          if (years[y]) years[y].Total += t.amount;
+          if (years[y.toString()]) years[y.toString()].Total += t.amount;
         }
       }
     });
 
     return Object.values(years);
-  }, [transactions, dateRange]);
-
+  }, [transactions]);
 
   // --- Ações ---
   const handleOpenModal = (tx?: Transaction) => {
@@ -279,7 +307,10 @@ export default function Financeiro() {
         
         for (let i = 0; i < count; i++) {
           const d = new Date(formData.date);
+          // O Date do Javascript lida automaticamente com mudanças de mês mantendo o dia certo
+          d.setUTCHours(12); // Garante que não pule dia pelo fuso horário
           d.setMonth(d.getMonth() + i);
+          
           installments.push({
             id: `inst_${i + 1}_${Date.now()}`,
             number: i + 1,
@@ -332,10 +363,11 @@ export default function Financeiro() {
   };
 
   const handleMarkInstallmentPaid = async (tx: Transaction, instId: string) => {
-    if (!tx.installments) return;
+    const insts = getInstallments(tx);
+    if (!insts.length) return;
     
     try {
-      const updatedInsts = tx.installments.map(i => i.id === instId ? { ...i, status: 'Pago', paidDate: new Date().toISOString() } : i);
+      const updatedInsts = insts.map(i => i.id === instId ? { ...i, status: 'Pago', paidDate: new Date().toISOString() } : i);
       const allPaid = updatedInsts.every(i => i.status === 'Pago');
       const newStatus = allPaid ? 'Recebido' : 'Pendente';
 
@@ -418,11 +450,11 @@ export default function Financeiro() {
                   value={period} onChange={(e) => setPeriod(e.target.value)}
                   className="bg-white border border-gray-200 rounded-lg text-sm py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-orange-400"
                 >
+                  <option value="this_month">Este Mês</option>
+                  <option value="next_month">Próximo Mês</option>
                   <option value="30d">Últimos 30 dias</option>
-                  <option value="60d">Últimos 60 dias</option>
-                  <option value="90d">Últimos 90 dias</option>
-                  <option value="6m">Últimos 6 meses</option>
-                  <option value="1y">Último 1 ano</option>
+                  <option value="1y">Este Ano</option>
+                  <option value="all">Todos os Registros</option>
                 </select>
               </div>
               <button 
@@ -472,8 +504,8 @@ export default function Financeiro() {
             {/* Gráficos */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-                <h3 className="font-bold text-gray-900 mb-1">Receita Mensal</h3>
-                <p className="text-xs text-gray-500 mb-6">Distribuição por status no período</p>
+                <h3 className="font-bold text-gray-900 mb-1">Previsão Mensal</h3>
+                <p className="text-xs text-gray-500 mb-6">Distribuição e estimativa para os próximos meses</p>
                 <div className="h-[250px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={monthlyChartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
@@ -492,7 +524,7 @@ export default function Financeiro() {
 
               <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
                 <h3 className="font-bold text-gray-900 mb-1">Receita Anual</h3>
-                <p className="text-xs text-gray-500 mb-6">Total recebido no período</p>
+                <p className="text-xs text-gray-500 mb-6">Total recebido histórico</p>
                 <div className="h-[250px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={annualChartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
@@ -513,9 +545,11 @@ export default function Financeiro() {
               
               {filteredTransactions.length > 0 ? (
                 <div className="space-y-3">
-                  {filteredTransactions.map((tx) => (
+                  {filteredTransactions.map((tx) => {
+                    const insts = getInstallments(tx);
+                    return (
                     <div key={tx.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
-                      {tx.is_installment && tx.installments ? (
+                      {insts.length > 0 ? (
                         <div className="space-y-3">
                           <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                             <div>
@@ -529,7 +563,7 @@ export default function Financeiro() {
                             </div>
                           </div>
                           <div className="space-y-2 pl-4 border-l-2 border-orange-100">
-                            {tx.installments.map(inst => (
+                            {insts.map((inst: Installment) => (
                               <div key={inst.id} className="flex items-center justify-between bg-gray-50 p-2.5 rounded-lg border border-gray-100">
                                 <div className="flex items-center gap-3">
                                   <div className="w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-500">
@@ -585,7 +619,7 @@ export default function Financeiro() {
                         </div>
                       )}
                     </div>
-                  ))}
+                  )})}
                 </div>
               ) : (
                 <div className="bg-white border border-gray-200 rounded-xl p-12 text-center">
@@ -613,25 +647,25 @@ export default function Financeiro() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
           <div className="relative bg-white rounded-2xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in-95">
-            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 rounded-t-2xl">
               <div>
                 <h2 className="text-xl font-bold text-gray-900">{editingTx ? 'Editar Recebimento' : 'Novo Recebimento'}</h2>
                 <p className="text-sm text-gray-500 mt-1">Adicione um novo recebimento ou parcelamento ao seu financeiro</p>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-50 rounded-full transition-colors">
-                <X className="w-5 h-5" />
+              <button onClick={() => setIsModalOpen(false)} className="p-2 text-gray-400 hover:text-gray-700 bg-white rounded-full border border-gray-200 shadow-sm transition-colors">
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Data de Pagamento Mensal *</label>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1.5">Data Inicial *</label>
                   <div className="relative">
                     <input 
                       type="date" required
                       value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})}
-                      className="w-full pl-3 pr-10 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 text-gray-700"
+                      className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 text-gray-700"
                     />
                   </div>
                 </div>
@@ -694,11 +728,11 @@ export default function Financeiro() {
                 )}
               </div>
 
-              <div className="flex justify-center gap-3 pt-6 pb-2">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-8 py-2.5 text-gray-700 font-semibold border border-gray-200 hover:bg-gray-50 rounded-full transition-colors">
+              <div className="flex justify-end gap-3 pt-6 pb-2 border-t border-gray-100">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2.5 text-gray-700 font-semibold border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors">
                   Cancelar
                 </button>
-                <button type="submit" disabled={isSubmitting} className="px-8 py-2.5 bg-orange-400 text-white font-semibold rounded-full hover:bg-orange-500 transition-colors flex items-center justify-center min-w-[160px] shadow-md disabled:opacity-50">
+                <button type="submit" disabled={isSubmitting} className="px-6 py-2.5 bg-orange-400 text-white font-semibold rounded-lg hover:bg-orange-500 transition-colors flex items-center justify-center shadow-sm disabled:opacity-50">
                   {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Criar Recebimento'}
                 </button>
               </div>
