@@ -9,6 +9,7 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import Index from "./pages/Index";
 import Oportunidades from "./pages/Oportunidades";
 import Login from "./pages/Login";
+import LinkFormPage from "./pages/LinkFormPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,6 +24,7 @@ const App = () => (
           <Routes>
             {/* Rota Pública */}
             <Route path="/login" element={<Login />} />
+            <Route path="/link-form/:id" element={<LinkFormPage />} />
             
             {/* Rotas Privadas */}
             <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
