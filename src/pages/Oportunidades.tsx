@@ -4,8 +4,8 @@ import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
-  Trash2, Plus, UserPlus, MessageCircle, Diamond, Link as LinkIcon, 
-  Upload, Loader2, Copy, ExternalLink, X, ArrowUp, ArrowDown, UserMinus
+  Trash2, Plus, UserPlus, MessageCircle, Link as LinkIcon, 
+  Upload, Loader2, Copy, ExternalLink, X, UserMinus, Search, Inbox, ArrowUp, ArrowDown
 } from "lucide-react";
 import { toast } from "sonner";
 import LeadImportModal from "@/components/LeadImportModal";
@@ -25,14 +25,14 @@ interface LinkForm {
 }
 
 const PHOTO_TYPES = [
-  { value: 'Casamento', label: '💍 Casamento' },
-  { value: 'Gestante', label: '🤰 Gestante' },
-  { value: 'Corporativo', label: '💼 Corporativo' },
-  { value: 'Retrato', label: '👤 Retrato' },
-  { value: 'Newborn', label: '👶 Newborn' },
-  { value: 'Infantil', label: '👧 Infantil' },
-  { value: 'Ensaio feminino', label: '👩 Ensaio feminino' },
-  { value: 'Smash the cake', label: '🎂 Smash the cake' }
+  { value: 'Casamento', label: '💍 Casamento', color: 'bg-pink-100 text-pink-700' },
+  { value: 'Gestante', label: '🤰 Gestante', color: 'bg-purple-100 text-purple-700' },
+  { value: 'Corporativo', label: '💼 Corporativo', color: 'bg-blue-100 text-blue-700' },
+  { value: 'Retrato', label: '👤 Retrato', color: 'bg-emerald-100 text-emerald-700' },
+  { value: 'Newborn', label: '👶 Newborn', color: 'bg-teal-100 text-teal-700' },
+  { value: 'Infantil', label: '👧 Infantil', color: 'bg-yellow-100 text-yellow-700' },
+  { value: 'Ensaio feminino', label: '👩 Ensaio feminino', color: 'bg-rose-100 text-rose-700' },
+  { value: 'Smash the cake', label: '🎂 Smash the cake', color: 'bg-orange-100 text-orange-700' }
 ];
 
 export default function Oportunidades() {
@@ -47,6 +47,7 @@ export default function Oportunidades() {
   
   const [activePipelineId, setActivePipelineId] = useState<string>("");
   const [selectedOpps, setSelectedOpps] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Modais
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -137,6 +138,16 @@ export default function Oportunidades() {
 
   const activeColumns = columns.filter(c => c.pipeline_id === activePipelineId).sort((a, b) => a.order_index - b.order_index);
 
+  const filteredOpportunities = opportunities.filter(opp => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      opp.name.toLowerCase().includes(query) ||
+      (opp.email && opp.email.toLowerCase().includes(query)) ||
+      (opp.phone && opp.phone.toLowerCase().includes(query))
+    );
+  });
+
   // Drag and Drop
   const onDragEnd = async (result: any) => {
     const { destination, source, draggableId, type } = result;
@@ -158,8 +169,59 @@ export default function Oportunidades() {
     }
 
     const destColId = destination.droppableId;
-    setOpportunities(prev => prev.map(o => o.id === draggableId ? { ...o, column_id: destColId } : o));
+    
+    // Atualização otimista com reordenação local (quando solta na mesma coluna ou em colunas diferentes)
+    setOpportunities(prev => {
+      const updatedOpps = Array.from(prev);
+      const oppToMove = updatedOpps.find(o => o.id === draggableId);
+      if (oppToMove) {
+        oppToMove.column_id = destColId;
+      }
+      return updatedOpps;
+    });
+
     await supabase.from('opportunities').update({ column_id: destColId }).eq('id', draggableId);
+  };
+
+  // Animação Física de Drag
+  const getDragStyle = (style: any, snapshot: any) => {
+    if (!snapshot.isDragging) return style;
+    if (!style?.transform) return style;
+    return {
+      ...style,
+      transform: `${style.transform} rotate(3deg) scale(1.02)`,
+      transition: 'transform 0.15s ease-out, box-shadow 0.15s ease-out', 
+      zIndex: 50,
+    };
+  };
+
+  // Seleções
+  const toggleColumnSelection = (colId: string, colOppsIds: string[]) => {
+    const allSelected = colOppsIds.length > 0 && colOppsIds.every(id => selectedOpps.includes(id));
+    if (allSelected) {
+      setSelectedOpps(prev => prev.filter(id => !colOppsIds.includes(id)));
+    } else {
+      const newIds = colOppsIds.filter(id => !selectedOpps.includes(id));
+      setSelectedOpps(prev => [...prev, ...newIds]);
+    }
+  };
+
+  const toggleSelection = (oppId: string) => {
+    setSelectedOpps(prev => prev.includes(oppId) ? prev.filter(id => id !== oppId) : [...prev, oppId]);
+  };
+
+  const handleBulkDelete = async () => {
+    if (!confirm(`Deletar ${selectedOpps.length} oportunidades?`)) return;
+    try {
+      for (const id of selectedOpps) {
+        await supabase.from('opportunities').delete().eq('id', id);
+      }
+      setOpportunities(prev => prev.filter(o => !selectedOpps.includes(o.id)));
+      setSelectedOpps([]);
+      toast.success("Oportunidades deletadas.");
+    } catch (e) {
+      toast.error("Erro ao deletar.");
+    }
   };
 
   // Reordenar Setas Cima/Baixo
@@ -184,38 +246,9 @@ export default function Oportunidades() {
     });
   };
 
-  // Seleções
-  const handleSelectAll = (colId: string) => {
-    const colOppsIds = opportunities.filter(o => o.column_id === colId).map(o => o.id);
-    setSelectedOpps(prev => Array.from(new Set([...prev, ...colOppsIds])));
-  };
-
-  const handleDeselectAll = (colId: string) => {
-    const colOppsIds = opportunities.filter(o => o.column_id === colId).map(o => o.id);
-    setSelectedOpps(prev => prev.filter(id => !colOppsIds.includes(id)));
-  };
-
-  const toggleSelection = (oppId: string) => {
-    setSelectedOpps(prev => prev.includes(oppId) ? prev.filter(id => id !== oppId) : [...prev, oppId]);
-  };
-
-  const handleBulkDelete = async () => {
-    if (!confirm(`Deletar ${selectedOpps.length} oportunidades?`)) return;
-    try {
-      for (const id of selectedOpps) {
-        await supabase.from('opportunities').delete().eq('id', id);
-      }
-      setOpportunities(prev => prev.filter(o => !selectedOpps.includes(o.id)));
-      setSelectedOpps([]);
-      toast.success("Oportunidades deletadas.");
-    } catch (e) {
-      toast.error("Erro ao deletar.");
-    }
-  };
-
   // Ações nos Cards
   const handleToggleClient = async (e: React.MouseEvent, opp: Opportunity) => {
-    e.stopPropagation(); // Evita abrir o modal
+    e.stopPropagation();
     try {
       const newStatus = !opp.is_client;
       await supabase.from('opportunities').update({ is_client: newStatus }).eq('id', opp.id);
@@ -227,7 +260,7 @@ export default function Oportunidades() {
   };
 
   const handleCadencia = (e: React.MouseEvent, opp: Opportunity) => {
-    e.stopPropagation(); // Evita abrir o modal
+    e.stopPropagation();
     const phone = opp.phone;
     if (!phone) return toast.error("Este lead não possui telefone cadastrado.");
     const cleanPhone = phone.replace(/\D/g, '');
@@ -239,14 +272,6 @@ export default function Oportunidades() {
     await supabase.from('columns').delete().eq('id', colId);
     setColumns(prev => prev.filter(c => c.id !== colId));
     toast.success("Coluna deletada.");
-  };
-
-  const handleDeleteOpp = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    if (!confirm("Deletar oportunidade?")) return;
-    setOpportunities(prev => prev.filter(o => o.id !== id));
-    await supabase.from('opportunities').delete().eq('id', id);
-    toast.success("Deletado.");
   };
 
   // Funções do Modal de Detalhes
@@ -357,14 +382,26 @@ export default function Oportunidades() {
           </div>
         </div>
 
-        {/* Toolbar */}
-        <div className="flex items-center gap-3 mb-6">
+        {/* Toolbar: Search & Pipelines */}
+        <div className="flex items-center gap-3 mb-6 flex-wrap">
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input 
+              type="text"
+              placeholder="Pesquisar leads..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-[250px] pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] text-gray-700 shadow-sm transition-colors outline-none focus:ring-2 focus:ring-orange-400"
+            />
+          </div>
+          
           <select 
             value={activePipelineId} onChange={(e) => setActivePipelineId(e.target.value)}
             className="w-[200px] px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] text-gray-700 shadow-sm transition-colors outline-none focus:ring-2 focus:ring-orange-400 appearance-none cursor-pointer"
           >
             {pipelines.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
+          
           <button 
             onClick={async () => {
               const name = prompt("Nome do novo pipeline:");
@@ -391,7 +428,12 @@ export default function Oportunidades() {
               {(provided) => (
                 <div className="flex gap-5 h-full" {...provided.droppableProps} ref={provided.innerRef}>
                   {activeColumns.map((col, index) => {
-                    const colOpps = opportunities.filter(o => o.column_id === col.id);
+                    const colOpps = filteredOpportunities.filter(o => o.column_id === col.id);
+                    const colOppsIds = colOpps.map(o => o.id);
+                    
+                    const allSelected = colOpps.length > 0 && colOpps.every(o => selectedOpps.includes(o.id));
+                    const someSelected = colOpps.some(o => selectedOpps.includes(o.id));
+
                     return (
                       <Draggable key={col.id} draggableId={col.id} index={index}>
                         {(provided) => (
@@ -400,21 +442,26 @@ export default function Oportunidades() {
                             className="flex-1 min-w-[320px] max-w-[340px] bg-white rounded-xl border border-gray-200 flex flex-col max-h-[calc(100vh-220px)] shadow-sm"
                           >
                             <div className="p-4 border-b border-gray-100 rounded-t-xl bg-white" {...provided.dragHandleProps}>
-                              <div className="flex items-center justify-between mb-3">
-                                <h3 className="font-bold text-gray-900 text-[15px]">{col.name}</h3>
+                              <div className="flex items-center justify-between mb-1">
                                 <div className="flex items-center gap-2">
+                                  {/* Checkbox mestre da coluna */}
+                                  <input 
+                                    type="checkbox"
+                                    checked={allSelected}
+                                    ref={input => { if (input) input.indeterminate = someSelected && !allSelected; }}
+                                    onChange={() => toggleColumnSelection(col.id, colOppsIds)}
+                                    className="w-4 h-4 rounded border-gray-300 text-orange-400 focus:ring-orange-400 cursor-pointer"
+                                  />
+                                  <h3 className="font-bold text-gray-900 text-[15px]">{col.name}</h3>
                                   <span className="bg-gray-100 text-gray-500 text-xs font-bold px-2 py-0.5 rounded-full min-w-[24px] text-center">
                                     {colOpps.length}
                                   </span>
+                                </div>
+                                <div className="flex items-center gap-2">
                                   <button onClick={() => handleDeleteColumn(col.id)} className="text-gray-400 hover:text-red-500 transition-colors">
                                     <Trash2 className="w-4 h-4" />
                                   </button>
                                 </div>
-                              </div>
-                              <div className="flex items-center gap-2 text-[11px] text-gray-500 font-medium">
-                                <button onClick={() => handleSelectAll(col.id)} className="hover:text-gray-900 transition-colors">Selecionar Todos</button>
-                                <span className="text-gray-300">|</span>
-                                <button onClick={() => handleDeselectAll(col.id)} className="hover:text-gray-900 transition-colors">Desmarcar Todos</button>
                               </div>
                             </div>
                             
@@ -425,67 +472,84 @@ export default function Oportunidades() {
                                   className={`flex-1 p-3 overflow-y-auto rounded-b-xl space-y-3 transition-colors ${snapshot.isDraggingOver ? 'bg-orange-50/20' : 'bg-gray-50/30'}`}
                                   style={{ minHeight: '150px' }}
                                 >
-                                  {colOpps.map((opp, oppIndex) => (
-                                    <Draggable key={opp.id} draggableId={opp.id} index={oppIndex}>
-                                      {(provided, snapshot) => (
-                                        <div
-                                          ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}
-                                          onClick={() => handleCardClick(opp)}
-                                          className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all relative group cursor-pointer"
-                                          style={{ ...provided.draggableProps.style, opacity: snapshot.isDragging ? 0.9 : 1 }}
-                                        >
-                                          {/* Card Header: Checkbox + Name + Arrows */}
-                                          <div className="flex justify-between items-start mb-3">
-                                            <div className="flex items-center gap-2.5">
-                                              <input 
-                                                type="checkbox" 
-                                                checked={selectedOpps.includes(opp.id)}
-                                                onChange={() => toggleSelection(opp.id)}
-                                                onClick={(e) => e.stopPropagation()}
-                                                className="w-4 h-4 rounded-full border-gray-300 text-orange-400 focus:ring-orange-400 cursor-pointer"
-                                              />
-                                              <span className="font-semibold text-gray-900 text-sm">{opp.name}</span>
+                                  {colOpps.length === 0 && !snapshot.isDraggingOver && (
+                                    <div className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-gray-200 rounded-lg text-gray-400 mt-2 mx-1">
+                                      <Inbox className="w-6 h-6 mb-2 opacity-30" />
+                                      <span className="text-xs font-medium">Arraste leads para cá</span>
+                                    </div>
+                                  )}
+
+                                  {colOpps.map((opp, oppIndex) => {
+                                    const photoTypeObj = PHOTO_TYPES.find(p => p.value === opp.tag);
+                                    
+                                    return (
+                                      <Draggable key={opp.id} draggableId={opp.id} index={oppIndex}>
+                                        {(provided, snapshot) => (
+                                          <div
+                                            ref={provided.innerRef} 
+                                            {...provided.draggableProps} 
+                                            {...provided.dragHandleProps}
+                                            onClick={() => handleCardClick(opp)}
+                                            className={`bg-white p-4 rounded-xl border transition-all relative group cursor-pointer ${
+                                              snapshot.isDragging 
+                                              ? 'shadow-xl ring-2 ring-orange-400 border-transparent z-50' 
+                                              : 'border-gray-200 shadow-sm hover:shadow-md'
+                                            }`}
+                                            style={getDragStyle(provided.draggableProps.style, snapshot)}
+                                          >
+                                            {/* Card Header: Checkbox + Name */}
+                                            <div className="flex justify-between items-start mb-3">
+                                              <div className="flex items-center gap-2.5">
+                                                <input 
+                                                  type="checkbox" 
+                                                  checked={selectedOpps.includes(opp.id)}
+                                                  onChange={() => toggleSelection(opp.id)}
+                                                  onClick={(e) => e.stopPropagation()}
+                                                  className="w-4 h-4 mt-0.5 rounded border-gray-300 text-orange-400 focus:ring-orange-400 cursor-pointer shrink-0"
+                                                />
+                                                <span className="font-semibold text-gray-900 text-sm leading-tight">{opp.name}</span>
+                                              </div>
+                                              <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
+                                                <button onClick={(e) => moveCard(e, opp.id, col.id, 'up')} disabled={oppIndex === 0} className="text-gray-400 hover:text-gray-700 disabled:opacity-30">
+                                                  <ArrowUp className="w-3 h-3" />
+                                                </button>
+                                                <button onClick={(e) => moveCard(e, opp.id, col.id, 'down')} disabled={oppIndex === colOpps.length - 1} className="text-gray-400 hover:text-gray-700 disabled:opacity-30">
+                                                  <ArrowDown className="w-3 h-3" />
+                                                </button>
+                                              </div>
                                             </div>
-                                            <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                                              <button onClick={(e) => moveCard(e, opp.id, col.id, 'up')} disabled={oppIndex === 0} className="text-gray-400 hover:text-gray-700 disabled:opacity-30">
-                                                <ArrowUp className="w-3 h-3" />
+
+                                            {/* Card Info: Tag, Email, Phone */}
+                                            {photoTypeObj && (
+                                              <div className={`mb-2.5 inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${photoTypeObj.color}`}>
+                                                {photoTypeObj.label}
+                                              </div>
+                                            )}
+                                            <div className="text-[12px] text-gray-500 mb-0.5 truncate">{opp.email}</div>
+                                            <div className="text-[12px] text-gray-500 mb-4">{opp.phone}</div>
+
+                                            {/* Card Footer: Buttons */}
+                                            <div className="flex gap-2">
+                                              <button 
+                                                onClick={(e) => handleToggleClient(e, opp)}
+                                                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md border text-[11px] font-semibold transition-colors ${opp.is_client ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}
+                                              >
+                                                {opp.is_client ? <UserMinus className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
+                                                {opp.is_client ? '-Cliente' : '+Cliente'}
                                               </button>
-                                              <button onClick={(e) => moveCard(e, opp.id, col.id, 'down')} disabled={oppIndex === colOpps.length - 1} className="text-gray-400 hover:text-gray-700 disabled:opacity-30">
-                                                <ArrowDown className="w-3 h-3" />
+                                              <button 
+                                                onClick={(e) => handleCadencia(e, opp)}
+                                                className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md border border-gray-200 text-gray-700 text-[11px] font-semibold hover:bg-gray-50 transition-colors"
+                                              >
+                                                <MessageCircle className="w-3.5 h-3.5 text-green-500" />
+                                                Cadência
                                               </button>
                                             </div>
                                           </div>
-
-                                          {/* Card Info: Tag, Email, Phone */}
-                                          {opp.tag && (
-                                            <div className="mb-2.5 inline-flex items-center bg-gray-100 px-2 py-0.5 rounded-md text-[11px] font-medium text-gray-600">
-                                              {PHOTO_TYPES.find(p => p.value === opp.tag)?.label || opp.tag}
-                                            </div>
-                                          )}
-                                          <div className="text-[12px] text-gray-500 mb-0.5 truncate">{opp.email}</div>
-                                          <div className="text-[12px] text-gray-500 mb-4">{opp.phone}</div>
-
-                                          {/* Card Footer: Buttons */}
-                                          <div className="flex gap-2">
-                                            <button 
-                                              onClick={(e) => handleToggleClient(e, opp)}
-                                              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md border text-[11px] font-semibold transition-colors ${opp.is_client ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}
-                                            >
-                                              {opp.is_client ? <UserMinus className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
-                                              {opp.is_client ? '-Cliente' : '+Cliente'}
-                                            </button>
-                                            <button 
-                                              onClick={(e) => handleCadencia(e, opp)}
-                                              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md border border-gray-200 text-gray-700 text-[11px] font-semibold hover:bg-gray-50 transition-colors"
-                                            >
-                                              <MessageCircle className="w-3.5 h-3.5 text-green-500" />
-                                              Cadência
-                                            </button>
-                                          </div>
-                                        </div>
-                                      )}
-                                    </Draggable>
-                                  ))}
+                                        )}
+                                      </Draggable>
+                                    );
+                                  })}
                                   {provided.placeholder}
                                 </div>
                               )}
