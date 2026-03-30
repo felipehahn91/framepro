@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { 
   Search, Plus, FileText, Loader2, Edit2, Trash2, 
   ExternalLink, Copy, LayoutTemplate, FileUp, 
-  User, Clock, Eye, Link as LinkIcon
+  User, Clock, Eye, Link as LinkIcon, Activity
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -250,6 +250,14 @@ export default function Orcamentos() {
 
                   {/* Right Side: Actions */}
                   <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto pb-2 lg:pb-0 hide-scrollbar">
+                    
+                    <button 
+                      onClick={() => navigate(`/orcamentos/analytics/${orc.id}`)}
+                      className="px-4 py-2.5 bg-purple-50 text-purple-600 font-semibold rounded-lg hover:bg-purple-100 transition-all flex items-center gap-2 whitespace-nowrap text-sm border border-purple-100"
+                    >
+                      <Activity className="w-4 h-4" /> Analytics
+                    </button>
+                    
                     <button 
                       onClick={() => openLinkModal(orc)}
                       className="px-4 py-2.5 bg-gray-50 text-gray-700 font-semibold rounded-lg hover:bg-gray-100 transition-all flex items-center gap-2 whitespace-nowrap text-sm border border-gray-200"

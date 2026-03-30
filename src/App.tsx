@@ -17,6 +17,7 @@ import ContractPublicView from "./pages/ContractPublicView";
 import Orcamentos from "./pages/Orcamentos";
 import OrcamentoEditor from "./pages/OrcamentoEditor";
 import OrcamentoPublicView from "./pages/OrcamentoPublicView";
+import OrcamentoAnalytics from "./pages/OrcamentoAnalytics";
 import Login from "./pages/Login";
 import LinkFormPage from "./pages/LinkFormPage";
 import NotFound from "./pages/NotFound";
@@ -50,6 +51,7 @@ const App = () => (
 
             <Route path="/orcamentos" element={<ProtectedRoute><Orcamentos /></ProtectedRoute>} />
             <Route path="/orcamentos/editar/:id" element={<ProtectedRoute><OrcamentoEditor /></ProtectedRoute>} />
+            <Route path="/orcamentos/analytics/:id" element={<ProtectedRoute><OrcamentoAnalytics /></ProtectedRoute>} />
             
             {/* Fallback */}
             <Route path="*" element={<NotFound />} />

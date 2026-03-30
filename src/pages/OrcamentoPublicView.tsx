@@ -3,6 +3,19 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { initTracking } from "@/lib/tracking";
+
+const getDeviceType = () => {
+  const width = window.innerWidth;
+  const ua = navigator.userAgent.toLowerCase();
+  if (width < 768 || ua.includes('mobile')) return 'mobile';
+  if (width >= 768 && width <= 1024 || ua.includes('tablet')) return 'tablet';
+  return 'desktop';
+};
+
+const generateSessionId = () => {
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+};
 
 const renderHTML = (html: string, fallback: string) => {
   if (!html || html === '<p><br></p>') return fallback;
@@ -77,12 +90,10 @@ const PreviewBlock = ({ section }: { section: any }) => {
         <div className={`grid gap-6 md:gap-8 grid-cols-1 ${packages.length === 2 ? 'md:grid-cols-2 max-w-4xl mx-auto' : packages.length >= 3 ? 'md:grid-cols-3' : 'max-w-md mx-auto'}`}>
           {packages.map((pkg: any, i: number) => (
             <div key={pkg.id || i} className="flex flex-col bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 relative">
-              {/* Header color background */}
               <div style={{ backgroundColor: pkg.color || '#3b82f6' }} className="pt-6 pb-16 px-6 text-center text-white">
                 <h3 className="text-xl font-bold uppercase tracking-wider">{pkg.title || 'Plano'}</h3>
               </div>
               
-              {/* Price Card overlapping */}
               <div className="px-6 flex-1 flex flex-col relative z-10 -mt-10">
                 <div className="bg-white rounded-xl shadow-lg p-6 text-center border border-gray-50 mb-6 flex flex-col items-center justify-center min-h-[120px]">
                   <div className="text-3xl font-bold" style={{ color: pkg.color || '#3b82f6' }}>
@@ -91,7 +102,6 @@ const PreviewBlock = ({ section }: { section: any }) => {
                   {pkg.description && <p className="text-xs text-gray-400 mt-3 leading-relaxed">{pkg.description}</p>}
                 </div>
                 
-                {/* Features */}
                 <ul className="space-y-4 text-left flex-1 px-2">
                   {(pkg.features || []).map((feat: string, idx: number) => (
                     <li key={idx} className="flex items-start gap-3 text-sm text-gray-600">
@@ -104,7 +114,6 @@ const PreviewBlock = ({ section }: { section: any }) => {
                   )}
                 </ul>
                 
-                {/* Action Button */}
                 <div className="mt-8 mb-6 px-2">
                   <a 
                     href={pkg.buttonLink || '#'} 
@@ -264,6 +273,7 @@ export default function OrcamentoPublicView() {
       if (error) throw error;
       setOrcamento(data);
 
+      // Atualizar views
       supabase.from('orcamentos').update({ view_count: (data.view_count || 0) + 1 }).eq('id', data.id).then();
     } catch (error) {
       toast.error("Proposta não encontrada.");
@@ -271,6 +281,20 @@ export default function OrcamentoPublicView() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!orcamento) return;
+    
+    const sessionId = generateSessionId();
+    const deviceType = getDeviceType();
+    
+    // Inicia gravação de interações (Clarity clone)
+    const cleanupTracking = initTracking(orcamento.id, sessionId, deviceType);
+
+    return () => {
+      cleanupTracking();
+    };
+  }, [orcamento]);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-gray-50"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div>;
   if (!orcamento) return <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50"><AlertCircle className="w-16 h-16 text-gray-300 mb-4" /><h2 className="text-2xl font-bold">Proposta Indisponível</h2><p className="text-gray-500">O link acessado é inválido ou expirou.</p></div>;
