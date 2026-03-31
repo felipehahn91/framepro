@@ -68,6 +68,10 @@ const Index = () => {
       const now = new Date();
       const currentMonth = now.getMonth();
       const currentYear = now.getFullYear();
+      
+      // Zera as horas para comparar atrasos corretamente sem conflito de fuso
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
 
       let calcRealized = 0;
       let calcTotalRevenue = 0;
@@ -76,47 +80,49 @@ const Index = () => {
 
       if (transactions) {
         transactions.forEach(tx => {
-          const isInstallment = tx.is_installment;
-          
-          if (!isInstallment) {
-            const txDate = new Date(tx.date);
-            const isCurrentMonth = txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
-            const isOverdue = txDate < now && tx.status !== 'Pago';
-            const amount = Number(tx.amount);
-
-            if (tx.status === 'Pago') {
-              calcTotalRevenue += amount;
-              if (isCurrentMonth) calcRealized += amount;
-            } else if (tx.status === 'Pendente' || tx.status === 'Atrasado') {
-              if (isOverdue) {
-                calcOverdueRevenue += amount;
-              } else {
-                calcPendingRevenue += amount;
-              }
-            }
-          } else if (tx.installments) {
-            let insts = [];
+          let insts: any[] = [];
+          if (tx.is_installment && tx.installments) {
             try {
               insts = typeof tx.installments === 'string' ? JSON.parse(tx.installments) : tx.installments;
             } catch (e) {}
+          }
 
+          if (insts.length > 0) {
             insts.forEach((inst: any) => {
               const instDate = new Date(inst.dueDate);
               const isCurrentMonth = instDate.getMonth() === currentMonth && instDate.getFullYear() === currentYear;
-              const isOverdue = instDate < now && inst.status !== 'Pago';
-              const amount = Number(inst.amount);
+              const isPaid = inst.status === 'Pago' || inst.status === 'Recebido';
+              const isOverdue = instDate < today && !isPaid && inst.status !== 'Cancelado';
+              const amount = Number(inst.amount) || 0;
 
-              if (inst.status === 'Pago') {
+              if (isPaid) {
                 calcTotalRevenue += amount;
                 if (isCurrentMonth) calcRealized += amount;
-              } else {
-                if (isOverdue) {
+              } else if (inst.status !== 'Cancelado') {
+                if (isOverdue || inst.status === 'Atrasado') {
                   calcOverdueRevenue += amount;
                 } else {
                   calcPendingRevenue += amount;
                 }
               }
             });
+          } else {
+            const txDate = new Date(tx.date);
+            const isCurrentMonth = txDate.getMonth() === currentMonth && txDate.getFullYear() === currentYear;
+            const isPaid = tx.status === 'Recebido' || tx.status === 'Pago';
+            const isOverdue = txDate < today && !isPaid && tx.status !== 'Cancelado';
+            const amount = Number(tx.amount) || 0;
+
+            if (isPaid) {
+              calcTotalRevenue += amount;
+              if (isCurrentMonth) calcRealized += amount;
+            } else if (tx.status !== 'Cancelado') {
+              if (isOverdue || tx.status === 'Atrasado') {
+                calcOverdueRevenue += amount;
+              } else {
+                calcPendingRevenue += amount;
+              }
+            }
           }
         });
       }
