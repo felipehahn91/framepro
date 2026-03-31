@@ -81,7 +81,13 @@ export default function Oportunidades() {
     const channel = supabase.channel('schema-db-changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'opportunities', filter: `user_id=eq.${user.id}` }, 
         (payload) => {
-          if (payload.eventType === 'INSERT') setOpportunities(prev => [...prev, payload.new as Opportunity]);
+          if (payload.eventType === 'INSERT') {
+            setOpportunities(prev => {
+              const exists = prev.some(o => o.id === payload.new.id);
+              if (exists) return prev;
+              return [...prev, payload.new as Opportunity];
+            });
+          }
           if (payload.eventType === 'UPDATE') setOpportunities(prev => prev.map(o => o.id === payload.new.id ? payload.new as Opportunity : o));
           if (payload.eventType === 'DELETE') {
             setOpportunities(prev => prev.filter(o => o.id !== payload.old.id));
@@ -396,7 +402,7 @@ export default function Oportunidades() {
 
     try {
       if (isOpp) {
-        await supabase.from('opportunities').insert({
+        const { data, error } = await supabase.from('opportunities').insert({
           user_id: user?.id,
           pipeline_id: formData.pipeline_id || activePipelineId,
           column_id: targetCol,
@@ -408,8 +414,20 @@ export default function Oportunidades() {
           event_date: formData.date || null,
           address: formData.local,
           observations: formData.description,
-          tag: formData.tag
-        });
+          tag: formData.tag,
+          is_client: false
+        }).select().single();
+
+        if (error) throw error;
+        
+        // Atualização manual do estado para aparecer instantaneamente
+        if (data) {
+          setOpportunities(prev => {
+             const exists = prev.some(o => o.id === data.id);
+             if (exists) return prev;
+             return [...prev, data as Opportunity];
+          });
+        }
         toast.success("Oportunidade criada!");
       } else {
         const { data } = await supabase.from('link_forms').insert({
@@ -738,7 +756,7 @@ export default function Oportunidades() {
                 <h2 className="text-xl font-bold text-gray-900">Adicionar ao Pipeline</h2>
                 <p className="text-sm text-gray-500 mt-1">Crie uma nova oportunidade ou gere um link de formulário.</p>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button>
+              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-full transition-colors"><X className="w-5 h-5"/></button>
             </div>
 
             <div className="flex bg-gray-50 p-1 rounded-xl mb-6">
