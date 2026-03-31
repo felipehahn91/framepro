@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/PasswordInput';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import logoImg from "@/assets/logo.png";
@@ -98,13 +99,13 @@ const Login = () => {
 
           <div className="space-y-2">
             <Label htmlFor="password">Senha</Label>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              showStrength={!isLogin} // Só exibe força de senha no cadastro
             />
           </div>
 

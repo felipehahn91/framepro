@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PasswordInput } from '@/components/PasswordInput';
 import { Loader2, Star, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import logoImg from "@/assets/logo.png";
@@ -48,9 +49,12 @@ export default function FounderSignup() {
           
         if (profileError) throw profileError;
 
+        // Atualiza a sessão
         await refreshProfile();
         toast.success("Conta Founder criada com sucesso!");
-        navigate('/'); // O ProtectedRoute vai redirecionar automaticamente para /founders
+        
+        // Redireciona diretamente e exclusivamente para a página de checkout dos Founders
+        navigate('/founders'); 
       }
     } catch (error: any) {
       toast.error(error.message || "Ocorreu um erro ao criar sua conta.");
@@ -107,14 +111,14 @@ export default function FounderSignup() {
 
           <div className="space-y-2">
             <Label htmlFor="password" className="font-bold text-gray-700">Crie uma Senha</Label>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               placeholder="Mínimo de 6 caracteres"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
+              showStrength={true}
               className="bg-gray-50 border-gray-200 focus:ring-orange-400 h-12 rounded-xl"
             />
           </div>
