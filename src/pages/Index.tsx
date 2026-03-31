@@ -224,11 +224,11 @@ const Index = () => {
               </button>
             </div>
             
-            <div className="flex items-baseline gap-3 mb-6">
-              <span className="text-5xl font-bold text-gray-900 tracking-tight">
+            <div className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-3 mb-6">
+              <span className="text-3xl sm:text-5xl font-bold text-gray-900 tracking-tight break-words">
                 {formatCurrency(goal)}
               </span>
-              <span className="text-gray-500 font-semibold text-sm">
+              <span className="text-gray-500 font-semibold text-sm whitespace-nowrap">
                 {percentage}% alcançado
               </span>
             </div>
