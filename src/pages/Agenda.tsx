@@ -7,7 +7,7 @@ import {
   ChevronLeft, ChevronRight, Calendar as CalendarIcon, 
   CheckSquare, FileText, DollarSign, AlertCircle, Clock, 
   Loader2, X, ChevronDown, Download, RefreshCw, ExternalLink, Globe,
-  Plus, Video
+  Plus, Video, ListTodo
 } from "lucide-react";
 import { toast } from "sonner";
 import { 
@@ -28,7 +28,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter
 } from "@/components/ui/dialog";
 
 interface CalendarEvent {
@@ -49,7 +48,11 @@ export default function Agenda() {
   const { user, session } = useAuth();
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(startOfDay(new Date()));
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  
+  // View mode for right panel
+  const [rightPanelMode, setRightPanelMode] = useState<'day' | 'upcoming'>('day');
   
   // Google Calendar Integration State
   const [googleCalendars, setGoogleCalendars] = useState<any[]>([]);
@@ -62,7 +65,6 @@ export default function Agenda() {
 
   // Estados para o Modal de Novo Evento
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [selectedDateForNewEvent, setSelectedDateForNewEvent] = useState<Date | null>(null);
   const [creatingEvent, setCreatingEvent] = useState(false);
   const [newEventData, setNewEventData] = useState({
     title: '',
@@ -276,19 +278,31 @@ export default function Agenda() {
     return [...events, ...googleEvents];
   }, [events, googleEvents]);
 
-  const upcomingEventsList = useMemo(() => {
-    const today = startOfDay(new Date());
-    const endDate = addDays(today, upcomingDays);
-    return allEvents
-      .filter(e => e.date >= today && e.date <= endDate)
-      .sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [allEvents, upcomingDays]);
+  // Lista da barra lateral (Depende do modo: Dia selecionado ou Próximos X dias)
+  const rightPanelEvents = useMemo(() => {
+    if (rightPanelMode === 'day') {
+      return allEvents
+        .filter(e => isSameDay(e.date, selectedDate))
+        .sort((a, b) => a.date.getTime() - b.date.getTime());
+    } else {
+      const today = startOfDay(new Date());
+      const endDate = addDays(today, upcomingDays);
+      return allEvents
+        .filter(e => e.date >= today && e.date <= endDate)
+        .sort((a, b) => a.date.getTime() - b.date.getTime());
+    }
+  }, [allEvents, selectedDate, rightPanelMode, upcomingDays]);
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
-  // Ação de Clique no Dia do Calendário
   const handleDayClick = (day: Date) => {
-    setSelectedDateForNewEvent(day);
+    setSelectedDate(day);
+    setRightPanelMode('day');
+  };
+
+  const openCreateModal = (day: Date, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setSelectedDate(day);
     setNewEventData({
       title: '',
       time: '',
@@ -306,7 +320,6 @@ export default function Agenda() {
     try {
       let googleEventRes = null;
 
-      // Salva no Google Calendar se estiver conectado e a opção (ou Meet) estiver selecionada
       if (session?.provider_token && selectedGoogleCalendarId) {
         googleEventRes = await createGoogleCalendarEvent(
           session.provider_token,
@@ -314,7 +327,7 @@ export default function Agenda() {
           {
             title: newEventData.title,
             description: newEventData.description,
-            date: selectedDateForNewEvent!,
+            date: selectedDate,
             time: newEventData.time,
             createMeet: newEventData.createMeet
           }
@@ -325,17 +338,16 @@ export default function Agenda() {
         toast.warning("Google Calendar não conectado. O link do Meet não pôde ser gerado.");
       }
 
-      // Salva no CRM como Tarefa
       if (newEventData.saveToCRM) {
         let crmDescription = newEventData.description;
         if (googleEventRes?.hangoutLink) {
           crmDescription += `\n\n🔗 Link da Reunião (Meet): ${googleEventRes.hangoutLink}`;
         }
 
-        let dueDate = selectedDateForNewEvent!;
+        let dueDate = selectedDate;
         if (newEventData.time) {
           const [hours, minutes] = newEventData.time.split(':');
-          dueDate = new Date(selectedDateForNewEvent!);
+          dueDate = new Date(selectedDate);
           dueDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
         }
 
@@ -361,18 +373,35 @@ export default function Agenda() {
     }
   };
 
+  const getDotColor = (type: string, status: string) => {
+    if (type === 'Tarefa') return 'bg-orange-500';
+    if (type === 'Contrato') return 'bg-blue-500';
+    if (type === 'Google') return 'bg-purple-500';
+    if (type === 'Pagamento') return status === 'Atrasado' ? 'bg-red-500' : 'bg-yellow-500';
+    return 'bg-gray-500';
+  };
+
   if (loading) {
     return <Layout><div className="flex h-full items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div></Layout>;
   }
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto flex flex-col h-full space-y-6">
+      {/* FAB para Mobile */}
+      <button 
+        onClick={() => openCreateModal(selectedDate)} 
+        className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-orange-400 text-white rounded-full shadow-[0_4px_20px_rgba(249,115,22,0.4)] flex items-center justify-center z-40 hover:bg-orange-500 transition-transform active:scale-95"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
+
+      <div className="max-w-7xl mx-auto flex flex-col h-full space-y-6 pb-20 md:pb-0 relative">
         
+        {/* Cabeçalho */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-1">Agenda CRM</h1>
-            <p className="text-sm text-gray-500">Compromissos integrados com seu Google Calendar.</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-1">Agenda</h1>
+            <p className="text-sm text-gray-500">Seus compromissos e tarefas em um só lugar.</p>
           </div>
           
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -394,46 +423,44 @@ export default function Agenda() {
             ) : (
               <button 
                 onClick={handleConnectGoogle}
-                className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2 shadow-sm text-sm"
+                className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2 shadow-sm text-sm w-full sm:w-auto justify-center"
               >
                 <img src="https://www.google.com/favicon.ico" className="w-4 h-4" alt="Google" />
                 Conectar Google Calendar
               </button>
             )}
-
-            <div className="flex flex-wrap items-center gap-4 bg-white px-4 py-2.5 rounded-xl shadow-sm border border-gray-200 text-sm font-medium text-gray-600">
-              <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-orange-500"></div> CRM</div>
-              <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-purple-500"></div> Google</div>
-            </div>
           </div>
         </div>
 
+        {/* Corpo da Agenda */}
         <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
-          <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+          
+          {/* Calendário Grid */}
+          <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-full">
+            <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
               <div className="flex items-center gap-2">
-                <CalendarIcon className="w-6 h-6 text-orange-500" />
-                <h2 className="text-xl font-bold text-gray-900 capitalize">
+                <CalendarIcon className="w-5 h-5 text-orange-500" />
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900 capitalize">
                   {format(currentDate, "MMMM yyyy", { locale: ptBR })}
                 </h2>
               </div>
-              <div className="flex items-center gap-2">
-                <button onClick={prevMonth} className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 transition-colors">
-                  <ChevronLeft className="w-4 h-4" />
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <button onClick={prevMonth} className="p-1.5 sm:p-2 border border-gray-200 bg-white rounded-lg hover:bg-gray-50 text-gray-600 transition-colors">
+                  <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
-                <button onClick={() => setCurrentDate(new Date())} className="px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm font-semibold text-gray-700 transition-colors">
+                <button onClick={() => setCurrentDate(new Date())} className="px-3 py-1.5 border border-gray-200 bg-white rounded-lg hover:bg-gray-50 text-xs sm:text-sm font-bold text-gray-700 transition-colors hidden sm:block">
                   Hoje
                 </button>
-                <button onClick={nextMonth} className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 transition-colors">
-                  <ChevronRight className="w-4 h-4" />
+                <button onClick={nextMonth} className="p-1.5 sm:p-2 border border-gray-200 bg-white rounded-lg hover:bg-gray-50 text-gray-600 transition-colors">
+                  <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
             </div>
 
-            <div className="flex-1 flex flex-col overflow-auto custom-scrollbar">
-              <div className="grid grid-cols-7 bg-gray-50/80 border-b border-gray-100 shrink-0">
+            <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar">
+              <div className="grid grid-cols-7 bg-white border-b border-gray-100 shrink-0">
                 {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-                  <div key={day} className="py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">
+                  <div key={day} className="py-2 sm:py-3 text-center text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider">
                     {day}
                   </div>
                 ))}
@@ -443,40 +470,64 @@ export default function Agenda() {
                 {calendarDays.map((day, idx) => {
                   const isCurrentMonth = isSameMonth(day, currentDate);
                   const isDayToday = isToday(day);
+                  const isSelected = isSameDay(day, selectedDate);
                   const dayEvents = allEvents.filter(e => isSameDay(e.date, day));
 
                   return (
                     <div 
                       key={day.toString()} 
                       onClick={() => handleDayClick(day)}
-                      className={`min-h-[120px] border-r border-b border-gray-100 p-1.5 transition-colors cursor-pointer group relative ${!isCurrentMonth ? 'bg-gray-50/50 opacity-50' : 'bg-white hover:bg-gray-50/50'}`}
+                      className={`min-h-[60px] sm:min-h-[100px] border-r border-b border-gray-100 p-1 sm:p-2 transition-colors cursor-pointer group relative 
+                        ${!isCurrentMonth ? 'bg-gray-50/30' : 'bg-white'} 
+                        ${isSelected ? 'bg-orange-50/50 ring-inset ring-2 ring-orange-400/20' : 'hover:bg-gray-50/50'}
+                      `}
                     >
-                      <div className="absolute inset-0 border-2 border-transparent group-hover:border-orange-400/30 rounded-lg pointer-events-none transition-all z-10" />
-                      
-                      <div className="flex justify-between items-start mb-1 relative z-20">
-                        <span className={`w-7 h-7 flex items-center justify-center rounded-full text-sm font-semibold ${isDayToday ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-700'}`}>
+                      <div className="flex justify-center md:justify-between items-start mb-1 relative z-20">
+                        <span className={`w-6 h-6 md:w-7 md:h-7 flex items-center justify-center rounded-full text-xs sm:text-sm font-bold 
+                          ${isDayToday ? 'bg-orange-400 text-white shadow-sm' : isSelected ? 'bg-orange-100 text-orange-600' : !isCurrentMonth ? 'text-gray-400' : 'text-gray-700'}`}
+                        >
                           {format(day, 'd')}
                         </span>
-                        <div className="opacity-0 group-hover:opacity-100 p-1 bg-orange-50 text-orange-500 rounded-md transition-opacity" title="Criar Evento">
+                        
+                        {/* Botão + visível apenas no Desktop ao passar o mouse */}
+                        <div 
+                          className="hidden md:flex opacity-0 group-hover:opacity-100 p-1 bg-white border border-gray-200 text-orange-500 rounded-md transition-all shadow-sm hover:bg-orange-50" 
+                          title="Criar Evento"
+                          onClick={(e) => openCreateModal(day, e)}
+                        >
                           <Plus className="w-3 h-3" />
                         </div>
                       </div>
                       
-                      <div className="space-y-1 mt-1 relative z-20">
-                        {dayEvents.slice(0, 4).map(event => (
+                      {/* Visualização DESKTOP: Blocos de texto */}
+                      <div className="hidden md:block space-y-1 mt-1 relative z-20">
+                        {dayEvents.slice(0, 3).map(event => (
                           <div 
                             key={event.id}
                             onClick={(e) => { e.stopPropagation(); setSelectedEvent(event); }}
-                            className={`px-2 py-1 rounded-md border text-[11px] font-medium truncate cursor-pointer transition-all hover:shadow-sm ${event.bgClass} ${event.colorClass}`}
+                            className={`px-2 py-1 rounded border text-[10px] font-bold truncate transition-all hover:shadow-sm ${event.bgClass} ${event.colorClass}`}
                             title={event.title}
                           >
                             {event.title}
                           </div>
                         ))}
-                        {dayEvents.length > 4 && (
-                          <div className="text-[10px] font-bold text-gray-400 pl-1">
-                            + {dayEvents.length - 4} eventos
+                        {dayEvents.length > 3 && (
+                          <div className="text-[10px] font-bold text-gray-400 pl-1 mt-1">
+                            + {dayEvents.length - 3} itens
                           </div>
+                        )}
+                      </div>
+
+                      {/* Visualização MOBILE: Bolinhas */}
+                      <div className="md:hidden flex justify-center gap-1 mt-1 flex-wrap px-1">
+                        {dayEvents.slice(0, 3).map(event => (
+                          <div 
+                            key={event.id} 
+                            className={`w-1.5 h-1.5 rounded-full ${getDotColor(event.type, event.status)}`} 
+                          />
+                        ))}
+                        {dayEvents.length > 3 && (
+                          <div className="w-1.5 h-1.5 rounded-full bg-gray-300" />
                         )}
                       </div>
                     </div>
@@ -486,55 +537,91 @@ export default function Agenda() {
             </div>
           </div>
 
-          <div className="w-full lg:w-[320px] bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col shrink-0 h-[400px] lg:h-auto">
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2">
-                <Clock className="w-5 h-5 text-gray-400" />
-                <DropdownMenu>
-                  <DropdownMenuTrigger className="flex items-center gap-1 font-bold text-gray-900 hover:text-orange-500 transition-colors focus:outline-none">
-                    Próximos {upcomingDays} dias <ChevronDown className="w-4 h-4" />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    {[7, 15, 30].map(d => (
-                      <DropdownMenuItem key={d} onClick={() => setUpcomingDays(d)} className="cursor-pointer">
-                        Próximos {d} dias
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+          {/* Painel Lateral/Inferior (Eventos) */}
+          <div className="w-full lg:w-[320px] bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col shrink-0 lg:h-auto min-h-[400px]">
+            <div className="p-4 border-b border-gray-100 shrink-0 bg-gray-50/50">
+              
+              <div className="flex bg-gray-100/80 p-1 rounded-xl w-full mb-4">
+                <button
+                  onClick={() => setRightPanelMode('day')}
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${rightPanelMode === 'day' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Selecionado
+                </button>
+                <button
+                  onClick={() => setRightPanelMode('upcoming')}
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${rightPanelMode === 'upcoming' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                >
+                  Próximos
+                </button>
               </div>
+
+              {rightPanelMode === 'upcoming' ? (
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-gray-400" />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="flex items-center gap-1 font-bold text-gray-900 text-sm hover:text-orange-500 transition-colors focus:outline-none">
+                      Próximos {upcomingDays} dias <ChevronDown className="w-4 h-4" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {[7, 15, 30].map(d => (
+                        <DropdownMenuItem key={d} onClick={() => setUpcomingDays(d)} className="cursor-pointer font-medium">
+                          Próximos {d} dias
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <ListTodo className="w-4 h-4 text-gray-400" />
+                  <span className="font-bold text-gray-900 text-sm">
+                    {isToday(selectedDate) ? 'Hoje' : format(selectedDate, "dd 'de' MMMM", { locale: ptBR })}
+                  </span>
+                </div>
+              )}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-gray-50/30 relative">
-              {upcomingEventsList.length > 0 ? (
-                upcomingEventsList.map(event => (
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-white relative">
+              {rightPanelEvents.length > 0 ? (
+                rightPanelEvents.map(event => (
                   <div 
-                    key={`upc-${event.id}`}
+                    key={`panel-${event.id}`}
                     onClick={() => setSelectedEvent(event)}
-                    className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm hover:border-orange-300 hover:shadow-md transition-all cursor-pointer group"
+                    className="bg-white p-3.5 rounded-xl border border-gray-100 shadow-sm hover:border-orange-200 hover:shadow-md transition-all cursor-pointer group"
                   >
                     <div className="flex items-start gap-3">
-                      <div className={`p-2 rounded-lg shrink-0 mt-0.5 ${event.bgClass} ${event.colorClass.split(' ')[0]}`}>
+                      <div className={`p-2 rounded-xl shrink-0 mt-0.5 border ${event.bgClass} ${event.colorClass.split(' ')[0]}`}>
                         {event.icon}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold text-gray-900 leading-tight group-hover:text-orange-600 transition-colors line-clamp-2">
                           {event.title}
                         </p>
-                        <div className="flex items-center gap-2 mt-1.5 text-xs text-gray-500 font-medium">
+                        <div className="flex items-center gap-2 mt-1.5 text-[11px] text-gray-500 font-bold uppercase tracking-wider">
                           <span>{format(event.date, "dd MMM", { locale: ptBR })}</span>
                           <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                          <span>{event.type}</span>
+                          <span className={event.colorClass.split(' ')[0]}>{event.type}</span>
                         </div>
                       </div>
                     </div>
                   </div>
                 ))
               ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center px-4 opacity-70">
-                  <CalendarIcon className="w-12 h-12 text-gray-300 mb-3" />
-                  <p className="font-bold text-gray-700">Nenhum evento próximo</p>
-                  <p className="text-xs text-gray-500 mt-1">Sua agenda para os próximos {upcomingDays} dias está livre.</p>
+                <div className="flex flex-col items-center justify-center h-full text-center px-4 opacity-60 py-10">
+                  <CalendarIcon className="w-10 h-10 text-gray-300 mb-3" />
+                  <p className="font-bold text-gray-600 text-sm">Nenhum evento listado</p>
+                  <p className="text-xs text-gray-400 mt-1 max-w-[200px]">
+                    {rightPanelMode === 'day' ? 'Sua agenda está livre neste dia.' : `Sua agenda está livre para os próximos ${upcomingDays} dias.`}
+                  </p>
+                  {rightPanelMode === 'day' && (
+                    <button 
+                      onClick={() => openCreateModal(selectedDate)}
+                      className="mt-4 px-4 py-2 bg-orange-50 text-orange-600 font-bold text-xs rounded-lg hover:bg-orange-100 transition-colors"
+                    >
+                      Adicionar Evento
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -549,7 +636,7 @@ export default function Agenda() {
             <div>
               <DialogTitle className="text-xl font-bold text-gray-900">Novo Evento</DialogTitle>
               <DialogDescription className="text-sm font-medium mt-1">
-                {selectedDateForNewEvent && format(selectedDateForNewEvent, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+                {selectedDate && format(selectedDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
               </DialogDescription>
             </div>
             <button onClick={() => setIsCreateModalOpen(false)} className="p-2 text-gray-400 hover:text-gray-700 bg-white rounded-full border border-gray-200 shadow-sm transition-colors">
@@ -613,7 +700,7 @@ export default function Agenda() {
 
               {(!session?.provider_token || !selectedGoogleCalendarId) && (
                 <div className="bg-orange-50 text-orange-700 p-2.5 rounded-lg text-xs font-medium border border-orange-100">
-                  Conecte sua conta do Google e selecione uma agenda na tela anterior para poder usar o Google Meet.
+                  Conecte sua conta do Google na tela de Agenda para usar o Google Meet.
                 </div>
               )}
 
