@@ -1,28 +1,32 @@
-# Estágio 1: Build
-FROM node:20-alpine AS build
+# Build stage
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copia apenas os arquivos de dependências primeiro para aproveitar o cache do Docker
+# Copy package files
 COPY package*.json ./
-RUN npm install
 
-# Copia o restante do código e gera o build de produção
+# Install dependencies using --legacy-peer-deps to bypass React 19 peer dependency conflicts
+RUN npm install --legacy-peer-deps
+
+# Copy the rest of the application
 COPY . .
+
+# Build the app for production
 RUN npm run build
 
-# Estágio 2: Servidor de Produção (Nginx)
-FROM nginx:stable-alpine
+# Production stage
+FROM nginx:alpine
 
-# Copia o build gerado no estágio anterior para a pasta do Nginx
-COPY --from=build /app/dist /usr/share/nginx/html
+# Copy the built assets from the builder stage
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copia uma configuração básica do Nginx para suportar rotas do React (SPA)
+# Configure Nginx to work with React Router (fallback to index.html)
 RUN echo 'server { \
     listen 80; \
     location / { \
         root /usr/share/nginx/html; \
-        index index.html; \
+        index index.html index.htm; \
         try_files $uri $uri/ /index.html; \
     } \
 }' > /etc/nginx/conf.d/default.conf
