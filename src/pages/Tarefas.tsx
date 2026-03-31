@@ -58,7 +58,7 @@ export default function Tarefas() {
 
       if (error) {
         if (error.code === '42P01') {
-          console.warn("Tabela 'tasks' não existe. Ela será criada ao inserir a primeira tarefa se as políticas permitirem, ou precisa ser criada no banco.");
+          console.warn("Tabela 'tasks' não existe.");
           setTasks([]);
         } else {
           throw error;
@@ -89,7 +89,6 @@ export default function Tarefas() {
       }
       
       if (sortBy === 'date_asc' || sortBy === 'date_desc') {
-        // Tarefas sem data ficam por último sempre
         if (!a.due_date && !b.due_date) return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
         if (!a.due_date) return 1;
         if (!b.due_date) return -1;
@@ -107,7 +106,7 @@ export default function Tarefas() {
         const wB = priorityWeight[b.priority] || 0;
         
         if (wA === wB) return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        return wB - wA; // Maior peso primeiro
+        return wB - wA;
       }
       
       return 0;
@@ -164,7 +163,7 @@ export default function Tarefas() {
 
         if (error) throw error;
         setTasks(prev => prev.map(t => t.id === selectedTask.id ? data as Task : t));
-        toast.success("Tarefa atualizada com sucesso!");
+        toast.success("Tarefa atualizada!");
       } else {
         const { data, error } = await supabase
           .from('tasks')
@@ -174,11 +173,11 @@ export default function Tarefas() {
 
         if (error) throw error;
         setTasks(prev => [data as Task, ...prev]);
-        toast.success("Tarefa criada com sucesso!");
+        toast.success("Tarefa criada!");
       }
       setIsModalOpen(false);
     } catch (error) {
-      toast.error("Erro ao salvar tarefa. Verifique se a tabela 'tasks' existe no banco de dados.");
+      toast.error("Erro ao salvar tarefa.");
     } finally {
       setIsSubmitting(false);
     }
@@ -271,146 +270,137 @@ export default function Tarefas() {
           </button>
         </div>
 
-        {/* Main Card Container */}
-        <div className="bg-white border border-gray-200 rounded-2xl sm:rounded-xl shadow-sm flex-1 flex flex-col">
-          
-          {/* Filters & Sorting Bar */}
-          <div className="p-4 border-b border-gray-100 flex flex-col lg:flex-row gap-4 lg:items-center bg-gray-50/50 rounded-t-2xl sm:rounded-t-xl justify-between">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
-              <div className="flex items-center gap-2 text-gray-500 w-full sm:w-auto">
-                <Filter className="w-4 h-4 hidden sm:block" />
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="flex-1 sm:w-auto bg-white border border-gray-200 rounded-xl sm:rounded-md text-sm py-2.5 sm:py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-orange-400 cursor-pointer"
-                >
-                  <option value="all">Todos os Status</option>
-                  <option value="Pendente">Pendentes</option>
-                  <option value="Em Progresso">Em Progresso</option>
-                  <option value="Concluída">Concluídas</option>
-                </select>
-              </div>
-
+        {/* Filters Bar */}
+        <div className="flex flex-col lg:flex-row gap-4 lg:items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+            <div className="flex items-center gap-2 text-gray-500 w-full sm:w-auto">
+              <Filter className="w-4 h-4 hidden sm:block" />
               <select
-                value={priorityFilter}
-                onChange={(e) => setPriorityFilter(e.target.value)}
-                className="w-full sm:w-auto bg-white border border-gray-200 rounded-xl sm:rounded-md text-sm py-2.5 sm:py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-orange-400 cursor-pointer"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="flex-1 sm:w-auto bg-white border border-gray-200 rounded-xl sm:rounded-md text-sm py-2.5 sm:py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-orange-400 cursor-pointer shadow-sm"
               >
-                <option value="all">Todas Prioridades</option>
-                <option value="Alta">Alta</option>
-                <option value="Média">Média</option>
-                <option value="Baixa">Baixa</option>
+                <option value="all">Todos os Status</option>
+                <option value="Pendente">Pendentes</option>
+                <option value="Em Progresso">Em Progresso</option>
+                <option value="Concluída">Concluídas</option>
               </select>
             </div>
 
-            {/* Ordering */}
-            <div className="flex items-center gap-2 text-gray-500 w-full lg:w-auto">
-              <ArrowUpDown className="w-4 h-4 hidden sm:block" />
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="flex-1 sm:w-auto bg-white border border-gray-200 rounded-xl sm:rounded-md text-sm py-2.5 sm:py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-orange-400 cursor-pointer"
-              >
-                <option value="created_desc">Mais recentes primeiro</option>
-                <option value="date_asc">Vencimento (Mais próximo)</option>
-                <option value="date_desc">Vencimento (Mais distante)</option>
-                <option value="priority_high">Prioridade (Alta primeiro)</option>
-              </select>
-            </div>
+            <select
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value)}
+              className="w-full sm:w-auto bg-white border border-gray-200 rounded-xl sm:rounded-md text-sm py-2.5 sm:py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-orange-400 cursor-pointer shadow-sm"
+            >
+              <option value="all">Todas Prioridades</option>
+              <option value="Alta">Alta</option>
+              <option value="Média">Média</option>
+              <option value="Baixa">Baixa</option>
+            </select>
           </div>
 
-          {/* Task List */}
-          <div className="flex-1 overflow-y-auto">
-            {filteredAndSortedTasks.length > 0 ? (
-              <div className="divide-y divide-gray-100">
-                {filteredAndSortedTasks.map((task) => {
-                  const isCompleted = task.status === 'Concluída';
-                  const overdue = isOverdue(task.due_date, task.status);
+          <div className="flex items-center gap-2 text-gray-500 w-full lg:w-auto">
+            <ArrowUpDown className="w-4 h-4 hidden sm:block" />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="flex-1 sm:w-auto bg-white border border-gray-200 rounded-xl sm:rounded-md text-sm py-2.5 sm:py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-orange-400 cursor-pointer shadow-sm"
+            >
+              <option value="created_desc">Mais recentes primeiro</option>
+              <option value="date_asc">Vencimento (Mais próximo)</option>
+              <option value="date_desc">Vencimento (Mais distante)</option>
+              <option value="priority_high">Prioridade (Alta primeiro)</option>
+            </select>
+          </div>
+        </div>
 
-                  return (
-                    <div 
-                      key={task.id}
-                      onClick={() => handleOpenModal(task)}
-                      className={`group flex items-start gap-4 p-4 hover:bg-gray-50 transition-colors cursor-pointer ${isCompleted ? 'opacity-60 bg-gray-50/50' : ''}`}
+        {/* Task List */}
+        <div className="flex-1 overflow-y-auto pb-10">
+          {filteredAndSortedTasks.length > 0 ? (
+            <div className="space-y-1">
+              {filteredAndSortedTasks.map((task) => {
+                const isCompleted = task.status === 'Concluída';
+                const overdue = isOverdue(task.due_date, task.status);
+
+                return (
+                  <div 
+                    key={task.id}
+                    onClick={() => handleOpenModal(task)}
+                    className={`group flex items-start gap-4 p-4 rounded-xl transition-all cursor-pointer ${isCompleted ? 'opacity-60 grayscale-[0.5]' : 'hover:bg-white/40'}`}
+                  >
+                    <button 
+                      onClick={(e) => handleToggleComplete(task, e)}
+                      className={`mt-1 shrink-0 text-gray-300 hover:text-orange-400 transition-colors ${isCompleted ? 'text-green-500 hover:text-green-600' : ''}`}
                     >
-                      {/* Checkbox Toggle */}
-                      <button 
-                        onClick={(e) => handleToggleComplete(task, e)}
-                        className={`mt-0.5 shrink-0 text-gray-300 hover:text-orange-400 transition-colors ${isCompleted ? 'text-green-500 hover:text-green-600' : ''}`}
-                      >
-                        {isCompleted ? <CheckCircle2 className="w-6 h-6" /> : <Circle className="w-6 h-6" />}
-                      </button>
+                      {isCompleted ? <CheckCircle2 className="w-6 h-6" /> : <Circle className="w-6 h-6" />}
+                    </button>
 
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-1">
-                          <h3 className={`font-semibold text-[15px] truncate ${isCompleted ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-                            {task.title}
-                          </h3>
-                          {!isCompleted && (
-                            <span className={`px-2 py-0.5 rounded-md border text-[10px] font-bold uppercase tracking-wide shrink-0 ${getPriorityStyles(task.priority)}`}>
-                              {task.priority}
-                            </span>
-                          )}
-                        </div>
-                        
-                        {task.description && (
-                          <p className={`text-sm mb-2 line-clamp-2 ${isCompleted ? 'text-gray-400' : 'text-gray-600'}`}>
-                            {task.description}
-                          </p>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-1">
+                        <h3 className={`font-bold text-[15px] truncate ${isCompleted ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                          {task.title}
+                        </h3>
+                        {!isCompleted && (
+                          <span className={`px-2 py-0.5 rounded-md border text-[10px] font-bold uppercase tracking-wide shrink-0 ${getPriorityStyles(task.priority)}`}>
+                            {task.priority}
+                          </span>
                         )}
-
-                        {/* Meta info */}
-                        <div className="flex items-center gap-4 mt-2">
-                          {task.due_date && (
-                            <div className={`flex items-center gap-1.5 text-xs font-medium ${overdue ? 'text-red-500 bg-red-50 px-2 py-1 rounded border border-red-100' : 'text-gray-500'}`}>
-                              {overdue ? <AlertCircle className="w-3.5 h-3.5" /> : <CalendarIcon className="w-3.5 h-3.5" />}
-                              {new Date(task.due_date).toLocaleDateString('pt-BR')}
-                              {overdue && " (Atrasada)"}
-                            </div>
-                          )}
-                          
-                          {task.status === 'Em Progresso' && (
-                            <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-100">
-                              Em Progresso
-                            </span>
-                          )}
-                        </div>
                       </div>
+                      
+                      {task.description && (
+                        <p className={`text-sm mb-2 line-clamp-1 ${isCompleted ? 'text-gray-400' : 'text-gray-600 font-medium'}`}>
+                          {task.description}
+                        </p>
+                      )}
 
-                      {/* Actions */}
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); handleOpenModal(task); }}
-                          className="p-2 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-md transition-colors"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                        </button>
-                        <button 
-                          onClick={(e) => handleDeleteClick(task, e)}
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <div className="flex items-center gap-4 mt-2">
+                        {task.due_date && (
+                          <div className={`flex items-center gap-1.5 text-xs font-bold ${overdue ? 'text-red-500' : 'text-gray-400'}`}>
+                            {overdue ? <AlertCircle className="w-3.5 h-3.5" /> : <CalendarIcon className="w-3.5 h-3.5" />}
+                            {new Date(task.due_date).toLocaleDateString('pt-BR')}
+                            {overdue && " (Atrasada)"}
+                          </div>
+                        )}
+                        
+                        {task.status === 'Em Progresso' && (
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-blue-600">
+                            Em Progresso
+                          </span>
+                        )}
                       </div>
                     </div>
-                  );
-                })}
+
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleOpenModal(task); }}
+                        className="p-2 text-gray-400 hover:text-orange-500 hover:bg-white rounded-lg transition-all"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={(e) => handleDeleteClick(task, e)}
+                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-white rounded-lg transition-all"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full py-20 px-4 text-center">
+              <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-4 border border-gray-100 shadow-sm">
+                <CheckSquare className="w-8 h-8 text-gray-300" />
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full py-20 px-4 text-center">
-                <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-4 border border-gray-100 shadow-sm">
-                  <CheckSquare className="w-8 h-8 text-gray-400" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-1">Nenhuma tarefa encontrada</h3>
-                <p className="text-sm text-gray-500 max-w-sm">
-                  {statusFilter !== "all" || priorityFilter !== "all" 
-                    ? "Tente limpar os filtros para ver mais resultados." 
-                    : "Comece criando sua primeira tarefa no botão acima para organizar seu dia."}
-                </p>
-              </div>
-            )}
-          </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">Nenhuma tarefa encontrada</h3>
+              <p className="text-sm text-gray-500 max-w-sm">
+                {statusFilter !== "all" || priorityFilter !== "all" 
+                  ? "Tente limpar os filtros para ver mais resultados." 
+                  : "Comece criando sua primeira tarefa no botão acima."}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -419,13 +409,13 @@ export default function Tarefas() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
           <div className="relative bg-white rounded-2xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in-95">
-            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 rounded-t-2xl">
               <div>
                 <h2 className="text-xl font-bold text-gray-900">{selectedTask ? 'Editar Tarefa' : 'Nova tarefa'}</h2>
                 <p className="text-sm text-gray-500 mt-1">{selectedTask ? 'Atualize os detalhes da atividade.' : 'Adicione uma nova tarefa'}</p>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 text-gray-400 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-full transition-colors">
-                <X className="w-5 h-5" />
+              <button onClick={() => setIsModalOpen(false)} className="p-2 text-gray-400 hover:text-gray-700 bg-white rounded-full border border-gray-200 shadow-sm transition-colors">
+                <X className="w-4 h-4" />
               </button>
             </div>
 
@@ -484,7 +474,7 @@ export default function Tarefas() {
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-4">
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-gray-700 font-semibold border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors">
                   Cancelar
                 </button>

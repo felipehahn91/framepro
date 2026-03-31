@@ -221,77 +221,77 @@ export default function Clientes() {
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col">
           <div className="overflow-x-auto flex-1">
             {filteredClients.length > 0 ? (
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-gray-50/80 border-b border-gray-100">
-                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Nome</th>
-                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Origem</th>
-                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Contato</th>
-                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cadastro</th>
-                    <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Ações</th>
+                  <tr className="border-b border-gray-200">
+                    <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Nome</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Origem</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Contato</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Cadastro</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-gray-400 uppercase tracking-wider text-right">Ações</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-200">
                   {filteredClients.map((client) => (
                     <tr 
                       key={client.id} 
                       onClick={() => setViewingClient(client)}
-                      className="hover:bg-gray-50/80 transition-colors group cursor-pointer"
+                      className="hover:bg-white/40 transition-colors group cursor-pointer"
                     >
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-5 whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-xs shrink-0 border border-orange-200">
+                          <div className="w-10 h-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold text-xs shrink-0 border border-orange-200">
                             {getInitials(client.name)}
                           </div>
                           <div>
-                            <p className="text-sm font-semibold text-gray-900 group-hover:text-orange-600 transition-colors">{client.name}</p>
+                            <p className="text-sm font-bold text-gray-900 group-hover:text-orange-600 transition-colors">{client.name}</p>
                             {client.instagram && <p className="text-xs text-gray-500">{client.instagram}</p>}
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-5 whitespace-nowrap">
                         {client.pipeline_id ? (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-medium bg-orange-50 text-orange-600 border border-orange-100">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-orange-50 text-orange-600 border border-orange-100">
                             Oportunidade
                           </span>
                         ) : (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-medium bg-gray-100 text-gray-600 border border-gray-200">
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-600 border border-gray-200">
                             Manual
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-5 whitespace-nowrap">
                         <div className="flex flex-col gap-1">
                           {client.email ? (
-                            <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                              <Mail className="w-3.5 h-3.5 text-gray-400" /> {client.email}
+                            <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600">
+                              <Mail className="w-3 h-3 text-gray-400" /> {client.email}
                             </div>
-                          ) : <span className="text-sm text-gray-400">-</span>}
+                          ) : <span className="text-xs text-gray-400">-</span>}
                           {client.phone && (
-                            <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                              <Phone className="w-3.5 h-3.5 text-gray-400" /> {client.phone}
+                            <div className="flex items-center gap-1.5 text-xs font-medium text-gray-600">
+                              <Phone className="w-3 h-3 text-gray-400" /> {client.phone}
                             </div>
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      <td className="px-6 py-5 whitespace-nowrap text-sm font-medium text-gray-500">
                         {new Date(client.created_at).toLocaleDateString('pt-BR')}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <td className="px-6 py-5 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button 
                             onClick={(e) => handleOpenEditModal(client, e)}
-                            className="p-1.5 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-md transition-colors"
+                            className="p-2 text-gray-400 hover:text-orange-500 hover:bg-white rounded-lg transition-all"
                             title="Editar cliente"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button 
                             onClick={(e) => handleDeleteClick(client, e)}
-                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-white rounded-lg transition-all"
                             title="Remover status de cliente"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -391,7 +391,7 @@ export default function Clientes() {
               </div>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-gray-700 font-semibold hover:bg-gray-50 rounded-lg transition-colors border border-transparent">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-5 py-2.5 text-gray-700 font-semibold border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors border border-transparent">
                   Cancelar
                 </button>
                 <button type="submit" disabled={isSubmitting} className="px-5 py-2.5 bg-orange-400 text-white font-semibold rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-2 disabled:opacity-50 shadow-sm">
