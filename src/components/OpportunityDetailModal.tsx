@@ -136,12 +136,15 @@ export default function OpportunityDetailModal({ isOpen, onClose, opportunity, o
         finalObservations = JSON.stringify([newNoteObj, ...notes]);
       }
 
+      // Limpeza do Telefone antes de salvar
+      const cleanedPhone = (formData.phone || '').split('@')[0].replace(/\D/g, '');
+
       const { data, error } = await supabase
         .from('opportunities')
         .update({
           name: formData.name,
           email: formData.email,
-          phone: formData.phone,
+          phone: cleanedPhone, // Salva apenas os números (DDD + Número)
           instagram: formData.instagram,
           company: formData.company,
           avatar_url: avatarUrl,

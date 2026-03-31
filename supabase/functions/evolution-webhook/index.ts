@@ -44,9 +44,12 @@ serve(async (req) => {
         const remoteJid = msgCore.key?.remoteJid || msg.key?.remoteJid;
         if (!remoteJid || remoteJid.includes('@g.us') || remoteJid === 'status@broadcast') continue;
 
+        // Limpa o JID para manter apenas o número (remove @s.whatsapp.net)
+        const purePhone = remoteJid.split('@')[0];
+
         const fromMe = msgCore.key?.fromMe || msg.key?.fromMe || false;
         const messageId = msgCore.key?.id || msg.key?.id;
-        const pushName = msgCore.pushName || msg.pushName || remoteJid.split('@')[0];
+        const pushName = msgCore.pushName || msg.pushName || purePhone;
         
         const timestamp = new Date().toISOString();
         const content = msgCore.message || msg.message || msgCore;
@@ -66,12 +69,11 @@ serve(async (req) => {
             );
 
             if (matchedTrigger) {
-              // Verifica se já existe esse lead para não duplicar no mesmo dia
               const { data: existing } = await supabase
                 .from('opportunities')
                 .select('id')
                 .eq('user_id', userId)
-                .eq('phone', remoteJid)
+                .eq('phone', purePhone)
                 .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
                 .limit(1);
 
@@ -79,20 +81,19 @@ serve(async (req) => {
                 await supabase.from('opportunities').insert({
                   user_id: userId,
                   name: pushName,
-                  phone: remoteJid,
+                  phone: purePhone, // Salva apenas o número limpo
                   pipeline_id: matchedTrigger.pipeline_id,
                   column_id: matchedTrigger.column_id,
                   tag: matchedTrigger.tag,
                   observations: `Lead criado via gatilho de WhatsApp: "${matchedTrigger.trigger_phrase}"`,
                   is_client: false
                 });
-                console.log(`[webhook] Lead criado via gatilho: ${pushName}`);
               }
             }
           }
         }
 
-        // Upsert do Chat e Mensagem (Fluxo normal do WebChat)
+        // Upsert do Chat e Mensagem
         const { data: chatData } = await supabase
           .from('whatsapp_chats')
           .upsert({ user_id: userId, instance_name: instanceName, remote_jid: remoteJid, name: pushName, last_message: text, last_message_time: timestamp, updated_at: new Date().toISOString() }, { onConflict: 'user_id,remote_jid' })
