@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import logoImg from "@/assets/logo.png";
+import { InstallPWA } from "./InstallPWA";
 
 interface NavItem {
   name: string;
@@ -96,7 +97,10 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <div className="flex h-screen bg-[#e6e6e64c] overflow-hidden font-sans">
+    <div className="flex h-screen bg-[#e6e6e64c] overflow-hidden font-sans text-gray-900">
+      {/* Aviso de Instalação PWA */}
+      <InstallPWA />
+
       {/* Sidebar Desktop */}
       <aside className="w-64 bg-white border-r border-border flex-col hidden md:flex z-10">
         <div className="px-6 py-6 flex items-center justify-center">
