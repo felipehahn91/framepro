@@ -397,7 +397,7 @@ export default function Financeiro() {
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto flex flex-col h-full space-y-8 pb-10">
+      <div className="max-w-6xl mx-auto space-y-8 pb-32">
         
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Financeiro</h1>
