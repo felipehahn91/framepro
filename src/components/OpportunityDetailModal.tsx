@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { X, Save, Loader2, Trash2, User, Phone, Mail, Instagram, MapPin, Calendar, DollarSign, FileText, Tag } from 'lucide-react';
+import { X, Save, Loader2, Trash2, User, Phone, Mail, Instagram, MapPin, Calendar, DollarSign, FileText, Tag, Clock, XCircle } from 'lucide-react';
 
 interface Opportunity {
   id: string;
@@ -25,6 +25,7 @@ interface OpportunityDetailModalProps {
   opportunity: Opportunity | null;
   onSave: (updatedOpp: Opportunity) => void;
   onDelete: (id: string) => void;
+  onCadenceUpdated?: () => void;
 }
 
 const PHOTO_TYPES = [
@@ -38,15 +39,60 @@ const PHOTO_TYPES = [
   { value: 'Smash the cake', label: '🎂 Smash the cake' }
 ];
 
-export default function OpportunityDetailModal({ isOpen, onClose, opportunity, onSave, onDelete }: OpportunityDetailModalProps) {
+export default function OpportunityDetailModal({ isOpen, onClose, opportunity, onSave, onDelete, onCadenceUpdated }: OpportunityDetailModalProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<Partial<Opportunity>>({});
+  
+  // Estados da Cadência
+  const [pendingCadences, setPendingCadences] = useState<any[]>([]);
+  const [loadingCadences, setLoadingCadences] = useState(false);
 
   useEffect(() => {
     if (opportunity && isOpen) {
       setFormData(opportunity);
+      fetchCadences();
     }
   }, [opportunity, isOpen]);
+
+  const fetchCadences = async () => {
+    if (!opportunity) return;
+    setLoadingCadences(true);
+    try {
+      const { data } = await supabase
+        .from('cadencia_queue')
+        .select('*')
+        .eq('opportunity_id', opportunity.id)
+        .eq('status', 'pending')
+        .order('scheduled_for', { ascending: true });
+        
+      setPendingCadences(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar cadências:', error);
+    } finally {
+      setLoadingCadences(false);
+    }
+  };
+
+  const handleCancelCadences = async () => {
+    if (!opportunity) return;
+    if (!confirm("Tem certeza que deseja cancelar todos os envios automáticos pendentes para este lead?")) return;
+    
+    setLoadingCadences(true);
+    try {
+      await supabase
+        .from('cadencia_queue')
+        .update({ status: 'cancelled' })
+        .eq('opportunity_id', opportunity.id)
+        .eq('status', 'pending');
+        
+      toast.success("Envios automáticos cancelados com sucesso.");
+      fetchCadences();
+      if (onCadenceUpdated) onCadenceUpdated();
+    } catch (error) {
+      toast.error("Erro ao cancelar cadências.");
+      setLoadingCadences(false);
+    }
+  };
 
   if (!isOpen || !opportunity) return null;
 
@@ -127,6 +173,41 @@ export default function OpportunityDetailModal({ isOpen, onClose, opportunity, o
 
         {/* Body / Scrollable Content */}
         <div className="p-6 overflow-y-auto flex-1 space-y-6">
+          
+          {/* Seção de Automação de Cadência */}
+          <div className="col-span-1 sm:col-span-2 bg-orange-50/50 p-4 rounded-xl border border-orange-100">
+            <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-orange-500" /> Automação de Cadência
+            </h3>
+            
+            {loadingCadences ? (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Loader2 className="w-4 h-4 animate-spin" /> Carregando status...
+              </div>
+            ) : pendingCadences.length > 0 ? (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-3 rounded-lg border border-orange-100 shadow-sm">
+                <div>
+                  <p className="text-sm text-gray-800">
+                    Há <strong>{pendingCadences.length}</strong> mensagem(ns) agendada(s) para este lead.
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Próximo envio: {new Date(pendingCadences[0].scheduled_for).toLocaleString('pt-BR')}
+                  </p>
+                </div>
+                <button
+                  onClick={handleCancelCadences}
+                  className="px-3 py-1.5 text-xs text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-md font-semibold flex items-center gap-1.5 transition-colors shrink-0"
+                >
+                  <XCircle className="w-3.5 h-3.5" /> Cancelar Envios
+                </button>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">
+                Nenhuma cadência ativa no momento. Você pode iniciar uma no botão "Cadência" no quadro principal.
+              </p>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             
             {/* Nome */}

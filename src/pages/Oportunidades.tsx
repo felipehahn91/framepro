@@ -46,6 +46,7 @@ export default function Oportunidades() {
   const [columns, setColumns] = useState<Column[]>([]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [linkForms, setLinkForms] = useState<LinkForm[]>([]);
+  const [activeCadences, setActiveCadences] = useState<Record<string, number>>({});
   
   const [activePipelineId, setActivePipelineId] = useState<string>("");
   const [selectedOpps, setSelectedOpps] = useState<string[]>([]);
@@ -96,11 +97,12 @@ export default function Oportunidades() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [pipesRes, colsRes, oppsRes, formsRes] = await Promise.all([
+      const [pipesRes, colsRes, oppsRes, formsRes, queueRes] = await Promise.all([
         supabase.from('pipelines').select('*').order('created_at', { ascending: true }),
         supabase.from('columns').select('*').order('order_index', { ascending: true }),
         supabase.from('opportunities').select('*'),
-        supabase.from('link_forms').select('*')
+        supabase.from('link_forms').select('*'),
+        supabase.from('cadencia_queue').select('opportunity_id').eq('user_id', user?.id).eq('status', 'pending')
       ]);
 
       let pipes = pipesRes.data || [];
@@ -126,6 +128,15 @@ export default function Oportunidades() {
       setColumns(cols);
       setOpportunities(oppsRes.data || []);
       setLinkForms(formsRes.data || []);
+      
+      // Mapear contagem de cadências ativas por lead
+      const cadenceMap: Record<string, number> = {};
+      queueRes.data?.forEach(q => {
+        if (q.opportunity_id) {
+          cadenceMap[q.opportunity_id] = (cadenceMap[q.opportunity_id] || 0) + 1;
+        }
+      });
+      setActiveCadences(cadenceMap);
       
       if (pipes.length > 0 && !activePipelineId) {
         setActivePipelineId(pipes[0].id);
@@ -328,6 +339,12 @@ export default function Oportunidades() {
 
       const { error } = await supabase.from('cadencia_queue').insert(queueItems);
       if (error) throw error;
+
+      // Atualiza o estado visual das cadências ativas
+      setActiveCadences(prev => ({
+        ...prev,
+        [selectedOppForCadencia.id]: (prev[selectedOppForCadencia.id] || 0) + queueItems.length
+      }));
 
       toast.success("Cadência iniciada com sucesso!");
       setIsCadenciaModalOpen(false);
@@ -562,6 +579,8 @@ export default function Oportunidades() {
                                   {colOpps.map((opp, oppIndex) => {
                                     const photoTypeObj = PHOTO_TYPES.find(p => p.value === opp.tag);
                                     
+                                    const pendingCadencesCount = activeCadences[opp.id] || 0;
+                                    
                                     return (
                                       <Draggable key={opp.id} draggableId={opp.id} index={oppIndex}>
                                         {(provided, snapshot) => (
@@ -600,11 +619,18 @@ export default function Oportunidades() {
                                             </div>
 
                                             {/* Card Info: Tag, Email, Phone */}
-                                            {photoTypeObj && (
-                                              <div className={`mb-2.5 inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${photoTypeObj.color}`}>
-                                                {photoTypeObj.label}
-                                              </div>
-                                            )}
+                                            <div className="flex flex-wrap gap-1.5 mb-2.5">
+                                              {photoTypeObj && (
+                                                <div className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${photoTypeObj.color}`}>
+                                                  {photoTypeObj.label}
+                                                </div>
+                                              )}
+                                              {pendingCadencesCount > 0 && (
+                                                <div className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-orange-50 text-orange-600 border border-orange-100" title={`${pendingCadencesCount} mensagens agendadas`}>
+                                                  <Clock className="w-3 h-3 mr-1" /> Cadência
+                                                </div>
+                                              )}
+                                            </div>
                                             <div className="text-[12px] text-gray-500 mb-0.5 truncate">{opp.email}</div>
                                             <div className="text-[12px] text-gray-500 mb-4">{opp.phone}</div>
 
@@ -691,12 +717,13 @@ export default function Oportunidades() {
       />
 
       {/* Modal de Detalhes da Oportunidade */}
-      <OpportunityDetailModal 
-        isOpen={isDetailModalOpen} 
-        onClose={() => setIsDetailModalOpen(false)} 
-        opportunity={selectedOppToView} 
+      <OpportunityDetailModal
+        isOpen={isDetailModalOpen}
+        onClose={() => setIsDetailModalOpen(false)}
+        opportunity={selectedOppToView}
         onSave={handleSaveDetailModal}
         onDelete={handleDeleteDetailModal}
+        onCadenceUpdated={fetchData}
       />
 
       {/* MODAL: Adicionar ao Pipeline */}
