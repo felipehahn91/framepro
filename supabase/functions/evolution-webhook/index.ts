@@ -21,13 +21,12 @@ serve(async (req) => {
     const event = payload.event || payload.eventType;
     const instanceName = payload.instance;
 
-    console.log(`[evolution-webhook] Evento Recebido: ${event} | Instância: ${instanceName}`);
+    console.log(`[evolution-webhook] Evento: ${event} | Instância: ${instanceName}`);
 
     if (!instanceName) {
       return new Response('Nenhuma instância informada', { status: 400 });
     }
 
-    // 1. Descobrir qual usuário do CRM é dono desta instância
     const { data: instanceData } = await supabase
       .from('whatsapp_instances')
       .select('user_id')
@@ -35,40 +34,26 @@ serve(async (req) => {
       .single();
 
     if (!instanceData) {
-      console.error(`[evolution-webhook] Instância não mapeada para um usuário no banco: ${instanceName}`);
       return new Response('Instance not mapped', { status: 404 });
     }
 
     const userId = instanceData.user_id;
 
-    // 2. Processar a mensagem (MESSAGES_UPSERT)
     if (event === 'messages.upsert' || event === 'MESSAGES_UPSERT') {
-      
-      // Log do payload cru para debugar caso algo venha com formato desconhecido
-      console.log("[evolution-webhook] Dados recebidos (RAW):", JSON.stringify(payload.data).substring(0, 500));
-      
-      // A Evolution pode mandar as mensagens em vários formatos dependendo da versão
       let messages = [];
       if (Array.isArray(payload.data)) {
         messages = payload.data;
       } else if (payload.data?.messages && Array.isArray(payload.data.messages)) {
         messages = payload.data.messages;
       } else if (payload.data) {
-        // Mantém o objeto inteiro (que contém key, pushName E message)
         messages = [payload.data];
       }
 
-      console.log(`[evolution-webhook] Encontradas ${messages.length} mensagens para processar.`);
-
       for (const msg of messages) {
-        // Encontra o core da mensagem dependendo de como a Evolution enviou
         const msgCore = msg.message?.key ? msg.message : msg;
-        
         const remoteJid = msgCore.key?.remoteJid || msg.key?.remoteJid;
         
-        // Ignora grupos e broadcast para manter o CRM focado em Leads 1 a 1
         if (!remoteJid || remoteJid.includes('@g.us') || remoteJid === 'status@broadcast') {
-          console.log(`[evolution-webhook] Ignorando JID (Grupo/Status/Vazio): ${remoteJid}`);
           continue;
         }
 
@@ -81,7 +66,6 @@ serve(async (req) => {
           ? new Date(msgTimestamp * 1000).toISOString() 
           : new Date().toISOString();
 
-        // Extrai o texto priorizando as diferentes formas de envio de mídia do WhatsApp
         const content = msgCore.message || msg.message || msgCore;
         let text = content?.conversation || 
                    content?.extendedTextMessage?.text || 
@@ -89,64 +73,86 @@ serve(async (req) => {
                    content?.videoMessage?.caption || 
                    "";
 
-        if (!text) {
-          if (content?.imageMessage) text = "📷 Imagem";
-          else if (content?.videoMessage) text = "🎥 Vídeo";
-          else if (content?.audioMessage) text = "🎵 Áudio";
-          else if (content?.documentMessage) text = "📄 Documento";
-          else if (content?.stickerMessage) text = "✨ Figurinha";
-          else text = "📎 Mídia/Anexo";
+        // Tratamento de Mídia
+        let mediaUrl = "";
+        const isImage = !!content?.imageMessage;
+        const isAudio = !!content?.audioMessage || (!!content?.extendedTextMessage?.text === false && !!content?.audioMessage);
+        const isVideo = !!content?.videoMessage;
+        
+        // Base64 enviado pela Evolution caso tenha ativado no webhook
+        const base64String = msgCore.base64 || msg.base64 || content?.imageMessage?.base64 || content?.audioMessage?.base64;
+        
+        if (base64String && (isImage || isAudio || isVideo)) {
+           const ext = isImage ? 'jpg' : isAudio ? 'ogg' : isVideo ? 'mp4' : 'bin';
+           const mime = isImage ? 'image/jpeg' : isAudio ? 'audio/ogg' : isVideo ? 'video/mp4' : 'application/octet-stream';
+           const fileName = `${userId}/chat/${messageId}.${ext}`;
+           
+           try {
+             const binaryString = atob(base64String);
+             const bytes = new Uint8Array(binaryString.length);
+             for (let i = 0; i < binaryString.length; i++) {
+                 bytes[i] = binaryString.charCodeAt(i);
+             }
+             
+             const { error: uploadError } = await supabase.storage.from('contract_images').upload(fileName, bytes.buffer, { contentType: mime, upsert: true });
+             
+             if (!uploadError) {
+                const { data: { publicUrl } } = supabase.storage.from('contract_images').getPublicUrl(fileName);
+                mediaUrl = publicUrl;
+             } else {
+                console.error("Upload error", uploadError);
+             }
+           } catch(err) {
+             console.error("Base64 processing error", err);
+           }
+        }
+        
+        let finalMessageText = text;
+        if (mediaUrl) {
+           if (isImage) finalMessageText = `[IMAGE]${mediaUrl} ${text}`.trim();
+           else if (isAudio) finalMessageText = `[AUDIO]${mediaUrl}`;
+           else if (isVideo) finalMessageText = `[VIDEO]${mediaUrl} ${text}`.trim();
+        } else if (!text) {
+           if (isImage) finalMessageText = "📷 Imagem";
+           else if (isVideo) finalMessageText = "🎥 Vídeo";
+           else if (isAudio) finalMessageText = "🎵 Áudio";
+           else if (content?.documentMessage) finalMessageText = "📄 Documento";
+           else if (content?.stickerMessage) finalMessageText = "✨ Figurinha";
+           else finalMessageText = "📎 Mídia/Anexo";
         }
 
-        console.log(`[evolution-webhook] Processando: ID=${messageId} | JID=${remoteJid} | Texto="${text.substring(0,30)}"`);
+        if (!messageId) continue;
 
-        if (!messageId) {
-           console.log(`[evolution-webhook] Mensagem sem ID ignorada.`);
-           continue;
-        }
-
-        // 3. Upsert do Chat (Atualiza a conversa na lateral do CRM)
-        const { data: chatData, error: chatError } = await supabase
+        // Upsert do Chat
+        const { data: chatData } = await supabase
           .from('whatsapp_chats')
           .upsert({ 
             user_id: userId, 
             instance_name: instanceName, 
             remote_jid: remoteJid, 
             name: pushName, 
-            last_message: text, 
+            last_message: finalMessageText, 
             last_message_time: timestamp, 
             updated_at: new Date().toISOString() 
           }, { onConflict: 'user_id,remote_jid' })
           .select()
           .single();
 
-        if (chatError) {
-           console.error("[evolution-webhook] Erro ao salvar Chat no banco:", chatError);
-        }
-
-        // 4. Insere a Mensagem na conversa
+        // Insere a Mensagem
         if (chatData) {
-          const { error: msgError } = await supabase
+          await supabase
             .from('whatsapp_messages')
             .upsert({ 
               user_id: userId, 
               chat_id: chatData.id, 
               message_id: messageId, 
               remote_jid: remoteJid, 
-              text: text, 
+              text: finalMessageText, 
               from_me: fromMe, 
               timestamp: timestamp 
             }, { onConflict: 'user_id,message_id' });
-            
-          if (msgError) {
-             console.error("[evolution-webhook] Erro ao salvar Mensagem no banco:", msgError);
-          } else {
-             console.log(`[evolution-webhook] Mensagem salva com sucesso no chat de ${pushName}!`);
-          }
         }
       }
-    } else {
-      console.log(`[evolution-webhook] Evento ignorado: ${event}`);
     }
 
     return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });

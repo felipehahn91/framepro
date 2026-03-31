@@ -38,7 +38,7 @@ export const createInstance = (instanceName: string) => {
         enabled: true,
         url: webhookUrl,
         byEvents: false,
-        base64: false,
+        base64: true, // Ativado para receber mídias do cliente
         events: ["MESSAGES_UPSERT", "MESSAGES_SET", "SEND_MESSAGE"]
       }
     })
@@ -56,7 +56,7 @@ export const setEvolutionWebhook = async (instanceName: string) => {
           enabled: true,
           url: webhookUrl,
           byEvents: false,
-          base64: false,
+          base64: true, // Ativado para receber mídias do cliente
           events: ["MESSAGES_UPSERT", "MESSAGES_SET", "SEND_MESSAGE"]
         }
       })
@@ -70,7 +70,7 @@ export const setEvolutionWebhook = async (instanceName: string) => {
         url: webhookUrl,
         webhookByEvents: false,
         byEvents: false,
-        base64: false,
+        base64: true, // Ativado para receber mídias do cliente
         events: ["MESSAGES_UPSERT", "MESSAGES_SET", "SEND_MESSAGE"]
       })
     });
@@ -86,7 +86,6 @@ export const fetchChats = (instanceName: string) => fetchWithEvolution(`/chat/fi
 export const fetchMessages = (instanceName: string, remoteJid: string) => fetchWithEvolution(`/chat/findMessages/${instanceName}`, { method: 'POST', body: JSON.stringify({ where: { remoteJid } }) });
 
 export const sendTextMessage = (instanceName: string, number: string, text: string) => {
-  // Limpa o sufixo @s.whatsapp.net para garantir que a API não recuse por formatação de número inválida
   const cleanNumber = number.split('@')[0];
   
   return fetchWithEvolution(`/message/sendText/${instanceName}`, {
@@ -94,7 +93,33 @@ export const sendTextMessage = (instanceName: string, number: string, text: stri
     body: JSON.stringify({ 
       number: cleanNumber, 
       text: text, 
-      delay: 1200 // Opcional, ajuda a simular o "digitando..."
+      delay: 1200 
+    })
+  });
+};
+
+export const sendMediaMessage = (instanceName: string, number: string, base64: string, mediatype: string, mimetype: string, caption?: string) => {
+  const cleanNumber = number.split('@')[0];
+  return fetchWithEvolution(`/message/sendMedia/${instanceName}`, {
+    method: 'POST',
+    body: JSON.stringify({
+      number: cleanNumber,
+      mediatype,
+      mimetype,
+      caption: caption || "",
+      media: base64
+    })
+  });
+};
+
+export const sendWhatsAppAudio = (instanceName: string, number: string, audioBase64: string) => {
+  const cleanNumber = number.split('@')[0];
+  return fetchWithEvolution(`/message/sendWhatsAppAudio/${instanceName}`, {
+    method: 'POST',
+    body: JSON.stringify({
+      number: cleanNumber,
+      audio: audioBase64,
+      delay: 1000
     })
   });
 };
