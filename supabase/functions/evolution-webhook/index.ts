@@ -51,25 +51,24 @@ serve(async (req) => {
       let messages = [];
       if (Array.isArray(payload.data)) {
         messages = payload.data;
-      } else if (payload.data?.messages) {
+      } else if (payload.data?.messages && Array.isArray(payload.data.messages)) {
         messages = payload.data.messages;
-      } else if (payload.data?.message) {
-        messages = [payload.data.message];
-      } else if (payload.data?.key) {
+      } else if (payload.data) {
+        // Mantém o objeto inteiro (que contém key, pushName E message)
         messages = [payload.data];
       }
 
       console.log(`[evolution-webhook] Encontradas ${messages.length} mensagens para processar.`);
 
       for (const msg of messages) {
-        // Algumas versões da API envelopam a mensagem dentro de outro objeto 'message'
-        const msgCore = msg.message?.message ? msg.message : msg;
+        // Encontra o core da mensagem dependendo de como a Evolution enviou
+        const msgCore = msg.message?.key ? msg.message : msg;
         
         const remoteJid = msgCore.key?.remoteJid || msg.key?.remoteJid;
         
         // Ignora grupos e broadcast para manter o CRM focado em Leads 1 a 1
         if (!remoteJid || remoteJid.includes('@g.us') || remoteJid === 'status@broadcast') {
-          console.log(`[evolution-webhook] Ignorando JID (Grupo/Status): ${remoteJid}`);
+          console.log(`[evolution-webhook] Ignorando JID (Grupo/Status/Vazio): ${remoteJid}`);
           continue;
         }
 
