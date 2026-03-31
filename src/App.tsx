@@ -10,6 +10,7 @@ import Index from "./pages/Index";
 import Oportunidades from "./pages/Oportunidades";
 import Clientes from "./pages/Clientes";
 import Tarefas from "./pages/Tarefas";
+import Agenda from "./pages/Agenda";
 import Financeiro from "./pages/Financeiro";
 import Contratos from "./pages/Contratos";
 import ContractEditor from "./pages/ContractEditor";
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="/oportunidades" element={<ProtectedRoute><Oportunidades /></ProtectedRoute>} />
             <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
             <Route path="/tarefas" element={<ProtectedRoute><Tarefas /></ProtectedRoute>} />
+            <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
             <Route path="/financeiro" element={<ProtectedRoute><Financeiro /></ProtectedRoute>} />
             
             <Route path="/contratos" element={<ProtectedRoute><Contratos /></ProtectedRoute>} />
