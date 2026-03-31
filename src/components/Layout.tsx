@@ -67,7 +67,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           key={item.name}
           to={item.path}
           onClick={() => isMobileView && setIsMobileMenuOpen(false)}
-          className={`flex items-center gap-3.5 px-4 py-3.5 rounded-2xl transition-all text-sm font-bold ${
+          className={`flex items-center gap-3.5 px-4 py-3.5 rounded-2xl transition-all text-sm font-semibold ${
             isActive
               ? isAdminItem 
                 ? "bg-gray-900 text-white shadow-lg shadow-gray-200" 
