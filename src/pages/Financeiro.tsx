@@ -397,7 +397,7 @@ export default function Financeiro() {
 
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto flex flex-col h-full space-y-8">
+      <div className="max-w-6xl mx-auto flex flex-col h-full space-y-8 pb-10">
         
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Financeiro</h1>
@@ -605,7 +605,7 @@ export default function Financeiro() {
                               <button onClick={() => handleOpenModal(tx)} className="p-1.5 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-md">
                                 <Edit2 className="w-4 h-4" />
                               </button>
-                              <button onClick={() => handleDelete(tx.id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md">
+                              <button onClick={() => handleDelete(tx.id)} className="p-1.5 text-gray-400 hover:text-red-500 rounded-md">
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
