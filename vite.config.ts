@@ -14,6 +14,7 @@ export default defineConfig(() => ({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      includeAssets: ['favicon.svg', 'favicon.ico'],
       manifest: {
         name: 'Frame Pro CRM',
         short_name: 'Frame Pro',
@@ -21,6 +22,14 @@ export default defineConfig(() => ({
         theme_color: '#FF8C00',
         background_color: '#f8fafc',
         display: 'standalone',
+        icons: [
+          {
+            src: 'favicon.svg',
+            sizes: 'any',
+            type: 'image/svg+xml',
+            purpose: 'any maskable'
+          }
+        ]
       }
     })
   ],
