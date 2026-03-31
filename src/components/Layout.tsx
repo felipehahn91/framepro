@@ -67,12 +67,12 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           key={item.name}
           to={item.path}
           onClick={() => isMobileView && setIsMobileMenuOpen(false)}
-          className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm font-medium ${
+          className={`flex items-center gap-3.5 px-4 py-3.5 rounded-2xl transition-all text-sm font-bold ${
             isActive
               ? isAdminItem 
-                ? "bg-gray-900 text-white" 
-                : "bg-orange-400 text-white"
-              : "text-gray-600 hover:bg-gray-100"
+                ? "bg-gray-900 text-white shadow-lg shadow-gray-200" 
+                : "bg-orange-500 text-white shadow-lg shadow-orange-100"
+              : "text-gray-600 hover:bg-gray-50"
           }`}
         >
           <item.icon
@@ -97,11 +97,11 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           <img src={logoImg} alt="Frame Pro Logo" className="w-full max-w-[180px] h-auto object-contain" />
         </div>
 
-        <div className="mb-4">
+        <div className="mb-6">
           <div className="h-px bg-border w-full"></div>
         </div>
 
-        <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto custom-scrollbar">
+        <nav className="flex-1 px-4 py-2 space-y-2 overflow-y-auto custom-scrollbar">
           {renderNavItems()}
         </nav>
       </aside>
@@ -113,7 +113,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             className="fixed inset-0 bg-black/50 backdrop-blur-sm" 
             onClick={() => setIsMobileMenuOpen(false)} 
           />
-          <aside className="relative w-64 max-w-[80vw] bg-white h-full flex flex-col shadow-2xl animate-in slide-in-from-left duration-300 border-r border-border">
+          <aside className="relative w-72 max-w-[85vw] bg-white h-full flex flex-col shadow-2xl animate-in slide-in-from-left duration-300 border-r border-border">
             <div className="p-6 flex items-center justify-between">
               <img src={logoImg} alt="Frame Pro Logo" className="h-8 w-auto object-contain" />
               <button 
@@ -124,11 +124,11 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
               </button>
             </div>
 
-            <div className="mb-4">
+            <div className="mb-6">
               <div className="h-px bg-border w-full"></div>
             </div>
 
-            <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto custom-scrollbar">
+            <nav className="flex-1 px-4 py-2 space-y-2 overflow-y-auto custom-scrollbar">
               {renderNavItems(true)}
             </nav>
           </aside>
