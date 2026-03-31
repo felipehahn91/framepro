@@ -61,19 +61,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Botão de Dev para se tornar admin instantaneamente
-  const handleBecomeAdmin = async () => {
-    setLoading(true);
-    try {
-      await supabase.from('profiles').update({ role: 'admin' }).eq('id', user?.id);
-      toast.success("Pronto! Você agora é Super Admin. Recarregando a página...");
-      setTimeout(() => window.location.reload(), 1500);
-    } catch (error) {
-      toast.error("Erro ao atualizar permissões.");
-      setLoading(false);
-    }
-  };
-
   const handleSaveEvolution = () => {
     setSaving(true);
     setTimeout(() => {
@@ -107,19 +94,6 @@ export default function AdminDashboard() {
           <p className="text-gray-500 text-lg">
             Esta área é exclusiva para administradores do sistema. Você não tem permissão para visualizar o painel de controle global.
           </p>
-          
-          <div className="bg-orange-50 border border-orange-200 p-6 rounded-2xl w-full mt-8">
-            <h3 className="font-bold text-orange-800 mb-2">Modo de Desenvolvimento</h3>
-            <p className="text-sm text-orange-700 mb-4">
-              Como você está em ambiente de testes, clique no botão abaixo para promover sua conta a Super Admin.
-            </p>
-            <button 
-              onClick={handleBecomeAdmin}
-              className="w-full py-3 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition-colors shadow-sm"
-            >
-              Tornar-se Super Admin Agora
-            </button>
-          </div>
         </div>
       </Layout>
     );
