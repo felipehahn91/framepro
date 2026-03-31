@@ -17,6 +17,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+interface NavItem {
+  name: string;
+  path: string;
+  icon: React.ElementType;
+}
+
 export const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const { user, profile, signOut } = useAuth();
@@ -33,7 +39,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     return "US";
   };
 
-  const navItems = [
+  const navItems: NavItem[] = [
     { name: "Dashboard", path: "/", icon: LayoutDashboard },
     { name: "Oportunidades", path: "/oportunidades", icon: Target },
     { name: "Clientes", path: "/clientes", icon: Users },
@@ -50,7 +56,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     navItems.push({ name: "Administração", path: "/admin", icon: ShieldCheck });
   }
 
-  const renderNavItems = (isMobile = false) => {
+  const renderNavItems = (isMobileView = false) => {
     return navItems.map((item) => {
       const isActive = location.pathname === item.path;
       const isAdminItem = item.path === "/admin";
@@ -59,7 +65,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         <Link
           key={item.name}
           to={item.path}
-          onClick={() => isMobile && setIsMobileMenuOpen(false)}
+          onClick={() => isMobileView && setIsMobileMenuOpen(false)}
           className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm font-medium ${
             isActive
               ? isAdminItem 
@@ -144,7 +150,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             </div>
             <span className="font-bold text-lg text-gray-900">Frame Pro</span>
           </div>
-          <div className="hidden md:block"></div> {/* Spacer */}
+          <div className="hidden md:block"></div>
           
           <div className="flex items-center gap-4">
             <button className="text-gray-500 hover:text-gray-700 transition-colors">

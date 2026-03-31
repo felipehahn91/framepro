@@ -14,7 +14,6 @@ export default defineConfig(() => ({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'favicon.png', 'apple-touch-icon.png'],
       manifest: {
         name: 'Frame Pro CRM',
         short_name: 'Frame Pro',
@@ -22,19 +21,6 @@ export default defineConfig(() => ({
         theme_color: '#FF8C00',
         background_color: '#f8fafc',
         display: 'standalone',
-        icons: [
-          {
-            src: 'favicon.svg',
-            sizes: '192x192',
-            type: 'image/svg+xml'
-          },
-          {
-            src: 'favicon.svg',
-            sizes: '512x512',
-            type: 'image/svg+xml',
-            purpose: 'any maskable'
-          }
-        ]
       }
     })
   ],
