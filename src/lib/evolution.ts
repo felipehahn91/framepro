@@ -24,22 +24,17 @@ export const fetchWithEvolution = async (endpoint: string, options: RequestInit 
   return response.json();
 };
 
-export const createInstance = (instanceName: string) => 
-  fetchWithEvolution('/instance/create', {
+export const createInstance = (instanceName: string) => {
+  const webhookUrl = "https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/evolution-webhook";
+  
+  return fetchWithEvolution('/instance/create', {
     method: 'POST',
     body: JSON.stringify({ 
       instanceName, 
       qrcode: true, 
-      integration: 'WHATSAPP-BAILEYS'
-    })
-  });
-
-// Configura o Webhook na Evolution apontando para a sua Edge Function no Supabase
-export const setEvolutionWebhook = (instanceName: string) => {
-  const webhookUrl = "https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/evolution-webhook";
-  return fetchWithEvolution(`/webhook/set/${instanceName}`, {
-    method: 'POST',
-    body: JSON.stringify({ 
+      integration: 'WHATSAPP-BAILEYS',
+      syncFullHistory: true,
+      // Tenta forçar o webhook no momento exato da criação (Evolution v2 support)
       webhook: {
         enabled: true,
         url: webhookUrl,
@@ -49,6 +44,41 @@ export const setEvolutionWebhook = (instanceName: string) => {
       }
     })
   });
+};
+
+// Configura o Webhook na Evolution com fallback de versão
+export const setEvolutionWebhook = async (instanceName: string) => {
+  const webhookUrl = "https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/evolution-webhook";
+  
+  try {
+    // Tentativa 1: Formato padrão Evolution V2
+    return await fetchWithEvolution(`/webhook/set/${instanceName}`, {
+      method: 'POST',
+      body: JSON.stringify({ 
+        webhook: {
+          enabled: true,
+          url: webhookUrl,
+          byEvents: false,
+          base64: false,
+          events: ["MESSAGES_UPSERT", "MESSAGES_SET", "SEND_MESSAGE"]
+        }
+      })
+    });
+  } catch (error) {
+    console.warn("Falha no payload V2, tentando V1/Flat...", error);
+    // Tentativa 2: Formato Plano (Evolution V1 ou V2 legado)
+    return await fetchWithEvolution(`/webhook/set/${instanceName}`, {
+      method: 'POST',
+      body: JSON.stringify({ 
+        enabled: true,
+        url: webhookUrl,
+        webhookByEvents: false,
+        byEvents: false,
+        base64: false,
+        events: ["MESSAGES_UPSERT", "MESSAGES_SET", "SEND_MESSAGE"]
+      })
+    });
+  }
 };
 
 export const getConnectionState = (instanceName: string) => fetchWithEvolution(`/instance/connectionState/${instanceName}`, { method: 'GET' });

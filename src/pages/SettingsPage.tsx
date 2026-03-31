@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { Camera, Save, Loader2, Palette, Check, MessageSquare, QrCode, Smartphone, LogOut, RefreshCw } from 'lucide-react';
+import { Camera, Save, Loader2, Palette, Check, MessageSquare, QrCode, Smartphone, LogOut, RefreshCw, Webhook } from 'lucide-react';
 import * as evolutionApi from '@/lib/evolution';
 import { THEMES, applyTheme, getActiveTheme } from '@/lib/theme';
 
@@ -23,7 +23,6 @@ export default function SettingsPage() {
   const [profileData, setProfileData] = useState({ name: '', company: '', avatar: null as File | null });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   
-  // Inicia com o tema já salvo
   const [activeTheme, setActiveTheme] = useState(getActiveTheme());
 
   // --- WHATSAPP STATES ---
@@ -82,17 +81,15 @@ export default function SettingsPage() {
         setQrCodeBase64(null);
         await updateDbStatus(instanceName, 'connected');
         
-        // Garante que o Webhook está configurado sempre que estiver open
         try {
           await evolutionApi.setEvolutionWebhook(instanceName);
         } catch (e) {
-          console.error("Falha ao registrar Webhook:", e);
+          console.error("Falha ao registrar Webhook silenciosamente:", e);
         }
       } else if (state === 'connecting' || state === 'close') {
         fetchQrCode(instanceName);
       }
     } catch (error) {
-      console.error("Erro ao checar status da evolution", error);
       if (error instanceof Error && error.message.includes('not found')) {
         await supabase.from('whatsapp_instances').delete().eq('instance_name', instanceName);
         setWaInstance(null);
@@ -106,11 +103,8 @@ export default function SettingsPage() {
       const response = await evolutionApi.connectInstance(instanceName);
       if (response.base64) {
         setQrCodeBase64(response.base64);
-        
         if (!pollingInterval.current) {
-          pollingInterval.current = setInterval(() => {
-            checkEvolutionState(instanceName);
-          }, 3000); 
+          pollingInterval.current = setInterval(() => checkEvolutionState(instanceName), 3000); 
         }
       }
     } catch (error) {
@@ -192,6 +186,16 @@ export default function SettingsPage() {
     }
   };
 
+  const handleForceWebhook = async () => {
+    if (!waInstance) return;
+    try {
+      await evolutionApi.setEvolutionWebhook(waInstance.instance_name);
+      toast.success("Webhook ativado com sucesso na Evolution!");
+    } catch (error: any) {
+      toast.error("Erro ao configurar Webhook: " + (error.message || "Verifique a API"));
+    }
+  };
+
   useEffect(() => {
     return () => {
       if (pollingInterval.current) clearInterval(pollingInterval.current);
@@ -230,7 +234,7 @@ export default function SettingsPage() {
 
   const handleThemeChange = (themeId: string) => {
     setActiveTheme(themeId);
-    applyTheme(themeId); // Aplica o novo tema instantaneamente
+    applyTheme(themeId); 
     showAutoSave();
   };
 
@@ -456,13 +460,22 @@ export default function SettingsPage() {
                         </div>
                       </div>
 
-                      <Button 
-                        onClick={handleDisconnectWhatsapp}
-                        variant="destructive"
-                        className="bg-red-500 hover:bg-red-600 font-bold px-6 shadow-sm w-full sm:w-auto"
-                      >
-                        <LogOut className="w-4 h-4 mr-2" /> Desconectar
-                      </Button>
+                      <div className="flex flex-col gap-2 w-full sm:w-auto">
+                        <Button 
+                          onClick={handleForceWebhook}
+                          variant="outline"
+                          className="border-green-200 text-green-700 hover:bg-green-50 font-bold px-6 shadow-sm w-full"
+                        >
+                          <Webhook className="w-4 h-4 mr-2" /> Forçar Webhook
+                        </Button>
+                        <Button 
+                          onClick={handleDisconnectWhatsapp}
+                          variant="destructive"
+                          className="bg-red-500 hover:bg-red-600 font-bold px-6 shadow-sm w-full"
+                        >
+                          <LogOut className="w-4 h-4 mr-2" /> Desconectar
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </CardContent>
