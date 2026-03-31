@@ -93,8 +93,8 @@ export const sendTextMessage = (instanceName: string, number: string, text: stri
     method: 'POST',
     body: JSON.stringify({ 
       number: cleanNumber, 
-      text: text, // Evolution espera "text" na raiz, não dentro de textMessage
-      options: { delay: 0 } 
+      text: text, 
+      delay: 1200 // Opcional, ajuda a simular o "digitando..."
     })
   });
 };
