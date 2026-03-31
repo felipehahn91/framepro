@@ -7,7 +7,7 @@ import {
   Trash2, Plus, UserPlus, MessageSquare, MessageCircle, Link as LinkIcon,
   Upload, Loader2, Copy, ExternalLink, X, UserMinus, Search, Inbox, ArrowUp, ArrowDown, Clock, Tag as TagIcon, Zap
 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import LeadImportModal from "@/components/LeadImportModal";
@@ -397,15 +397,17 @@ export default function Oportunidades() {
     if (activeTab === 'link' && !formData.name) return toast.error("Nome é obrigatório.");
     if (activeTab === 'trigger' && !formData.trigger_phrase) return toast.error("Mensagem gatilho é obrigatória.");
     
-    if (activeColumns.length === 0) return toast.error("Crie uma coluna primeiro.");
+    const targetPipeline = formData.pipeline_id || activePipelineId;
+    const activeCols = columns.filter(c => c.pipeline_id === targetPipeline).sort((a, b) => a.order_index - b.order_index);
+    if (activeCols.length === 0) return toast.error("Crie uma coluna primeiro.");
 
-    const targetCol = activeColumns[0].id;
+    const targetCol = activeCols[0].id;
 
     try {
       if (activeTab === 'opp') {
         const { data, error } = await supabase.from('opportunities').insert({
           user_id: user?.id,
-          pipeline_id: formData.pipeline_id || activePipelineId,
+          pipeline_id: targetPipeline,
           column_id: targetCol,
           name: formData.name,
           value: formData.value,
@@ -419,12 +421,12 @@ export default function Oportunidades() {
           is_client: false
         }).select().single();
         if (error) throw error;
-        if (data) setOpportunities(prev => [...prev, data as Opportunity]);
+        if (data && targetPipeline === activePipelineId) setOpportunities(prev => [...prev, data as Opportunity]);
         toast.success("Oportunidade criada!");
       } else if (activeTab === 'link') {
         const { data } = await supabase.from('link_forms').insert({
           user_id: user?.id,
-          pipeline_id: formData.pipeline_id || activePipelineId,
+          pipeline_id: targetPipeline,
           column_id: targetCol,
           name: formData.name,
           tag: formData.tag,
@@ -438,7 +440,7 @@ export default function Oportunidades() {
         const { data } = await supabase.from('whatsapp_triggers').insert({
           user_id: user?.id,
           trigger_phrase: formData.trigger_phrase,
-          pipeline_id: formData.pipeline_id || activePipelineId,
+          pipeline_id: targetPipeline,
           column_id: targetCol,
           tag: formData.tag,
           enabled: true
@@ -647,51 +649,145 @@ export default function Oportunidades() {
 
       {/* MODAL: Adicionar ao Pipeline */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-2xl p-0 overflow-hidden bg-white">
+        <DialogContent className="sm:max-w-2xl p-0 overflow-hidden bg-white max-h-[90vh] overflow-y-auto">
           <div className="p-6 sm:p-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Adicionar ao Pipeline</h2>
-            <div className="flex bg-gray-50 p-1 rounded-xl mb-6">
-              <button onClick={() => setActiveTab('opp')} className={`flex-1 py-2 text-sm font-semibold rounded-lg ${activeTab === 'opp' ? 'bg-white shadow-sm' : ''}`}>Oportunidade</button>
-              <button onClick={() => setActiveTab('link')} className={`flex-1 py-2 text-sm font-semibold rounded-lg ${activeTab === 'link' ? 'bg-white shadow-sm' : ''}`}>Link Form</button>
-              <button onClick={() => setActiveTab('trigger')} className={`flex-1 py-2 text-sm font-semibold rounded-lg ${activeTab === 'trigger' ? 'bg-white shadow-sm' : ''}`}>Gatilho WhatsApp</button>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Adicionar ao Pipeline</h2>
+            <p className="text-sm text-gray-500 mb-6">Crie uma nova oportunidade ou gere um link de formulário.</p>
+
+            <div className="flex bg-gray-100 p-1 rounded-xl mb-6">
+              <button onClick={() => setActiveTab('opp')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'opp' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>Nova Oportunidade</button>
+              <button onClick={() => setActiveTab('link')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'link' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>Link Form</button>
+              <button onClick={() => setActiveTab('trigger')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'trigger' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>Gatilho WhatsApp</button>
             </div>
 
-            <div className="space-y-4">
-              {activeTab === 'trigger' && (
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1.5">Mensagem Gatilho (Exata ou Contém)</label>
-                  <input type="text" value={formData.trigger_phrase} onChange={e => setFormData({...formData, trigger_phrase: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg" placeholder="Ex: orçamento casamento" />
-                  <p className="text-[11px] text-gray-500 mt-1">Quando alguém enviar exatamente isso (ou uma frase contendo isso) no WhatsApp, o lead será criado automaticamente.</p>
-                </div>
-              )}
-
+            <div className="space-y-6">
+              {/* Campos Comuns: Pipeline e Tipo de Foto */}
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1.5">Pipeline</label>
-                  <select value={formData.pipeline_id} onChange={e => setFormData({...formData, pipeline_id: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-bold text-gray-700">Qual pipeline este lead cairá?</label>
+                  <select 
+                    value={formData.pipeline_id} 
+                    onChange={e => setFormData({...formData, pipeline_id: e.target.value})}
+                    className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm"
+                  >
                     {pipelines.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1.5">Tag / Tipo</label>
-                  <select value={formData.tag} onChange={e => setFormData({...formData, tag: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-bold text-gray-700">Tipo de Foto</label>
+                  <select 
+                    value={formData.tag} 
+                    onChange={e => setFormData({...formData, tag: e.target.value})}
+                    className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm"
+                  >
                     <option value="">Selecione o tipo</option>
                     {PHOTO_TYPES.map(pt => <option key={pt.value} value={pt.value}>{pt.label}</option>)}
                   </select>
                 </div>
               </div>
 
-              {activeTab !== 'trigger' && (
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1.5">Nome {activeTab === 'opp' ? 'do Lead' : 'do Form'} *</label>
-                  <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg" />
+              {activeTab === 'opp' && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-gray-700">Nome do Lead *</label>
+                    <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" placeholder="Nome do cliente" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-gray-700">Valor</label>
+                    <input type="number" value={formData.value} onChange={e => setFormData({...formData, value: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" placeholder="0.00" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-bold text-gray-700">Email</label>
+                      <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-bold text-gray-700">Telefone/WhatsApp</label>
+                      <input type="text" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-bold text-gray-700">Instagram</label>
+                      <input type="text" value={formData.instagram} onChange={e => setFormData({...formData, instagram: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-bold text-gray-700">Data</label>
+                      <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-bold text-gray-700">Local do evento</label>
+                      <input type="text" value={formData.local} onChange={e => setFormData({...formData, local: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-bold text-gray-700">Descrição</label>
+                      <input type="text" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'link' && (
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-gray-700">Nome do Formulário *</label>
+                    <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" placeholder="Ex: Orçamento Casamento" />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-y-3 gap-x-8">
+                    {[
+                      { key: 'email', label: 'Email' },
+                      { key: 'phone', label: 'Telefone/WhatsApp' },
+                      { key: 'instagram', label: 'Instagram' },
+                      { key: 'date', label: 'Data' },
+                      { key: 'local', label: 'Local do evento' },
+                      { key: 'description', label: 'Descrição' }
+                    ].map(field => (
+                      <div key={field.key} className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-700">{field.label}</span>
+                        <input 
+                          type="checkbox" 
+                          checked={formFields[field.key as keyof typeof formFields]} 
+                          onChange={e => setFormFields({...formFields, [field.key]: e.target.checked})}
+                          className="w-5 h-5 rounded border-gray-300 accent-orange-500"
+                        />
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-bold text-gray-700">Número de WhatsApp</label>
+                      <input type="text" value={formData.whatsapp_number} onChange={e => setFormData({...formData, whatsapp_number: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" placeholder="Ex: 5511999999999" />
+                      <p className="text-[10px] text-gray-400">Número que receberá a mensagem do cliente</p>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-bold text-gray-700">Texto da Mensagem</label>
+                      <input type="text" value={formData.whatsapp_text} onChange={e => setFormData({...formData, whatsapp_text: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" placeholder="Ex: Olá, gostaria de um orçamento" />
+                      <p className="text-[10px] text-gray-400">Texto pré-definido para o WhatsApp</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'trigger' && (
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Mensagem Gatilho (Exata ou Contém)</label>
+                    <input type="text" value={formData.trigger_phrase} onChange={e => setFormData({...formData, trigger_phrase: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none shadow-sm" placeholder="Ex: orçamento casamento" />
+                    <p className="text-[11px] text-gray-500 mt-2">Quando alguém enviar exatamente isso (ou uma frase contendo isso) no WhatsApp, o lead será criado automaticamente.</p>
+                  </div>
                 </div>
               )}
             </div>
           </div>
-          <div className="p-6 bg-gray-50 flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
-            <Button onClick={handleCreateNew} className="bg-orange-400 hover:bg-orange-500">Salvar Configuração</Button>
+          <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+            <button onClick={() => setIsModalOpen(false)} className="px-6 py-2.5 text-gray-700 font-bold border border-gray-200 hover:bg-gray-100 rounded-xl transition-colors">Cancelar</button>
+            <button onClick={handleCreateNew} className="px-8 py-2.5 bg-orange-400 hover:bg-orange-500 text-white font-bold rounded-xl shadow-md transition-all">
+              {activeTab === 'opp' ? 'Criar Oportunidade' : activeTab === 'link' ? 'Gerar Link Form' : 'Salvar Gatilho'}
+            </button>
           </div>
         </DialogContent>
       </Dialog>
@@ -726,8 +822,8 @@ export default function Oportunidades() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCadenciaModalOpen(false)}>Cancelar</Button>
-            <Button onClick={handleStartCadencia} className="bg-orange-400 hover:bg-orange-500">Agendar Cadência</Button>
+            <button onClick={() => setIsCadenciaModalOpen(false)} className="px-5 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded-lg transition-colors">Cancelar</button>
+            <button onClick={handleStartCadencia} className="px-6 py-2 bg-orange-400 text-white font-bold rounded-lg hover:bg-orange-500 shadow-sm">Agendar Cadência</button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
