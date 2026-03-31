@@ -97,7 +97,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           <img src={logoImg} alt="Frame Pro Logo" className="w-full max-w-[180px] h-auto object-contain" />
         </div>
 
-        <div className="px-6 mb-4">
+        <div className="mb-4">
           <div className="h-px bg-gray-100 w-full"></div>
         </div>
 
@@ -124,7 +124,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
               </button>
             </div>
 
-            <div className="px-6 mb-4">
+            <div className="mb-4">
               <div className="h-px bg-gray-100 w-full"></div>
             </div>
 
