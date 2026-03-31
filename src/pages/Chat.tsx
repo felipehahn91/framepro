@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchChats, fetchMessages, sendTextMessage } from "@/lib/evolution";
 import { 
-  Search, Send, Loader2, MessageSquare, User, Smartphone, AlertCircle, ArrowLeft
+  Search, Send, Loader2, MessageSquare, User, Smartphone, AlertCircle, ArrowLeft, Image as ImageIcon
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -81,7 +81,7 @@ export default function Chat() {
       
       setChats(parsedChats);
     } catch (error) {
-      if (!isSilent) toast.error("Não foi possível carregar as conversas.");
+      if (!isSilent) console.error("Não foi possível carregar as conversas.");
     } finally {
       if (!isSilent) setLoadingChats(false);
     }
@@ -110,17 +110,35 @@ export default function Chat() {
       const res = await fetchMessages(instanceName, remoteJid);
       const msgsData = Array.isArray(res) ? res : (res.data || res.messages || []);
       
-      const parsedMessages = msgsData.map((m: any) => ({
-        id: m.key?.id || m.id,
-        text: m.message?.conversation || m.message?.extendedTextMessage?.text || m.text || "",
-        fromMe: m.key?.fromMe || m.fromMe || false,
-        timestamp: m.messageTimestamp ? new Date(m.messageTimestamp * 1000) : new Date(m.timestamp || Date.now())
-      })).filter((m: any) => m.text) // Filtra apenas mensagens de texto
-      .sort((a: any, b: any) => a.timestamp.getTime() - b.timestamp.getTime());
+      const parsedMessages = msgsData.map((m: any) => {
+        // Tenta extrair o texto de várias fontes possíveis (incluindo legendas de imagens/vídeos)
+        let text = m.message?.conversation || 
+                   m.message?.extendedTextMessage?.text || 
+                   m.message?.imageMessage?.caption || 
+                   m.message?.videoMessage?.caption || 
+                   m.text || "";
+
+        // Se for mídia/anexo sem legenda, coloca um aviso genérico
+        if (!text && m.message) {
+          if (m.message.imageMessage) text = "📷 Imagem";
+          else if (m.message.videoMessage) text = "🎥 Vídeo";
+          else if (m.message.audioMessage) text = "🎵 Áudio";
+          else if (m.message.documentMessage) text = "📄 Documento";
+          else if (m.message.stickerMessage) text = "✨ Figurinha";
+          else text = "📎 Mídia/Anexo";
+        }
+
+        return {
+          id: m.key?.id || m.id,
+          text: text,
+          fromMe: m.key?.fromMe || m.fromMe || false,
+          timestamp: m.messageTimestamp ? new Date(m.messageTimestamp * 1000) : new Date(m.timestamp || Date.now())
+        };
+      }).sort((a: any, b: any) => a.timestamp.getTime() - b.timestamp.getTime());
 
       setMessages(parsedMessages);
       
-      // Rola para o final
+      // Rola para o final apenas se não for uma atualização silenciosa ou se o usuário não tiver subido muito a tela
       if (!isSilent) {
         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
       }
@@ -277,12 +295,23 @@ export default function Chat() {
                   ) : (
                     messages.map((msg) => {
                       const isMe = msg.fromMe;
+                      // Detecta se o texto é de mídia baseado nos nossos fallbacks
+                      const isMedia = msg.text.startsWith('📷') || msg.text.startsWith('🎥') || msg.text.startsWith('🎵') || msg.text.startsWith('📄') || msg.text.startsWith('📎') || msg.text.startsWith('✨');
+                      
                       return (
                         <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2 relative shadow-sm ${
+                          <div className={`max-w-[85%] sm:max-w-[70%] rounded-2xl px-4 py-2 relative shadow-sm flex flex-col ${
                             isMe ? 'bg-[#d9fdd3] text-gray-900 rounded-tr-none' : 'bg-white text-gray-900 rounded-tl-none'
                           }`}>
-                            <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                            {isMedia && (
+                              <div className="flex items-center gap-2 mb-1 text-gray-500 bg-black/5 rounded p-1.5 w-fit">
+                                <span className="text-[13px] font-medium">{msg.text.split(' ')[0]}</span>
+                                <span className="text-xs italic">{msg.text.substring(2)}</span>
+                              </div>
+                            )}
+                            {!isMedia && (
+                              <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                            )}
                             <div className="text-[10px] text-gray-500 text-right mt-1 font-medium">
                               {msg.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                             </div>
@@ -321,6 +350,9 @@ export default function Chat() {
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-2">WebChat Frame Pro</h2>
                 <p className="text-gray-500 max-w-md">Selecione uma conversa na lateral para começar a enviar mensagens conectadas ao seu WhatsApp.</p>
+                <div className="mt-6 text-sm text-gray-400 max-w-md bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                  <p><strong>Aviso sobre histórico:</strong> A API baixa as mensagens em segundo plano. Se não ver mensagens antigas imediatamente, elas podem ainda estar sendo sincronizadas do seu celular.</p>
+                </div>
               </div>
             )}
           </div>

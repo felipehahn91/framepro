@@ -35,7 +35,8 @@ export const createInstance = (instanceName: string) =>
     body: JSON.stringify({ 
       instanceName, 
       qrcode: true, 
-      integration: 'WHATSAPP-BAILEYS' 
+      integration: 'WHATSAPP-BAILEYS',
+      syncFullHistory: true // Força a Evolution a puxar as mensagens antigas do celular
     })
   });
 
@@ -64,7 +65,8 @@ export const fetchChats = (instanceName: string) =>
 export const fetchMessages = (instanceName: string, remoteJid: string) => 
   fetchWithEvolution(`/chat/findMessages/${instanceName}`, {
     method: 'POST',
-    body: JSON.stringify({ where: { remoteJid } })
+    // Enviamos tanto na raiz quanto no where para cobrir diferentes versões da Evolution
+    body: JSON.stringify({ remoteJid, where: { remoteJid } })
   });
 
 export const sendTextMessage = (instanceName: string, number: string, text: string) => 
