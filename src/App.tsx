@@ -26,6 +26,8 @@ import AdminDashboard from "./pages/AdminDashboard";
 import SettingsPage from "./pages/SettingsPage";
 import Login from "./pages/Login";
 import LinkFormPage from "./pages/LinkFormPage";
+import Pricing from "./pages/Pricing";
+import FounderPack from "./pages/FounderPack";
 import NotFound from "./pages/NotFound";
 
 applyTheme(getActiveTheme());
@@ -45,6 +47,10 @@ const App = () => (
               <Route path="/link-form/:id" element={<LinkFormPage />} />
               <Route path="/contratos/public/:token" element={<ContractPublicView />} />
               <Route path="/orcamentos/public/:token" element={<OrcamentoPublicView />} />
+              
+              {/* Paginas de Pagamento */}
+              <Route path="/precos" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
+              <Route path="/founders" element={<ProtectedRoute><FounderPack /></ProtectedRoute>} />
               
               <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
               <Route path="/oportunidades" element={<ProtectedRoute><Oportunidades /></ProtectedRoute>} />
