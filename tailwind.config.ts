@@ -19,6 +19,17 @@ export default {
     },
     extend: {
       colors: {
+        // Redirecionamos a paleta 'orange' (que o sistema usa atualmente) 
+        // para nossas variáveis dinâmicas do tema!
+        orange: {
+          50: "hsl(var(--brand-50, 33 100% 96%))",
+          100: "hsl(var(--brand-100, 34 100% 92%))",
+          200: "hsl(var(--brand-200, 32 98% 83%))",
+          300: "hsl(var(--brand-300, 28 96% 73%))",
+          400: "hsl(var(--brand-400, 27 96% 61%))",
+          500: "hsl(var(--brand-500, 25 95% 53%))",
+          600: "hsl(var(--brand-600, 20 94% 46%))",
+        },
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -70,20 +81,12 @@ export default {
       },
       keyframes: {
         "accordion-down": {
-          from: {
-            height: "0",
-          },
-          to: {
-            height: "var(--radix-accordion-content-height)",
-          },
+          from: { height: "0" },
+          to: { height: "var(--radix-accordion-content-height)" },
         },
         "accordion-up": {
-          from: {
-            height: "var(--radix-accordion-content-height)",
-          },
-          to: {
-            height: "0",
-          },
+          from: { height: "var(--radix-accordion-content-height)" },
+          to: { height: "0" },
         },
       },
       animation: {

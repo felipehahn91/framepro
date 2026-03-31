@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { applyTheme, getActiveTheme } from "./lib/theme";
 
 import Index from "./pages/Index";
 import Oportunidades from "./pages/Oportunidades";
@@ -24,6 +25,9 @@ import SettingsPage from "./pages/SettingsPage";
 import Login from "./pages/Login";
 import LinkFormPage from "./pages/LinkFormPage";
 import NotFound from "./pages/NotFound";
+
+// Aplica o tema salvo logo na inicialização do app
+applyTheme(getActiveTheme());
 
 const queryClient = new QueryClient();
 

@@ -11,15 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { Camera, Save, Loader2, Palette, Check, MessageSquare, QrCode, Smartphone, LogOut, RefreshCw } from 'lucide-react';
 import * as evolutionApi from '@/lib/evolution';
-
-const THEMES = [
-  { id: 'theme-frame-pro', name: 'Frame Pro', primary: '#FF8C00', secondary: '#FFFFFF' },
-  { id: 'theme-elegancia-dourada', name: 'Elegância Dourada', primary: '#D4AF37', secondary: '#1a1a1a' },
-  { id: 'theme-azul-profissional', name: 'Azul Profissional', primary: '#2E5090', secondary: '#F5F5F5' },
-  { id: 'theme-rosa-sofisticado', name: 'Rosa Sofisticado', primary: '#D4547C', secondary: '#FFF8F9' },
-  { id: 'theme-verde-natural', name: 'Verde Natural', primary: '#2D6A4F', secondary: '#F1FAEE' },
-  { id: 'theme-cinza-minimalista', name: 'Cinza Minimalista', primary: '#4A4A4A', secondary: '#FFFFFF' },
-];
+import { THEMES, applyTheme, getActiveTheme } from '@/lib/theme';
 
 export default function SettingsPage() {
   const { user, profile } = useAuth();
@@ -30,7 +22,9 @@ export default function SettingsPage() {
 
   const [profileData, setProfileData] = useState({ name: '', company: '', avatar: null as File | null });
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [activeTheme, setActiveTheme] = useState('theme-frame-pro');
+  
+  // Inicia com o tema já salvo
+  const [activeTheme, setActiveTheme] = useState(getActiveTheme());
 
   // --- WHATSAPP STATES ---
   const [waInstance, setWaInstance] = useState<any>(null);
@@ -54,7 +48,6 @@ export default function SettingsPage() {
     }
   }, [user, profile]);
 
-  // Fetch WhatsApp Instance from Supabase
   const fetchWaInstance = async () => {
     setWaLoading(true);
     try {
@@ -64,9 +57,7 @@ export default function SettingsPage() {
         .eq('user_id', user?.id)
         .single();
       
-      if (error && error.code !== 'PGRST116') { // PGRST116 = Nenhum registro encontrado
-        if (error.code !== '42P01') throw error; // Ignora se a tabela ainda não existir
-      }
+      if (error && error.code !== 'PGRST116' && error.code !== '42P01') throw error; 
 
       if (data) {
         setWaInstance(data);
@@ -79,7 +70,6 @@ export default function SettingsPage() {
     }
   };
 
-  // Verifica o status diretamente na Evolution API
   const checkEvolutionState = async (instanceName: string) => {
     try {
       const response = await evolutionApi.getConnectionState(instanceName);
@@ -88,12 +78,10 @@ export default function SettingsPage() {
       setConnectionStatus(state);
 
       if (state === 'open') {
-        // Se conectou, limpa o intervalo de polling
         if (pollingInterval.current) clearInterval(pollingInterval.current);
         setQrCodeBase64(null);
         await updateDbStatus(instanceName, 'connected');
       } else if (state === 'connecting' || state === 'close') {
-        // Se estiver desconectado, tenta puxar o QR Code
         fetchQrCode(instanceName);
       }
     } catch (error) {
@@ -219,7 +207,6 @@ export default function SettingsPage() {
   const saveProfile = async () => {
     setLoading(true);
     try {
-      // Mock save to match pocketbase structure in auth context
       toast.success('Perfil atualizado com sucesso!');
     } catch (error) {
       toast.error('Erro ao atualizar perfil.');
@@ -234,8 +221,9 @@ export default function SettingsPage() {
     saveTimeoutRef.current = setTimeout(() => setSaveStatus(''), 3000);
   };
 
-  const handleThemeChange = async (themeId: string) => {
+  const handleThemeChange = (themeId: string) => {
     setActiveTheme(themeId);
+    applyTheme(themeId); // Aplica o novo tema instantaneamente
     showAutoSave();
   };
 
