@@ -297,6 +297,12 @@ export default function Oportunidades() {
   const handleCadenciaClick = (e: React.MouseEvent, opp: Opportunity) => {
     e.stopPropagation();
     if (!opp.phone) return toast.error("Este lead não possui telefone cadastrado.");
+    
+    // Verificação de fluxo ativo
+    if (activeCadences[opp.id] > 0) {
+      return toast.warning("Este lead já possui um fluxo de cadência em andamento. Cancele o atual nos detalhes da oportunidade antes de iniciar um novo.");
+    }
+
     setSelectedOppForCadencia(opp);
     setIsCadenciaModalOpen(true);
   };
@@ -312,6 +318,18 @@ export default function Oportunidades() {
     }
 
     try {
+      // Dupla verificação antes de inserir
+      const { data: existingPending } = await supabase
+        .from('cadencia_queue')
+        .select('id')
+        .eq('opportunity_id', selectedOppForCadencia.id)
+        .eq('status', 'pending')
+        .limit(1);
+
+      if (existingPending && existingPending.length > 0) {
+        return toast.error("Não foi possível iniciar. Já existe um fluxo pendente para este lead.");
+      }
+
       // Calcular agendamentos e inserir na fila
       const queueItems = [];
       const now = new Date();
