@@ -11,7 +11,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
-import { PWABanner } from "@/components/PWABanner";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -209,8 +208,6 @@ const Index = () => {
       <div className="min-h-full -m-4 sm:-m-8 p-4 sm:p-8" style={{ backgroundColor: '#e6e6e64c' }}>
         <div className="max-w-7xl mx-auto space-y-6 pb-10">
           
-          <PWABanner />
-
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
             <p className="text-gray-500 text-sm">Visão geral do seu negócio</p>
