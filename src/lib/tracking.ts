@@ -7,18 +7,16 @@ export const initTracking = (orcamentoId: string, sessionId: string, device: str
   if (isTracking) return () => {};
   isTracking = true;
   
-  const sessionEvents: any[] = [];
+  let pendingEvents: any[] = [];
   const startTime = Date.now();
 
-  // Cria a sessão base (apenas INSERE, sem tentar ler de volta para não dar erro de permissão)
+  // 1. Cria a sessão inicial (INSERT é permitido pelo banco)
   supabase.from('orcamento_analytics').insert({
     orcamento_id: orcamentoId,
     session_id: sessionId,
     device: device,
     replay_data: { device, events: [] }
-  }).then(({ error }) => {
-    if (error) console.error("Erro ao iniciar sessão:", error);
-  });
+  }).then();
 
   const getRelativeCoords = (clientX: number, clientY: number) => {
     const container = document.getElementById('proposal-container');
@@ -34,19 +32,17 @@ export const initTracking = (orcamentoId: string, sessionId: string, device: str
 
   const recordEvent = (type: string, data: any) => {
     const timeOffset = Date.now() - startTime;
-    sessionEvents.push({ type, timeOffset, ...data });
-
-    // Salva o clique para o mapa de calor
-    if (type === 'click') {
-      supabase.from('orcamento_tracking').insert({
-        orcamento_id: orcamentoId,
-        session_id: sessionId,
-        event_type: 'click',
-        x: data.x,
-        y: data.y,
-        timestamp: timeOffset
-      }).then();
-    }
+    
+    // Adiciona na fila de eventos para envio em massa
+    pendingEvents.push({
+      orcamento_id: orcamentoId,
+      session_id: sessionId,
+      event_type: type,
+      x: data.x || null,
+      y: data.y || null,
+      scroll_y: data.scroll_y || null,
+      timestamp: timeOffset
+    });
   };
 
   let lastMouseMove = 0;
@@ -75,7 +71,7 @@ export const initTracking = (orcamentoId: string, sessionId: string, device: str
   const onScroll = () => {
     const now = Date.now();
     if (now - lastScroll > 150) {
-      recordEvent('scroll', { scroll_y: window.scrollY });
+      recordEvent('scroll', { scroll_y: Math.round(window.scrollY) });
       lastScroll = now;
     }
   };
@@ -86,18 +82,24 @@ export const initTracking = (orcamentoId: string, sessionId: string, device: str
   window.addEventListener('scroll', onScroll, { passive: true });
 
   const syncData = () => {
-    if (sessionEvents.length > 0) {
-      // Atualiza os dados da gravação continuamente localizando pelo session_id (não esbarra no bloqueio RLS)
-      supabase.from('orcamento_analytics').update({
-        replay_data: { device, events: [...sessionEvents] }
-      }).eq('session_id', sessionId).then(({ error }) => {
-        if (error) console.error("Erro ao sincronizar dados:", error);
+    if (pendingEvents.length > 0) {
+      const eventsToInsert = [...pendingEvents];
+      pendingEvents = []; // Limpa a fila
+      
+      // 2. Ao invés de atualizar (UPDATE), nós inserimos todos os eventos na tabela de tracking.
+      // O banco permite INSERTS livremente para visitantes anônimos.
+      supabase.from('orcamento_tracking').insert(eventsToInsert).then(({ error }) => {
+        if (error) {
+          console.error("Erro ao sincronizar eventos:", error);
+          // Se falhar a internet, devolve pra fila pra tentar de novo
+          pendingEvents = [...eventsToInsert, ...pendingEvents];
+        }
       });
     }
   };
 
-  // Sincroniza periodicamente com o banco de dados a cada 5 segundos
-  trackingInterval = setInterval(syncData, 5000);
+  // Envia eventos para o banco a cada 3 segundos
+  trackingInterval = setInterval(syncData, 3000);
 
   return () => {
     isTracking = false;
@@ -107,7 +109,7 @@ export const initTracking = (orcamentoId: string, sessionId: string, device: str
     window.removeEventListener('scroll', onScroll);
     clearInterval(trackingInterval);
     
-    // Dispara uma última vez quando o cliente sai da página
+    // Dispara uma última vez quando fechar a página
     syncData();
   };
 };

@@ -153,8 +153,34 @@ export default function OrcamentoAnalytics() {
         supabase.from('orcamento_tracking').select('*').eq('orcamento_id', id)
       ]);
 
-      setAnalytics(analyticsData.data || []);
-      setTracking(trackingData.data || []);
+      const rawAnalytics = analyticsData.data || [];
+      const rawTracking = trackingData.data || [];
+
+      // Reconstrói o replay a partir dos eventos que foram inseridos com sucesso (fugindo do bloqueio RLS)
+      const analyticsWithEvents = rawAnalytics.map(session => {
+        const sessionEvents = rawTracking
+          .filter(t => t.session_id === session.session_id)
+          .map(t => ({
+            type: t.event_type,
+            timeOffset: Number(t.timestamp),
+            x: t.x,
+            y: t.y,
+            scroll_y: t.scroll_y,
+            scrollY: t.scroll_y
+          }))
+          .sort((a, b) => a.timeOffset - b.timeOffset);
+
+        return {
+          ...session,
+          replay_data: {
+            device: session.device,
+            events: sessionEvents
+          }
+        };
+      });
+
+      setAnalytics(analyticsWithEvents);
+      setTracking(rawTracking);
     } catch (error) {
       toast.error('Erro ao carregar dados de analytics');
     } finally {
@@ -162,7 +188,6 @@ export default function OrcamentoAnalytics() {
     }
   };
 
-  // Pega o device correto pra cada sessão
   const getDeviceForSession = (sessionId: string) => {
     const session = analytics.find(s => s.session_id === sessionId);
     return session?.device || 'desktop';
@@ -177,7 +202,6 @@ export default function OrcamentoAnalytics() {
         const container = heatmapContainerRef.current;
         if (!canvas || !container) return;
         
-        // Define o tamanho real baseado no scroll
         canvas.width = container.offsetWidth;
         canvas.height = container.scrollHeight;
         const ctx = canvas.getContext('2d');
@@ -185,13 +209,11 @@ export default function OrcamentoAnalytics() {
         
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // Filtramos os cliques apenas para o device selecionado para garantir precisão
         const heatmapTracking = tracking.filter(t => getDeviceForSession(t.session_id) === heatmapDevice);
         
         const clicks = heatmapTracking.filter(t => t.event_type === 'click');
         const moves = heatmapTracking.filter(t => t.event_type === 'mousemove');
         
-        // Movimentos do mouse (azul fraco)
         moves.forEach(point => {
           const gradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, 15);
           gradient.addColorStop(0, 'rgba(59, 130, 246, 0.08)'); 
@@ -202,7 +224,6 @@ export default function OrcamentoAnalytics() {
           ctx.fill();
         });
 
-        // Cliques (Vermelho vivo)
         clicks.forEach(point => {
           const gradient = ctx.createRadialGradient(point.x, point.y, 0, point.x, point.y, 35);
           gradient.addColorStop(0, 'rgba(255, 0, 0, 0.9)'); 
@@ -215,7 +236,6 @@ export default function OrcamentoAnalytics() {
         });
       };
 
-      // Aguardamos 500ms para ter certeza que as imagens e fontes carregaram e a altura está 100% certa
       setTimeout(drawHeatmap, 500);
     }
   }, [isHeatmapOpen, tracking, heatmapDevice]);
@@ -274,7 +294,6 @@ export default function OrcamentoAnalytics() {
       }
     }
 
-    // Só atualizamos o mouse se tiver evento, no mobile não vai ter mousemove, então fica escondido.
     setCursorPos(currentMouse);
     setActiveClicks(currentClicks);
     
