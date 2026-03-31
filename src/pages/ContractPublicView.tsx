@@ -20,6 +20,12 @@ export default function ContractPublicView() {
     if (token) fetchContract();
   }, [token]);
 
+  useEffect(() => {
+    if (contract) {
+      document.title = `Contrato - ${contract.opportunities?.name || 'Documento'} | Frame Pro`;
+    }
+  }, [contract]);
+
   const fetchContract = async () => {
     try {
       const { data, error } = await supabase

@@ -16,6 +16,12 @@ export default function LinkFormPage() {
   });
 
   useEffect(() => {
+    if (formConfig) {
+      document.title = `${formConfig.name} | Frame Pro`;
+    }
+  }, [formConfig]);
+
+  useEffect(() => {
     const fetchForm = async () => {
       try {
         const { data, error } = await supabase.from('link_forms').select('*').eq('id', id).single();

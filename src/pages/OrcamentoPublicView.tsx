@@ -285,6 +285,8 @@ export default function OrcamentoPublicView() {
   useEffect(() => {
     if (!orcamento) return;
     
+    document.title = `${orcamento.name} | Proposta Comercial`;
+    
     const sessionId = generateSessionId();
     const deviceType = getDeviceType();
     
