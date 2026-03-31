@@ -37,11 +37,10 @@ interface Transaction {
   status: string;
   is_installment: boolean;
   installment_count: number;
-  installments: Installment[] | null | any; // Any added to handle JSON string safely
+  installments: Installment[] | null | any; 
   clients?: { name: string };
 }
 
-// Helper seguro para garantir que installments seja sempre um array
 const getInstallments = (t: Transaction): Installment[] => {
   if (!t.is_installment || !t.installments) return [];
   if (typeof t.installments === 'string') {
@@ -54,11 +53,11 @@ export default function Financeiro() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("faturamento");
+  const [listStatusTab, setListStatusTab] = useState("pendentes");
   
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   
-  // Alterado o padrão para 'this_month' para visualizar os vencimentos futuros do mês
   const [period, setPeriod] = useState("this_month");
   const [customDateRange, setCustomDateRange] = useState({ start: "", end: "" });
 
@@ -99,7 +98,6 @@ export default function Financeiro() {
     }
   };
 
-  // --- Lógica de Data Melhorada para incluir futuro ---
   const dateRange = useMemo(() => {
     const now = new Date();
     let start = new Date(0);
@@ -140,22 +138,6 @@ export default function Financeiro() {
     return { start, end };
   }, [period, customDateRange]);
 
-  // --- Filtro Principal Seguro ---
-  const filteredTransactions = useMemo(() => {
-    return transactions.filter(t => {
-      const insts = getInstallments(t);
-      if (insts.length > 0) {
-        return insts.some(inst => {
-          const iDate = new Date(inst.dueDate);
-          return iDate >= dateRange.start && iDate <= dateRange.end;
-        });
-      }
-      const tDate = new Date(t.date);
-      return tDate >= dateRange.start && tDate <= dateRange.end;
-    });
-  }, [transactions, dateRange]);
-
-  // --- Métricas ---
   const metrics = useMemo(() => {
     let atual = 0;
     let passado = 0;
@@ -163,7 +145,7 @@ export default function Financeiro() {
 
     transactions.forEach(t => {
       const tDate = new Date(t.date);
-      const isPaid = t.status === 'Recebido';
+      const isPaid = t.status === 'Recebido' || t.status === 'Pago';
       
       const insts = getInstallments(t);
       if (insts.length > 0) {
@@ -191,11 +173,9 @@ export default function Financeiro() {
     return { atual, passado, previsto };
   }, [transactions, dateRange]);
 
-  // --- Gráficos (Agora mostram previsão futura de parcelamentos) ---
   const monthlyChartData = useMemo(() => {
     const months: Record<string, any> = {};
     const now = new Date();
-    // Monta o gráfico com 2 meses para trás e 3 meses para frente (previsão)
     for (let i = -2; i <= 3; i++) { 
       const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
       const key = `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
@@ -218,7 +198,7 @@ export default function Financeiro() {
         const d = new Date(t.date);
         const key = `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
         if (months[key]) {
-          if (t.status === 'Recebido') months[key].Pago += t.amount;
+          if (t.status === 'Recebido' || t.status === 'Pago') months[key].Pago += t.amount;
           else if (t.status === 'Cancelado') { /* ignore */ }
           else if (d < new Date(new Date().setHours(0,0,0,0))) months[key].Atrasado += t.amount;
           else months[key].Pendente += t.amount;
@@ -232,7 +212,6 @@ export default function Financeiro() {
   const annualChartData = useMemo(() => {
     const years: Record<string, any> = {};
     const currentYear = new Date().getFullYear();
-    // Mostra o ano passado, o atual e o próximo (para parcelamentos longos)
     for (let i = -1; i <= 1; i++) {
       const y = currentYear + i;
       years[y.toString()] = { name: y.toString(), Total: 0 };
@@ -242,7 +221,6 @@ export default function Financeiro() {
       const insts = getInstallments(t);
       if (insts.length > 0) {
         insts.forEach(inst => {
-          const d = new Date(inst.dueDate);
           if (inst.status === 'Pago') {
             const y = new Date(inst.paidDate || inst.dueDate).getFullYear();
             if (years[y.toString()]) years[y.toString()].Total += inst.amount;
@@ -250,7 +228,7 @@ export default function Financeiro() {
         });
       } else {
         const d = new Date(t.date);
-        if (t.status === 'Recebido') {
+        if (t.status === 'Recebido' || t.status === 'Pago') {
           const y = d.getFullYear();
           if (years[y.toString()]) years[y.toString()].Total += t.amount;
         }
@@ -260,7 +238,6 @@ export default function Financeiro() {
     return Object.values(years);
   }, [transactions]);
 
-  // --- Ações ---
   const handleOpenModal = (tx?: Transaction) => {
     if (tx) {
       setEditingTx(tx);
@@ -307,8 +284,7 @@ export default function Financeiro() {
         
         for (let i = 0; i < count; i++) {
           const d = new Date(formData.date);
-          // O Date do Javascript lida automaticamente com mudanças de mês mantendo o dia certo
-          d.setUTCHours(12); // Garante que não pule dia pelo fuso horário
+          d.setUTCHours(12); 
           d.setMonth(d.getMonth() + i);
           
           installments.push({
@@ -346,7 +322,7 @@ export default function Financeiro() {
       setIsModalOpen(false);
       fetchData();
     } catch (error) {
-      toast.error("Erro ao salvar recebimento. Verifique se a tabela 'transactions' existe.");
+      toast.error("Erro ao salvar recebimento.");
     } finally {
       setIsSubmitting(false);
     }
@@ -390,7 +366,6 @@ export default function Financeiro() {
     }
   };
 
-  // --- Helpers Visuais ---
   const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   
   const getStatusBadge = (status: string, dateStr?: string) => {
@@ -409,6 +384,13 @@ export default function Financeiro() {
     return <span className="bg-orange-50 text-orange-500 px-2.5 py-1 rounded-md text-[11px] font-semibold border border-orange-100">Pendente</span>;
   };
 
+  const listToRender = useMemo(() => {
+    if (listStatusTab === 'pendentes') {
+      return transactions.filter(t => t.status !== 'Recebido' && t.status !== 'Pago');
+    }
+    return transactions.filter(t => t.status === 'Recebido' || t.status === 'Pago');
+  }, [transactions, listStatusTab]);
+
   if (loading) {
     return <Layout><div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div></Layout>;
   }
@@ -417,13 +399,11 @@ export default function Financeiro() {
     <Layout>
       <div className="max-w-6xl mx-auto flex flex-col h-full space-y-8">
         
-        {/* Cabeçalho */}
         <div className="flex flex-col gap-1">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Financeiro</h1>
           <p className="text-sm text-gray-500">Acompanhe suas receitas, parcelas e faturamento</p>
         </div>
 
-        {/* Tabs Simples */}
         <div className="flex bg-gray-100/80 p-1 rounded-xl w-full max-w-full sm:max-w-[350px]">
           <button
             onClick={() => setActiveTab('faturamento')}
@@ -441,7 +421,6 @@ export default function Financeiro() {
 
         {activeTab === 'faturamento' && (
           <div className="space-y-6">
-            {/* Barra de Filtros */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-4 bg-white border border-gray-200 rounded-2xl shadow-sm">
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
                 <div className="flex items-center gap-2 hidden sm:flex">
@@ -467,7 +446,6 @@ export default function Financeiro() {
               </button>
             </div>
 
-            {/* Cards de Métricas */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
                 <div className="flex items-center justify-between mb-4">
@@ -503,7 +481,6 @@ export default function Financeiro() {
               </div>
             </div>
 
-            {/* Gráficos */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
                 <h3 className="font-bold text-gray-900 mb-1">Previsão Mensal</h3>
@@ -541,13 +518,28 @@ export default function Financeiro() {
               </div>
             </div>
 
-            {/* Lista de Recebimentos */}
             <div>
-              <h3 className="text-xl font-bold text-gray-900 mb-4">Recebimentos do Período</h3>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
+                <h3 className="text-xl font-bold text-gray-900">Movimentações Financeiras</h3>
+                <div className="flex bg-gray-100 p-1 rounded-xl w-full sm:w-auto">
+                  <button
+                    onClick={() => setListStatusTab('pendentes')}
+                    className={`flex-1 sm:flex-none px-6 py-1.5 text-xs font-bold rounded-lg transition-all ${listStatusTab === 'pendentes' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  >
+                    Pendentes
+                  </button>
+                  <button
+                    onClick={() => setListStatusTab('pagos')}
+                    className={`flex-1 sm:flex-none px-6 py-1.5 text-xs font-bold rounded-lg transition-all ${listStatusTab === 'pagos' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  >
+                    Pagos
+                  </button>
+                </div>
+              </div>
               
-              {filteredTransactions.length > 0 ? (
+              {listToRender.length > 0 ? (
                 <div className="space-y-3">
-                  {filteredTransactions.map((tx) => {
+                  {listToRender.map((tx) => {
                     const insts = getInstallments(tx);
                     return (
                     <div key={tx.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
@@ -602,7 +594,7 @@ export default function Financeiro() {
                             {getStatusBadge(tx.status, tx.date)}
                             
                             <div className="flex items-center gap-1.5 ml-2">
-                              {tx.status !== 'Recebido' && tx.status !== 'Cancelado' && (
+                              {(tx.status !== 'Recebido' && tx.status !== 'Pago' && tx.status !== 'Cancelado') && (
                                 <button 
                                   onClick={() => handleMarkPaid(tx)}
                                   className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-green-200 text-green-600 hover:bg-green-50 rounded-md text-xs font-semibold transition-colors"
@@ -628,8 +620,10 @@ export default function Financeiro() {
                   <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
                     <DollarSign className="w-6 h-6 text-gray-400" />
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900">Nenhum recebimento no período</h3>
-                  <p className="text-sm text-gray-500 mt-1">Altere o filtro de datas ou crie um novo recebimento.</p>
+                  <h3 className="text-lg font-bold text-gray-900">Nenhum registro encontrado</h3>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {listStatusTab === 'pendentes' ? 'Não há cobranças pendentes no momento.' : 'Nenhum recebimento foi concluído ainda.'}
+                  </p>
                 </div>
               )}
             </div>
@@ -644,7 +638,6 @@ export default function Financeiro() {
         )}
       </div>
 
-      {/* Modal Criar/Editar */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
