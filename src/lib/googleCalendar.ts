@@ -1,20 +1,52 @@
-export const listUserCalendars = async (providerToken: string) => {
-  const response = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
+import { supabase } from "@/integrations/supabase/client";
+
+let cachedToken: string | null = null;
+let tokenExpiryTime: number = 0;
+
+/**
+ * Busca um Access Token fresco utilizando o Refresh Token salvo via Edge Function
+ */
+export const getFreshGoogleToken = async (): Promise<string> => {
+  // Retorna o cache se o token ainda for válido (válido por 50 min)
+  if (cachedToken && Date.now() < tokenExpiryTime) {
+    return cachedToken;
+  }
+
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Usuário não autenticado");
+
+  const response = await fetch('https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/refresh-google-token', {
+    method: 'POST',
     headers: {
-      'Authorization': `Bearer ${providerToken}`,
+      'Authorization': `Bearer ${session.access_token}`
     }
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error?.message || 'Erro ao carregar listas de calendários');
+    const error = await response.json();
+    throw new Error(error.error || 'Erro ao renovar token do Google');
   }
 
+  const data = await response.json();
+  cachedToken = data.access_token;
+  tokenExpiryTime = Date.now() + (50 * 60 * 1000); // Salva em memória por 50 minutos
+  
+  return data.access_token;
+};
+
+export const listUserCalendars = async () => {
+  const token = await getFreshGoogleToken();
+  const response = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+
+  if (!response.ok) throw new Error('Erro ao carregar listas de calendários');
   const data = await response.json();
   return data.items || [];
 };
 
-export const listGoogleEvents = async (providerToken: string, calendarId: string, timeMin: string, timeMax: string) => {
+export const listGoogleEvents = async (calendarId: string, timeMin: string, timeMax: string) => {
+  const token = await getFreshGoogleToken();
   const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`);
   url.searchParams.append('timeMin', timeMin);
   url.searchParams.append('timeMax', timeMax);
@@ -22,68 +54,25 @@ export const listGoogleEvents = async (providerToken: string, calendarId: string
   url.searchParams.append('orderBy', 'startTime');
 
   const response = await fetch(url.toString(), {
-    headers: {
-      'Authorization': `Bearer ${providerToken}`,
-    }
+    headers: { 'Authorization': `Bearer ${token}` }
   });
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error?.message || 'Erro ao carregar eventos do Google');
-  }
-
+  if (!response.ok) throw new Error('Erro ao carregar eventos do Google');
   const data = await response.json();
   return data.items || [];
 };
 
-export const syncEventToGoogle = async (event: any, providerToken: string) => {
-  // Formatando a data de início e fim para "Dia Inteiro" no Google
-  const startDate = event.date.toISOString().split('T')[0];
-  const endDateObj = new Date(event.date);
-  endDateObj.setDate(endDateObj.getDate() + 1);
-  const endDate = endDateObj.toISOString().split('T')[0];
-
-  let description = `Tipo: ${event.type}\nStatus: ${event.status}`;
-  if (event.amount) description += `\nValor: R$ ${event.amount}`;
-  if (event.description) description += `\nDetalhes: ${event.description}`;
-  description += `\n\n--- Gerado por Frame Pro CRM ---`;
-
-  const googleEvent = {
-    summary: event.title,
-    description: description,
-    start: { date: startDate },
-    end: { date: endDate },
-    colorId: event.type === 'Pagamento' ? '11' : event.type === 'Tarefa' ? '6' : '9' 
-  };
-
-  const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${providerToken}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(googleEvent)
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error?.message || 'Erro ao sincronizar com Google');
-  }
-
-  return response.json();
-};
-
 export const createGoogleCalendarEvent = async (
-  providerToken: string,
   calendarId: string,
   eventData: {
     title: string;
     description?: string;
     date: Date;
-    time?: string; // Formato HH:mm
+    time?: string;
     createMeet?: boolean;
   }
 ) => {
+  const token = await getFreshGoogleToken();
   let start, end;
 
   if (eventData.time) {
@@ -92,7 +81,7 @@ export const createGoogleCalendarEvent = async (
     startDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
 
     const endDate = new Date(startDate);
-    endDate.setHours(startDate.getHours() + 1); // Padrão: 1 hora de duração
+    endDate.setHours(startDate.getHours() + 1);
 
     start = { dateTime: startDate.toISOString() };
     end = { dateTime: endDate.toISOString() };
@@ -113,14 +102,11 @@ export const createGoogleCalendarEvent = async (
     end,
   };
 
-  // Se o usuário pediu Meet, adicionamos os dados de conferência
   if (eventData.createMeet) {
     body.conferenceData = {
       createRequest: {
         requestId: crypto.randomUUID(),
-        conferenceSolutionKey: {
-          type: 'hangoutsMeet'
-        }
+        conferenceSolutionKey: { type: 'hangoutsMeet' }
       }
     };
   }
@@ -133,16 +119,12 @@ export const createGoogleCalendarEvent = async (
   const response = await fetch(url.toString(), {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${providerToken}`,
+      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify(body)
   });
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error?.message || 'Erro ao criar evento no Google');
-  }
-
+  if (!response.ok) throw new Error('Erro ao criar evento no Google');
   return response.json();
 };

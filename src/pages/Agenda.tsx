@@ -6,7 +6,7 @@ import { listUserCalendars, listGoogleEvents, createGoogleCalendarEvent } from "
 import { 
   ChevronLeft, ChevronRight, Calendar as CalendarIcon, 
   CheckSquare, FileText, DollarSign, AlertCircle, Clock, 
-  Loader2, X, ChevronDown, RefreshCw, ExternalLink, Globe,
+  Loader2, X, ChevronDown, Download, RefreshCw, ExternalLink, Globe,
   Plus, Video, ListTodo
 } from "lucide-react";
 import { toast } from "sonner";
@@ -53,7 +53,7 @@ export default function Agenda() {
   
   const [rightPanelMode, setRightPanelMode] = useState<'day' | 'upcoming'>('day');
   
-  // Lemos a preferência dos metadados do usuário (sincronizado entre dispositivos)
+  // Google Calendar Integration State
   const isGoogleEnabledInDB = user?.user_metadata?.google_calendar_enabled === true;
   
   const [googleCalendars, setGoogleCalendars] = useState<any[]>([]);
@@ -74,26 +74,37 @@ export default function Agenda() {
     saveToCRM: true,
   });
 
+  // Salva o Refresh Token no banco se ele vier do OAuth
+  useEffect(() => {
+    if (session?.provider_refresh_token && user) {
+      supabase.from('profiles').update({ 
+        google_refresh_token: session.provider_refresh_token 
+      }).eq('id', user.id).then(({ error }) => {
+        if (error) console.error("Erro ao salvar refresh token", error);
+      });
+    }
+  }, [session, user]);
+
   useEffect(() => {
     if (user) {
       fetchAllData();
-      if (isGoogleEnabledInDB && session?.provider_token) {
+      if (isGoogleEnabledInDB) {
         fetchGoogleCalendars();
       }
     }
-  }, [user, session, isGoogleEnabledInDB]);
+  }, [user, isGoogleEnabledInDB]);
 
   useEffect(() => {
-    if (isGoogleEnabledInDB && session?.provider_token && selectedGoogleCalendarId) {
+    if (isGoogleEnabledInDB && selectedGoogleCalendarId) {
       fetchGoogleEventsForPeriod();
     } else {
       setGoogleEvents([]);
     }
-  }, [selectedGoogleCalendarId, currentDate, isGoogleEnabledInDB, session]);
+  }, [selectedGoogleCalendarId, currentDate, isGoogleEnabledInDB]);
 
   const fetchGoogleCalendars = async () => {
     try {
-      const calendars = await listUserCalendars(session!.provider_token!);
+      const calendars = await listUserCalendars();
       setGoogleCalendars(calendars);
       const primary = calendars.find((c: any) => c.primary);
       if (primary && !selectedGoogleCalendarId) {
@@ -101,6 +112,7 @@ export default function Agenda() {
       }
     } catch (error) {
       console.error("Erro ao buscar calendários do Google:", error);
+      toast.error("Conexão com Google Expirada. Clique em reconectar.");
     }
   };
 
@@ -112,7 +124,7 @@ export default function Agenda() {
       const timeMin = startOfWeek(monthStart).toISOString();
       const timeMax = endOfWeek(monthEnd).toISOString();
 
-      const items = await listGoogleEvents(session!.provider_token!, selectedGoogleCalendarId, timeMin, timeMax);
+      const items = await listGoogleEvents(selectedGoogleCalendarId, timeMin, timeMax);
       
       const parsed: CalendarEvent[] = items.map((item: any) => {
         const start = item.start.dateTime || item.start.date;
@@ -208,7 +220,7 @@ export default function Agenda() {
               date: dueDate,
               type: 'Pagamento',
               status: isOverdue ? 'Atrasado' : 'Pendente',
-              colorClass: isOverdue ? 'text-red-700 border-red-200' : 'text-red-700 border-yellow-200',
+              colorClass: isOverdue ? 'text-red-700 border-red-200' : 'text-yellow-700 border-yellow-200',
               bgClass: isOverdue ? 'bg-red-50 hover:bg-red-100' : 'bg-yellow-50 hover:bg-yellow-100',
               icon: isOverdue ? <AlertCircle className="w-3.5 h-3.5 text-red-500" /> : <DollarSign className="w-3.5 h-3.5 text-yellow-500" />,
               amount: inst.amount,
@@ -244,21 +256,24 @@ export default function Agenda() {
 
   const handleConnectGoogle = async () => {
     try {
-      // Salva no banco de dados que a integração está ativa para sincronizar dispositivos
       await supabase.auth.updateUser({
         data: { google_calendar_enabled: true }
       });
-
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           scopes: 'https://www.googleapis.com/auth/calendar',
+          queryParams: {
+            access_type: 'offline', // Fundamental para gerar o Refresh Token
+            prompt: 'consent',
+          },
           redirectTo: window.location.origin + '/agenda'
         }
       });
       if (error) throw error;
     } catch (error) {
-      toast.error('Erro ao iniciar conexão com Google.');
+      toast.error('Erro ao conectar com Google.');
     }
   };
 
@@ -267,9 +282,13 @@ export default function Agenda() {
       await supabase.auth.updateUser({
         data: { google_calendar_enabled: false }
       });
+      
+      // Limpa do banco de dados
+      await supabase.from('profiles').update({ google_refresh_token: null }).eq('id', user!.id);
+      
       setGoogleEvents([]);
       setSelectedGoogleCalendarId("");
-      toast.success("Google Calendar desativado em todos os seus dispositivos.");
+      toast.success("Google Calendar desconectado permanentemente.");
     } catch (error) {
       toast.error("Erro ao desativar integração.");
     }
@@ -337,9 +356,8 @@ export default function Agenda() {
     try {
       let googleEventRes = null;
 
-      if (session?.provider_token && selectedGoogleCalendarId && isGoogleEnabledInDB) {
+      if (isGoogleEnabledInDB && selectedGoogleCalendarId) {
         googleEventRes = await createGoogleCalendarEvent(
-          session.provider_token,
           selectedGoogleCalendarId,
           {
             title: newEventData.title,
@@ -352,7 +370,7 @@ export default function Agenda() {
         toast.success("Evento salvo no Google Calendar!");
         fetchGoogleEventsForPeriod();
       } else if (newEventData.createMeet) {
-        toast.warning("Sessão do Google Calendar inválida. O link do Meet não pôde ser gerado.");
+        toast.warning("Agenda do Google não vinculada. O link do Meet não pôde ser gerado.");
       }
 
       if (newEventData.saveToCRM) {
@@ -417,19 +435,19 @@ export default function Agenda() {
         {/* Cabeçalho */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-1">Agenda</h1>
-            <p className="text-sm text-gray-500">Compromissos integrados com seu Google Calendar.</p>
+            <h1 className="text-3xl font-bold text-gray-900 mb-1">Agenda CRM</h1>
+            <p className="text-sm text-gray-500">Compromissos sincronizados em todos os dispositivos.</p>
           </div>
           
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             {isGoogleEnabledInDB ? (
-              session?.provider_token ? (
-                <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl shadow-sm border border-gray-200">
+              <div className="flex flex-col sm:flex-row items-center gap-2 bg-white px-3 py-2 rounded-xl shadow-sm border border-gray-200 w-full sm:w-auto">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
                   <Globe className="w-4 h-4 text-purple-500" />
                   <select 
                     value={selectedGoogleCalendarId}
                     onChange={(e) => setSelectedGoogleCalendarId(e.target.value)}
-                    className="bg-transparent text-sm font-bold text-gray-700 focus:outline-none cursor-pointer pr-2 max-w-[200px] truncate"
+                    className="bg-transparent text-sm font-bold text-gray-700 focus:outline-none cursor-pointer pr-2 max-w-full sm:max-w-[200px] truncate"
                   >
                     <option value="">Nenhuma agenda selecionada</option>
                     {googleCalendars.map(cal => (
@@ -437,32 +455,18 @@ export default function Agenda() {
                     ))}
                   </select>
                   {loadingGoogle && <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-500" />}
+                </div>
+                
+                <div className="w-full sm:w-auto flex justify-end">
                   <button 
                     onClick={handleDisconnectGoogle}
-                    className="ml-2 p-1.5 bg-gray-50 text-red-500 rounded-lg hover:bg-red-50 transition-colors"
-                    title="Desconectar Google Calendar"
+                    className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors border border-red-100"
+                    title="Desconectar Google Calendar Permanentemente"
                   >
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-              ) : (
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <button 
-                    onClick={handleConnectGoogle}
-                    className="flex-1 px-4 py-2.5 bg-purple-50 border border-purple-200 text-purple-700 font-bold rounded-xl hover:bg-purple-100 transition-colors flex items-center justify-center gap-2 shadow-sm text-sm"
-                  >
-                    <RefreshCw className="w-4 h-4" />
-                    Renovar Sessão do Google
-                  </button>
-                  <button 
-                    onClick={handleDisconnectGoogle}
-                    className="p-2.5 bg-white border border-gray-200 text-red-500 rounded-xl hover:bg-red-50 transition-colors shadow-sm"
-                    title="Desconectar"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              )
+              </div>
             ) : (
               <button 
                 onClick={handleConnectGoogle}
@@ -724,11 +728,11 @@ export default function Agenda() {
             <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-4 mt-2">
               <label className="flex items-center justify-between cursor-pointer group">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${session?.provider_token && isGoogleEnabledInDB ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-400'}`}>
+                  <div className={`p-2 rounded-lg ${isGoogleEnabledInDB ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-400'}`}>
                     <Video className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className={`text-sm font-bold block ${session?.provider_token && isGoogleEnabledInDB ? 'text-gray-900' : 'text-gray-400'}`}>Gerar Link do Meet</span>
+                    <span className={`text-sm font-bold block ${isGoogleEnabledInDB ? 'text-gray-900' : 'text-gray-400'}`}>Gerar Link do Meet</span>
                     <span className="text-[10px] text-gray-500 font-medium">Reunião em vídeo automática</span>
                   </div>
                 </div>
@@ -736,14 +740,14 @@ export default function Agenda() {
                   type="checkbox" 
                   checked={newEventData.createMeet}
                   onChange={e => setNewEventData({...newEventData, createMeet: e.target.checked})}
-                  disabled={!session?.provider_token || !selectedGoogleCalendarId || !isGoogleEnabledInDB}
+                  disabled={!selectedGoogleCalendarId || !isGoogleEnabledInDB}
                   className="w-5 h-5 rounded border-gray-300 accent-blue-500 cursor-pointer disabled:opacity-50"
                 />
               </label>
 
-              {(!session?.provider_token || !selectedGoogleCalendarId || !isGoogleEnabledInDB) && (
+              {(!selectedGoogleCalendarId || !isGoogleEnabledInDB) && (
                 <div className="bg-orange-50 text-orange-700 p-2.5 rounded-lg text-xs font-medium border border-orange-100">
-                  A conexão com o Google está inativa neste navegador. Conecte acima para usar o Meet.
+                  A conexão com o Google está inativa. Conecte acima para usar o Meet.
                 </div>
               )}
 
