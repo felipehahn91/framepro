@@ -17,7 +17,8 @@ serve(async (req) => {
     
     let event;
     try {
-      event = stripe.webhooks.constructEvent(body, signature, endpointSecret);
+      // CORREÇÃO: Utilizando constructEventAsync com await, obrigatório em Deno/Edge
+      event = await stripe.webhooks.constructEventAsync(body, signature, endpointSecret);
     } catch (err) {
       console.error(`[stripe-webhook] Erro na assinatura: ${err.message}`);
       return new Response(`Webhook Error: ${err.message}`, { status: 400 });
@@ -33,9 +34,8 @@ serve(async (req) => {
       case 'checkout.session.completed': {
         const session = event.data.object;
         const customerId = session.customer;
-        const subscriptionId = session.subscription;
         
-        // Atualiza o perfil do usuário para 'active'
+        // Atualiza o perfil do usuário para 'active' e salva o customer_id
         const { error } = await supabase
           .from('profiles')
           .update({ 
