@@ -1,10 +1,11 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
 export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { session, loading } = useAuth();
+  const { session, profile, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -16,6 +17,24 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (!session) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Define quais páginas são do fluxo de pagamento
+  const isPaymentPage = 
+    location.pathname === '/precos' || 
+    location.pathname === '/founders' || 
+    location.pathname === '/billing-success' || 
+    location.pathname === '/billing-cancel';
+
+  // Se não for admin e não estiver na página de pagamento, verificamos a assinatura
+  if (!isPaymentPage && profile?.role !== 'admin') {
+    const isSubscribed = profile?.subscription_status === 'active' || profile?.subscription_status === 'trialing';
+    const hasStripeId = !!profile?.stripe_customer_id;
+
+    // Se o usuário não passou pelo Stripe ou não tem status ativo/trial, bloqueia.
+    if (!hasStripeId || !isSubscribed) {
+      return <Navigate to="/precos" replace />;
+    }
   }
 
   return <>{children}</>;

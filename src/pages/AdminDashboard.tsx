@@ -13,12 +13,12 @@ import {
 
 // Dados mockados para o gráfico de crescimento do SaaS
 const growthData = [
-  { name: "Jan", users: 12, revenue: 1200 },
-  { name: "Fev", users: 19, revenue: 1900 },
-  { name: "Mar", users: 27, revenue: 2700 },
-  { name: "Abr", users: 45, revenue: 4500 },
-  { name: "Mai", users: 68, revenue: 6800 },
-  { name: "Jun", users: 104, revenue: 10400 },
+  { name: "Jan", users: 12 },
+  { name: "Fev", users: 19 },
+  { name: "Mar", users: 27 },
+  { name: "Abr", users: 45 },
+  { name: "Mai", users: 68 },
+  { name: "Jun", users: 104 },
 ];
 
 export default function AdminDashboard() {
@@ -27,6 +27,7 @@ export default function AdminDashboard() {
   const [usersList, setUsersList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [totalOpps, setTotalOpps] = useState(0);
 
   // Estados para Evolution API
   const [evolutionUrl, setEvolutionUrl] = useState("");
@@ -44,21 +45,29 @@ export default function AdminDashboard() {
     fetchSettings();
 
     if (profile?.role === 'admin') {
-      fetchUsers();
+      fetchUsersAndStats();
     } else {
       setLoading(false);
     }
   }, [profile]);
 
-  const fetchUsers = async () => {
+  const fetchUsersAndStats = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: users, error } = await supabase
         .from('profiles')
         .select('*')
-        .order('updated_at', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setUsersList(data || []);
+      setUsersList(users || []);
+
+      // Busca total de oportunidades globais
+      const { count } = await supabase
+        .from('opportunities')
+        .select('*', { count: 'exact', head: true });
+      
+      setTotalOpps(count || 0);
+
     } catch (error) {
       console.error(error);
     } finally {
@@ -83,11 +92,10 @@ export default function AdminDashboard() {
         }]);
       }
       
-      // Update local storage as a fallback for the frontend functions
       localStorage.setItem('evo_api_url', evolutionUrl);
       localStorage.setItem('evo_api_key', evolutionKey);
       
-      toast.success("Configurações da Evolution API salvas globalmente no banco de dados!");
+      toast.success("Configurações da Evolution API salvas!");
     } catch (err) {
       console.error(err);
       toast.error("Erro ao salvar configurações da Evolution API.");
@@ -103,11 +111,26 @@ export default function AdminDashboard() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Cálculo de MRR Real baseado nas assinaturas
+  const calculateMRR = () => {
+    let mrr = 0;
+    usersList.forEach(u => {
+      // Se a assinatura está ativa ou em trial
+      if (u.subscription_status === 'active' || u.subscription_status === 'trialing') {
+        if (u.plan_type === 'founder') {
+          mrr += 67; // Mensalidade equivalente do plano founder
+        } else {
+          mrr += 97; // Valor do plano mensal
+        }
+      }
+    });
+    return mrr;
+  };
+
   if (loading) {
     return <Layout><div className="flex h-full items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-gray-400" /></div></Layout>;
   }
 
-  // --- TELA DE BLOQUEIO DE ACESSO ---
   if (profile?.role !== 'admin') {
     return (
       <Layout>
@@ -116,20 +139,16 @@ export default function AdminDashboard() {
             <ShieldAlert className="w-12 h-12 text-red-500" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900">Acesso Restrito</h1>
-          <p className="text-gray-500 text-lg">
-            Esta área é exclusiva para administradores do sistema. Você não tem permissão para visualizar o painel de controle global.
-          </p>
+          <p className="text-gray-500 text-lg">Esta área é exclusiva para administradores do sistema.</p>
         </div>
       </Layout>
     );
   }
 
-  // --- PAINEL DO SUPER ADMIN ---
   return (
     <Layout>
       <div className="max-w-7xl mx-auto flex flex-col h-full space-y-6">
         
-        {/* Cabeçalho Escuro Premium */}
         <div className="bg-gray-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden shrink-0">
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500 rounded-full blur-3xl opacity-20 -mr-20 -mt-20"></div>
           <div className="absolute bottom-0 right-40 w-64 h-64 bg-purple-500 rounded-full blur-3xl opacity-20 -mb-20"></div>
@@ -141,86 +160,54 @@ export default function AdminDashboard() {
                 <span className="font-bold tracking-wider text-sm uppercase">Super Admin</span>
               </div>
               <h1 className="text-3xl sm:text-4xl font-bold mb-2">Painel de Controle</h1>
-              <p className="text-gray-400 max-w-xl">Gerencie usuários, acompanhe o crescimento do seu SaaS e configure integrações globais.</p>
+              <p className="text-gray-400 max-w-xl">Gerencie usuários, assinaturas e configure integrações globais.</p>
             </div>
             
             <div className="flex gap-2 bg-gray-800/50 p-1.5 rounded-xl border border-gray-700 backdrop-blur-md">
-              <button 
-                onClick={() => setActiveTab('overview')}
-                className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'overview' ? 'bg-white text-gray-900 shadow-md' : 'text-gray-400 hover:text-white'}`}
-              >
-                Visão Geral
-              </button>
-              <button 
-                onClick={() => setActiveTab('users')}
-                className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'users' ? 'bg-white text-gray-900 shadow-md' : 'text-gray-400 hover:text-white'}`}
-              >
-                Usuários
-              </button>
-              <button 
-                onClick={() => setActiveTab('evolution')}
-                className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'evolution' ? 'bg-white text-gray-900 shadow-md' : 'text-gray-400 hover:text-white'}`}
-              >
-                Evolution API
-              </button>
+              <button onClick={() => setActiveTab('overview')} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'overview' ? 'bg-white text-gray-900 shadow-md' : 'text-gray-400 hover:text-white'}`}>Visão Geral</button>
+              <button onClick={() => setActiveTab('users')} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'users' ? 'bg-white text-gray-900 shadow-md' : 'text-gray-400 hover:text-white'}`}>Usuários e Assinaturas</button>
+              <button onClick={() => setActiveTab('evolution')} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'evolution' ? 'bg-white text-gray-900 shadow-md' : 'text-gray-400 hover:text-white'}`}>Evolution API</button>
             </div>
           </div>
         </div>
 
-        {/* CONTEÚDO DAS ABAS */}
         <div className="flex-1 overflow-y-auto pb-8">
           
-          {/* ABA: VISÃO GERAL */}
           {activeTab === 'overview' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-              
-              {/* Cards de Métricas SaaS */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col">
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center"><Users className="w-5 h-5" /></div>
-                    <span className="text-xs font-bold text-green-500 bg-green-50 px-2 py-1 rounded-full">+12%</span>
                   </div>
                   <h3 className="text-3xl font-bold text-gray-900 mb-1">{usersList.length}</h3>
-                  <p className="text-sm font-medium text-gray-500">Usuários Totais</p>
+                  <p className="text-sm font-medium text-gray-500">Total de Usuários Cadastrados</p>
                 </div>
 
                 <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col">
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-10 h-10 rounded-full bg-green-50 text-green-600 flex items-center justify-center"><DollarSign className="w-5 h-5" /></div>
-                    <span className="text-xs font-bold text-green-500 bg-green-50 px-2 py-1 rounded-full">+24%</span>
                   </div>
-                  <h3 className="text-3xl font-bold text-gray-900 mb-1">R$ 10.400</h3>
-                  <p className="text-sm font-medium text-gray-500">MRR Estimado (Mock)</p>
+                  <h3 className="text-3xl font-bold text-gray-900 mb-1">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(calculateMRR())}
+                  </h3>
+                  <p className="text-sm font-medium text-gray-500">MRR (Faturamento Recorrente)</p>
                 </div>
 
                 <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col">
                   <div className="flex items-center justify-between mb-4">
                     <div className="w-10 h-10 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center"><Activity className="w-5 h-5" /></div>
                   </div>
-                  <h3 className="text-3xl font-bold text-gray-900 mb-1">1.248</h3>
-                  <p className="text-sm font-medium text-gray-500">Oportunidades Criadas</p>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-10 h-10 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center"><MessageSquare className="w-5 h-5" /></div>
-                    <span className="text-xs font-bold text-green-500 bg-green-50 px-2 py-1 rounded-full">Online</span>
-                  </div>
-                  <h3 className="text-3xl font-bold text-gray-900 mb-1">1</h3>
-                  <p className="text-sm font-medium text-gray-500">Instância Evolution Ativa</p>
+                  <h3 className="text-3xl font-bold text-gray-900 mb-1">{totalOpps}</h3>
+                  <p className="text-sm font-medium text-gray-500">Leads/Oportunidades no Sistema</p>
                 </div>
               </div>
 
-              {/* Gráfico de Crescimento */}
               <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
                 <div className="flex items-center justify-between mb-6">
                   <div>
                     <h2 className="text-lg font-bold text-gray-900">Crescimento de Usuários</h2>
                     <p className="text-sm text-gray-500">Evolução de cadastros nos últimos 6 meses</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="flex items-center gap-1.5 text-sm text-gray-600 font-medium"><div className="w-3 h-3 rounded-full bg-blue-500"></div> Usuários</span>
                   </div>
                 </div>
                 <div className="h-[300px] w-full">
@@ -235,9 +222,7 @@ export default function AdminDashboard() {
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
-                      <Tooltip 
-                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                      />
+                      <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
                       <Area type="monotone" dataKey="users" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorUsers)" />
                     </AreaChart>
                   </ResponsiveContainer>
@@ -246,37 +231,27 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* ABA: USUÁRIOS */}
           {activeTab === 'users' && (
             <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4">
-              <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900">Usuários Cadastrados</h2>
-                  <p className="text-sm text-gray-500">Lista de todas as contas registradas no seu sistema.</p>
-                </div>
-                {usersList.length === 1 && (
-                  <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 border border-blue-100 max-w-sm">
-                    <ShieldAlert className="w-4 h-4 shrink-0" />
-                    Vendo apenas você? Lembre-se de configurar a política RLS no Supabase para permitir que o admin leia todos os perfis.
-                  </div>
-                )}
+              <div className="p-6 border-b border-gray-100">
+                <h2 className="text-lg font-bold text-gray-900">Assinaturas e Usuários</h2>
+                <p className="text-sm text-gray-500">Controle e status de pagamentos via Stripe.</p>
               </div>
               
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-gray-50/80 border-b border-gray-100">
-                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">ID do Usuário</th>
-                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Nome</th>
-                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Cargo</th>
-                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Último Acesso</th>
-                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider text-right">Status</th>
+                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Usuário</th>
+                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Plano</th>
+                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Status do Pagamento</th>
+                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Cargo</th>
+                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase text-right">Acesso</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {usersList.map((usr) => (
                       <tr key={usr.id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">{usr.id.substring(0, 8)}...</td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center font-bold text-xs text-gray-600">
@@ -286,19 +261,34 @@ export default function AdminDashboard() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2.5 py-1 inline-flex text-[11px] leading-5 font-semibold rounded-full ${
-                            usr.role === 'admin' ? 'bg-purple-100 text-purple-800 border border-purple-200' : 'bg-gray-100 text-gray-800 border border-gray-200'
-                          }`}>
-                            {usr.role === 'admin' ? 'Admin' : 'Usuário'}
+                          <span className="text-sm text-gray-600 font-medium capitalize">
+                            {usr.plan_type || 'Mensal'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(usr.updated_at || new Date()).toLocaleDateString('pt-BR')}
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {usr.role === 'admin' ? (
+                            <span className="px-2.5 py-1 text-[11px] font-bold rounded-full bg-purple-100 text-purple-700 border border-purple-200">
+                              Isento (Admin)
+                            </span>
+                          ) : usr.subscription_status === 'active' ? (
+                            <span className="px-2.5 py-1 text-[11px] font-bold rounded-full bg-green-100 text-green-700 border border-green-200">
+                              Ativo
+                            </span>
+                          ) : usr.subscription_status === 'trialing' ? (
+                            <span className="px-2.5 py-1 text-[11px] font-bold rounded-full bg-blue-100 text-blue-700 border border-blue-200">
+                              Período de Teste
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 text-[11px] font-bold rounded-full bg-red-100 text-red-700 border border-red-200">
+                              Inativo / Pendente
+                            </span>
+                          )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <span className="px-2.5 py-1 inline-flex text-[11px] leading-5 font-semibold rounded-full bg-green-100 text-green-800 border border-green-200">
-                            Ativo
-                          </span>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="text-sm text-gray-500 capitalize">{usr.role}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
+                          {new Date(usr.created_at || new Date()).toLocaleDateString('pt-BR')}
                         </td>
                       </tr>
                     ))}
@@ -308,33 +298,20 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* ABA: EVOLUTION API */}
           {activeTab === 'evolution' && (
             <div className="max-w-4xl space-y-6 animate-in fade-in slide-in-from-bottom-4">
-              
               <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-6 sm:p-8 text-white shadow-lg flex flex-col sm:flex-row items-center justify-between gap-6">
                 <div>
                   <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
                     <MessageSquare className="w-6 h-6" /> Integração WhatsApp
                   </h2>
                   <p className="text-green-50 max-w-xl leading-relaxed">
-                    Conecte a <strong>Evolution API</strong> para permitir o envio de mensagens automáticas de sistema, réguas de cobrança e fluxos de cadência para todos os usuários da plataforma.
-                  </p>
-                </div>
-                <div className="shrink-0 bg-white/20 p-4 rounded-xl border border-white/30 backdrop-blur-sm text-center">
-                  <p className="text-xs font-bold uppercase tracking-wider text-green-100 mb-1">Status da API</p>
-                  <p className="text-xl font-black flex items-center justify-center gap-2">
-                    <span className="w-3 h-3 rounded-full bg-green-300 animate-pulse"></span> Conectado
+                    Conecte a <strong>Evolution API</strong> para permitir automações para todos os usuários da plataforma.
                   </p>
                 </div>
               </div>
 
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="p-6 border-b border-gray-100">
-                  <h3 className="text-lg font-bold text-gray-900">Configurações Globais (Instância Master)</h3>
-                  <p className="text-sm text-gray-500 mt-1">Estas credenciais serão usadas como base pelo backend do sistema.</p>
-                </div>
-
                 <div className="p-6 space-y-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="space-y-2">
@@ -345,11 +322,9 @@ export default function AdminDashboard() {
                         type="url"
                         value={evolutionUrl}
                         onChange={e => setEvolutionUrl(e.target.value)}
-                        placeholder="https://api.suaevolution.com"
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono text-sm"
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
-                    
                     <div className="space-y-2">
                       <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
                         <Key className="w-4 h-4 text-gray-400" /> Global API Key
@@ -358,30 +333,9 @@ export default function AdminDashboard() {
                         type="password"
                         value={evolutionKey}
                         onChange={e => setEvolutionKey(e.target.value)}
-                        placeholder="Sua Global API Key"
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-mono text-sm"
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
-                  </div>
-
-                  <div className="space-y-2 pt-4 border-t border-gray-100">
-                    <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                      <Link className="w-4 h-4 text-gray-400" /> Webhook URL (Para configurar na Evolution)
-                    </label>
-                    <div className="flex gap-2">
-                      <div className="flex-1 px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl font-mono text-sm text-gray-500 overflow-hidden text-ellipsis">
-                        {window.location.origin}/api/webhooks/evolution
-                      </div>
-                      <button 
-                        onClick={handleCopyWebhook}
-                        className="px-4 py-2 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center shadow-sm"
-                      >
-                        {copied ? <Check className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5 text-gray-500" />}
-                      </button>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2">
-                      Copie esta URL e cole na configuração de Webhooks da sua Evolution API para receber atualizações de status de leitura e respostas.
-                    </p>
                   </div>
                 </div>
 
@@ -389,7 +343,7 @@ export default function AdminDashboard() {
                   <button 
                     onClick={handleSaveEvolution}
                     disabled={saving}
-                    className="px-8 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors shadow-md flex items-center gap-2 disabled:opacity-70"
+                    className="px-8 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors shadow-md flex items-center gap-2"
                   >
                     {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
                     Salvar Configurações
