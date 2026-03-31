@@ -3,10 +3,12 @@ import { Layout } from "@/components/Layout";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { 
-  Trash2, Plus, UserPlus, MessageCircle, Link as LinkIcon, 
+import {
+  Trash2, Plus, UserPlus, MessageCircle, Link as LinkIcon,
   Upload, Loader2, Copy, ExternalLink, X, UserMinus, Search, Inbox, ArrowUp, ArrowDown
 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import LeadImportModal from "@/components/LeadImportModal";
 import OpportunityDetailModal from "@/components/OpportunityDetailModal";
@@ -259,12 +261,90 @@ export default function Oportunidades() {
     }
   };
 
+  const [isCadenciaModalOpen, setIsCadenciaModalOpen] = useState(false);
+  const [selectedOppForCadencia, setSelectedOppForCadencia] = useState<Opportunity | null>(null);
+  const [cadenciaFlows, setCadenciaFlows] = useState<any[]>([]);
+  const [selectedFlowId, setSelectedFlowId] = useState<string>("");
+
+  useEffect(() => {
+    // Fetch user's cadence flows when opening modal
+    if (isCadenciaModalOpen && user) {
+      supabase
+        .from('cadencia_flows')
+        .select('id, name, messages')
+        .eq('user_id', user.id)
+        .then(({ data }) => setCadenciaFlows(data || []));
+    }
+  }, [isCadenciaModalOpen, user]);
+
+  const handleCadenciaClick = (e: React.MouseEvent, opp: Opportunity) => {
+    e.stopPropagation();
+    if (!opp.phone) return toast.error("Este lead não possui telefone cadastrado.");
+    setSelectedOppForCadencia(opp);
+    setIsCadenciaModalOpen(true);
+  };
+
+  const handleStartCadencia = async () => {
+    if (!selectedFlowId || !selectedOppForCadencia || !user) {
+      return toast.error("Selecione um fluxo de cadência.");
+    }
+
+    const flow = cadenciaFlows.find(f => f.id === selectedFlowId);
+    if (!flow || !flow.messages || flow.messages.length === 0) {
+      return toast.error("Este fluxo não possui mensagens.");
+    }
+
+    try {
+      // Calcular agendamentos e inserir na fila
+      const queueItems = [];
+      const now = new Date();
+      
+      let currentDelayInMinutes = 0;
+
+      for (const step of flow.messages) {
+        // Calcular atraso em minutos (lidando com formato legado 'delayDays' também)
+        let stepDelayMinutes = 0;
+        if (step.delayUnit === 'immediately') stepDelayMinutes = 0;
+        else if (step.delayUnit === 'minutes') stepDelayMinutes = step.delayAmount || 0;
+        else if (step.delayUnit === 'hours') stepDelayMinutes = (step.delayAmount || 0) * 60;
+        else if (step.delayUnit === 'days') stepDelayMinutes = (step.delayAmount || 0) * 24 * 60;
+        else if (step.delayDays) stepDelayMinutes = step.delayDays * 24 * 60; // Legado
+
+        currentDelayInMinutes += stepDelayMinutes;
+        const scheduledTime = new Date(now.getTime() + currentDelayInMinutes * 60000);
+
+        for (const item of step.items) {
+          queueItems.push({
+            user_id: user.id,
+            opportunity_id: selectedOppForCadencia.id,
+            flow_id: flow.id,
+            step_id: step.id,
+            scheduled_for: scheduledTime.toISOString(),
+            status: 'pending',
+            payload: item // { type, content, caption }
+          });
+        }
+      }
+
+      const { error } = await supabase.from('cadencia_queue').insert(queueItems);
+      if (error) throw error;
+
+      toast.success("Cadência iniciada com sucesso!");
+      setIsCadenciaModalOpen(false);
+      setSelectedFlowId("");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao iniciar cadência.");
+    }
+  };
+
   const handleCadencia = (e: React.MouseEvent, opp: Opportunity) => {
+    // Mantendo a função legada de whatsapp direto (agora renomeada no click do card ou botão)
     e.stopPropagation();
     const phone = opp.phone;
     if (!phone) return toast.error("Este lead não possui telefone cadastrado.");
     const cleanPhone = phone.replace(/\D/g, '');
-    window.open(`https://wa.me/${cleanPhone}?text=Olá ${opp.name}, `, '_blank');
+    window.open(`https://wa.me/55${cleanPhone}?text=Olá ${opp.name}, `, '_blank');
   };
 
   const handleDeleteColumn = async (colId: string) => {
@@ -538,7 +618,7 @@ export default function Oportunidades() {
                                                 {opp.is_client ? '-Cliente' : '+Cliente'}
                                               </button>
                                               <button 
-                                                onClick={(e) => handleCadencia(e, opp)}
+                                                onClick={(e) => handleCadenciaClick(e, opp)}
                                                 className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md border border-gray-200 text-gray-700 text-[11px] font-semibold hover:bg-gray-50 transition-colors"
                                               >
                                                 <MessageCircle className="w-3.5 h-3.5 text-green-500" />
@@ -790,6 +870,45 @@ export default function Oportunidades() {
           </div>
         </div>
       )}
+      {/* Modal para disparar Cadência Automática */}
+      <Dialog open={isCadenciaModalOpen} onOpenChange={setIsCadenciaModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Disparar Fluxo de Cadência</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <p className="text-sm text-gray-500">
+              Selecione um fluxo para agendar as mensagens automáticas para <strong>{selectedOppForCadencia?.name}</strong>.
+            </p>
+            {cadenciaFlows.length > 0 ? (
+              <select
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                value={selectedFlowId}
+                onChange={(e) => setSelectedFlowId(e.target.value)}
+              >
+                <option value="">Selecione um fluxo...</option>
+                {cadenciaFlows.map(flow => (
+                  <option key={flow.id} value={flow.id}>{flow.name}</option>
+                ))}
+              </select>
+            ) : (
+              <div className="text-sm text-amber-600 bg-amber-50 p-3 rounded-md">
+                Você ainda não criou nenhum Fluxo de Cadência. Crie um na aba "Fluxo de Cadência".
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCadenciaModalOpen(false)}>Cancelar</Button>
+            <Button
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+              onClick={handleStartCadencia}
+              disabled={!selectedFlowId || cadenciaFlows.length === 0}
+            >
+              Iniciar Cadência
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

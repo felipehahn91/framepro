@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Layout } from "@/components/Layout";
-import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { 
-  ShieldAlert, Users, Activity, Settings, Server, 
+import {
+  ShieldAlert, Users, Activity, Settings, Server,
   MessageSquare, Database, TrendingUp, Key, Copy, Check, Save, Loader2, Link, ShieldCheck, DollarSign
 } from "lucide-react";
 import { toast } from "sonner";
@@ -34,9 +33,14 @@ export default function AdminDashboard() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    // Carrega configurações locais da Evolution API (simulando banco de dados global)
-    setEvolutionUrl(localStorage.getItem('evo_api_url') || "https://api.evolution.com");
-    setEvolutionKey(localStorage.getItem('evo_api_key') || "");
+    const fetchSettings = async () => {
+      const { data } = await supabase.from('platform_settings').select('*').limit(1).single();
+      if (data) {
+        setEvolutionUrl(data.evo_api_url || "");
+        setEvolutionKey(data.evo_api_key || "");
+      }
+    };
+    fetchSettings();
 
     if (profile?.role === 'admin') {
       fetchUsers();
@@ -61,14 +65,34 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleSaveEvolution = () => {
+  const handleSaveEvolution = async () => {
     setSaving(true);
-    setTimeout(() => {
+    try {
+      const { data } = await supabase.from('platform_settings').select('id').limit(1).single();
+      
+      if (data) {
+        await supabase.from('platform_settings').update({
+          evo_api_url: evolutionUrl,
+          evo_api_key: evolutionKey
+        }).eq('id', data.id);
+      } else {
+        await supabase.from('platform_settings').insert([{
+          evo_api_url: evolutionUrl,
+          evo_api_key: evolutionKey
+        }]);
+      }
+      
+      // Update local storage as a fallback for the frontend functions
       localStorage.setItem('evo_api_url', evolutionUrl);
       localStorage.setItem('evo_api_key', evolutionKey);
-      toast.success("Configurações da Evolution API salvas globalmente!");
+      
+      toast.success("Configurações da Evolution API salvas globalmente no banco de dados!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao salvar configurações da Evolution API.");
+    } finally {
       setSaving(false);
-    }, 800);
+    }
   };
 
   const handleCopyWebhook = () => {
