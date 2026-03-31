@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import logoImg from "@/assets/logo.png";
 
 interface NavItem {
@@ -34,6 +35,11 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   };
 
   const getInitials = () => {
+    if (profile?.first_name) {
+      const first = profile.first_name.charAt(0);
+      const last = profile.last_name ? profile.last_name.charAt(0) : "";
+      return (first + last).toUpperCase();
+    }
     if (user?.email) {
       return user.email.substring(0, 2).toUpperCase();
     }
@@ -157,8 +163,13 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-medium text-sm ml-2 outline-none ring-offset-2 focus:ring-2 focus:ring-orange-400 transition-shadow">
-                  {getInitials()}
+                <button className="outline-none ml-2">
+                  <Avatar className="w-8 h-8 border border-orange-100 ring-offset-2 focus:ring-2 focus:ring-orange-400 transition-all">
+                    <AvatarImage src={profile?.avatar_url || ''} />
+                    <AvatarFallback className="bg-orange-100 text-orange-600 font-bold text-xs uppercase">
+                      {getInitials()}
+                    </AvatarFallback>
+                  </Avatar>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
