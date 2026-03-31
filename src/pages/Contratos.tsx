@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { 
-  Search, Plus, FileText, Loader2, Edit2, Trash2, ExternalLink, Copy
+  Search, Plus, FileText, Loader2, Edit2, Trash2, ExternalLink, Copy,
+  DollarSign, Calendar, Download, Mail
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -42,7 +43,7 @@ export default function Contratos() {
       if (error && error.code !== '42P01') throw error;
       setContracts(data || []);
     } catch (error) {
-      toast.error("Erro ao carregar contratos. Certifique-se de ter criado a tabela.");
+      toast.error("Erro ao carregar contratos.");
     } finally {
       setLoading(false);
     }
@@ -65,13 +66,6 @@ export default function Contratos() {
     } catch (err) {
       toast.error("Erro ao excluir.");
     }
-  };
-
-  const handleCopyLink = (token: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const url = `${window.location.origin}/contratos/public/${token}`;
-    navigator.clipboard.writeText(url);
-    toast.success("Link copiado para a área de transferência!");
   };
 
   if (loading) {
@@ -108,68 +102,102 @@ export default function Contratos() {
           </div>
         </div>
 
-        {/* Corpo principal */}
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm flex-1 p-6">
+        {/* Listagem de Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-10">
           {filteredContracts.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredContracts.map(contract => (
-                <div 
-                  key={contract.id} 
-                  onClick={() => navigate(`/contratos/editar/${contract.id}`)}
-                  className="border border-gray-100 rounded-xl p-5 hover:border-orange-200 hover:shadow-md transition-all cursor-pointer group flex flex-col bg-gray-50/50 hover:bg-white"
-                >
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-500 shrink-0">
-                      <FileText className="w-5 h-5" />
+            filteredContracts.map(contract => (
+              <div 
+                key={contract.id} 
+                className="bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col"
+              >
+                {/* Card Content Area */}
+                <div className="p-6 space-y-5 flex-1">
+                  {/* Top Line: Label & Status */}
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-2 text-gray-400">
+                      <FileText className="w-4 h-4" />
+                      <span className="text-[11px] font-bold uppercase tracking-widest">CONTRATO</span>
                     </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={(e) => handleCopyLink(contract.share_token, e)} className="p-1.5 text-gray-400 hover:text-orange-500 bg-white rounded-md shadow-sm" title="Copiar link público">
-                        <Copy className="w-4 h-4" />
-                      </button>
-                      <button onClick={(e) => { e.stopPropagation(); window.open(`/contratos/public/${contract.share_token}`, '_blank'); }} className="p-1.5 text-gray-400 hover:text-blue-500 bg-white rounded-md shadow-sm" title="Abrir link">
-                        <ExternalLink className="w-4 h-4" />
-                      </button>
-                      <button onClick={(e) => handleDelete(contract.id, e)} className="p-1.5 text-gray-400 hover:text-red-500 bg-white rounded-md shadow-sm">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div className="flex-1">
-                    <h3 className="font-bold text-gray-900 text-lg mb-1 truncate">{contract.opportunities?.name || 'Cliente não definido'}</h3>
-                    <p className="text-gray-500 text-sm mb-4">Início: {new Date(contract.start_date).toLocaleDateString('pt-BR')}</p>
-                  </div>
-
-                  <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
-                    <span className="font-semibold text-gray-900">
-                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(contract.value)}
-                    </span>
-                    <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider ${
-                      contract.signature_status === 'Assinado 2/2' ? 'bg-green-100 text-green-700' :
-                      contract.signature_status === 'Assinado 1/2' ? 'bg-blue-100 text-blue-700' :
-                      'bg-orange-100 text-orange-600'
+                    <div className={`px-3 py-1 rounded-full text-[11px] font-bold ${
+                      contract.signature_status === 'Assinado 2/2' 
+                        ? 'bg-green-50 text-green-700' 
+                        : 'bg-yellow-50 text-yellow-700'
                     }`}>
                       {contract.signature_status || 'Pendente'}
-                    </span>
+                    </div>
                   </div>
+
+                  {/* Client Name */}
+                  <h3 className="text-xl font-bold text-gray-900 truncate">
+                    {contract.opportunities?.name || 'Cliente não definido'}
+                  </h3>
+
+                  {/* Info Blocks */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <DollarSign className="w-4 h-4 text-orange-400" />
+                      <span className="text-sm font-bold text-gray-900">
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(contract.value)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Calendar className="w-4 h-4 text-orange-400" />
+                      <span className="text-sm font-semibold text-gray-500">
+                        {new Date(contract.start_date).toLocaleDateString('pt-BR')}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="h-px bg-gray-100 w-full my-4"></div>
+
+                  {/* Central Download Button */}
+                  <button 
+                    onClick={() => { /* Lógica de download seria aqui */ toast.info("Iniciando download..."); }}
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-orange-50 border border-orange-100 rounded-xl text-sm font-bold text-gray-700 hover:bg-orange-100 transition-colors"
+                  >
+                    <Download className="w-4 h-4" /> Baixar PDF
+                  </button>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full py-16">
-              <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mb-6">
-                <FileText className="w-8 h-8 text-orange-400" />
+
+                {/* Card Footer Actions */}
+                <div className="px-5 py-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    <button 
+                      onClick={() => navigate(`/contratos/editar/${contract.id}`)}
+                      className="p-2 text-gray-400 hover:text-gray-900 hover:bg-white rounded-lg transition-all"
+                      title="Editar"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button 
+                      className="p-2 text-gray-400 hover:text-gray-900 hover:bg-white rounded-lg transition-all"
+                      title="Enviar por Email"
+                    >
+                      <Mail className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={(e) => handleDelete(contract.id, e)}
+                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-white rounded-lg transition-all"
+                      title="Excluir"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <button 
+                    onClick={() => window.open(`/contratos/public/${contract.share_token}`, '_blank')}
+                    className="px-4 py-2 bg-white border border-gray-100 rounded-xl text-xs font-bold text-orange-500 shadow-sm hover:shadow-md flex items-center gap-2 transition-all"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" /> Ver / Assinar
+                  </button>
+                </div>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Nenhum contrato encontrado</h3>
-              <p className="text-sm text-gray-500 mb-8 max-w-sm text-center">
-                Você ainda não possui contratos. Crie seu primeiro documento para enviar aos clientes e coletar assinaturas digitais.
-              </p>
-              <button 
-                onClick={() => navigate('/contratos/novo')}
-                className="px-6 py-2.5 bg-orange-400 text-white font-semibold rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-2 shadow-md"
-              >
-                <Plus className="w-4 h-4" /> Criar Primeiro Contrato
-              </button>
+            ))
+          ) : (
+            <div className="col-span-full bg-white border border-gray-100 rounded-2xl flex flex-col items-center justify-center py-20 shadow-sm">
+              <FileText className="w-12 h-12 text-gray-200 mb-4" />
+              <h3 className="text-lg font-bold text-gray-900 mb-1">Nenhum contrato encontrado</h3>
+              <p className="text-sm text-gray-500 mb-6">Crie seu primeiro contrato clicando no botão no topo.</p>
             </div>
           )}
         </div>
