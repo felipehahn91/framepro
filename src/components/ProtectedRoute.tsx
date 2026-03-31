@@ -33,6 +33,11 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
     // Se o usuário não passou pelo Stripe ou não tem status ativo/trial, bloqueia.
     if (!hasStripeId || !isSubscribed) {
+      // Se for um usuário Founder que ainda não pagou, manda para a página de Founders
+      if (profile?.plan_type === 'founder') {
+        return <Navigate to="/founders" replace />;
+      }
+      // Se for usuário comum, manda para a página de preços padrão
       return <Navigate to="/precos" replace />;
     }
   }

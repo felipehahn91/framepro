@@ -25,6 +25,7 @@ import FluxoCadencia from "./pages/FluxoCadencia";
 import AdminDashboard from "./pages/AdminDashboard";
 import SettingsPage from "./pages/SettingsPage";
 import Login from "./pages/Login";
+import FounderSignup from "./pages/FounderSignup";
 import LinkFormPage from "./pages/LinkFormPage";
 import Pricing from "./pages/Pricing";
 import FounderPack from "./pages/FounderPack";
@@ -45,6 +46,9 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/login" element={<Login />} />
+              {/* Rota Exclusiva de Cadastro Founder */}
+              <Route path="/founder-signup" element={<FounderSignup />} />
+              
               <Route path="/link-form/:id" element={<LinkFormPage />} />
               <Route path="/contratos/public/:token" element={<ContractPublicView />} />
               <Route path="/orcamentos/public/:token" element={<OrcamentoPublicView />} />
