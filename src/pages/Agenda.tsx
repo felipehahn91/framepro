@@ -2,11 +2,11 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Layout } from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { syncEventToGoogle } from "@/lib/googleCalendar";
+import { listUserCalendars, listGoogleEvents } from "@/lib/googleCalendar";
 import { 
   ChevronLeft, ChevronRight, Calendar as CalendarIcon, 
   CheckSquare, FileText, DollarSign, AlertCircle, Clock, 
-  Loader2, X, ChevronDown, Download, RefreshCw
+  Loader2, X, ChevronDown, Download, RefreshCw, ExternalLink, Globe
 } from "lucide-react";
 import { toast } from "sonner";
 import { 
@@ -26,7 +26,7 @@ interface CalendarEvent {
   id: string;
   title: string;
   date: Date;
-  type: 'Tarefa' | 'Contrato' | 'Pagamento';
+  type: 'Tarefa' | 'Contrato' | 'Pagamento' | 'Google';
   status: string;
   colorClass: string;
   bgClass: string;
@@ -39,16 +39,85 @@ interface CalendarEvent {
 export default function Agenda() {
   const { user, session } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [syncingGoogle, setSyncingGoogle] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   
+  // Google Calendar Integration State
+  const [googleCalendars, setGoogleCalendars] = useState<any[]>([]);
+  const [selectedGoogleCalendarId, setSelectedGoogleCalendarId] = useState<string>("");
+  const [googleEvents, setGoogleEvents] = useState<CalendarEvent[]>([]);
+  const [loadingGoogle, setLoadingGoogle] = useState(false);
+
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [upcomingDays, setUpcomingDays] = useState(7);
 
   useEffect(() => {
-    if (user) fetchAllData();
-  }, [user]);
+    if (user) {
+      fetchAllData();
+      if (session?.provider_token) {
+        fetchGoogleCalendars();
+      }
+    }
+  }, [user, session]);
+
+  // Carrega eventos do Google quando trocar o calendário selecionado ou o mês
+  useEffect(() => {
+    if (session?.provider_token && selectedGoogleCalendarId) {
+      fetchGoogleEventsForPeriod();
+    } else {
+      setGoogleEvents([]);
+    }
+  }, [selectedGoogleCalendarId, currentDate]);
+
+  const fetchGoogleCalendars = async () => {
+    try {
+      const calendars = await listUserCalendars(session!.provider_token!);
+      setGoogleCalendars(calendars);
+      // Seleciona o 'primary' por padrão se existir
+      const primary = calendars.find((c: any) => c.primary);
+      if (primary && !selectedGoogleCalendarId) {
+        setSelectedGoogleCalendarId(primary.id);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar calendários do Google:", error);
+    }
+  };
+
+  const fetchGoogleEventsForPeriod = async () => {
+    setLoadingGoogle(true);
+    try {
+      const monthStart = startOfMonth(currentDate);
+      const monthEnd = endOfMonth(monthStart);
+      
+      // Busca uma janela um pouco maior para garantir preenchimento visual
+      const timeMin = startOfWeek(monthStart).toISOString();
+      const timeMax = endOfWeek(monthEnd).toISOString();
+
+      const items = await listGoogleEvents(session!.provider_token!, selectedGoogleCalendarId, timeMin, timeMax);
+      
+      const parsed: CalendarEvent[] = items.map((item: any) => {
+        const start = item.start.dateTime || item.start.date;
+        return {
+          id: `google-${item.id}`,
+          title: item.summary || '(Sem título)',
+          date: startOfDay(new Date(start)),
+          type: 'Google',
+          status: 'Agendado',
+          colorClass: 'text-purple-700 border-purple-200',
+          bgClass: 'bg-purple-50 hover:bg-purple-100',
+          icon: <Globe className="w-3.5 h-3.5 text-purple-500" />,
+          description: item.description || '',
+          originalData: item
+        };
+      });
+
+      setGoogleEvents(parsed);
+    } catch (error) {
+      console.error("Erro ao carregar eventos do Google:", error);
+    } finally {
+      setLoadingGoogle(false);
+    }
+  };
 
   const fetchAllData = async () => {
     setLoading(true);
@@ -154,101 +223,19 @@ export default function Agenda() {
     }
   };
 
-  // Autenticação com Google para obter o token de provider
   const handleConnectGoogle = async () => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          scopes: 'https://www.googleapis.com/auth/calendar.events',
+          scopes: 'https://www.googleapis.com/auth/calendar.readonly',
           redirectTo: window.location.origin + '/agenda'
         }
       });
       if (error) throw error;
     } catch (error) {
-      toast.error('Erro ao conectar com Google. Verifique a configuração do Supabase.');
+      toast.error('Erro ao conectar com Google.');
     }
-  };
-
-  // Sincroniza os eventos próximos (dos próximos X dias) com o Google Calendar
-  const handleSyncToGoogle = async () => {
-    const providerToken = session?.provider_token;
-    
-    if (!providerToken) {
-      toast.info('Precisamos conectar sua conta do Google primeiro!');
-      return handleConnectGoogle();
-    }
-
-    if (upcomingEventsList.length === 0) {
-      return toast.warning('Nenhum evento próximo para sincronizar.');
-    }
-
-    setSyncingGoogle(true);
-    let successCount = 0;
-    let failCount = 0;
-
-    try {
-      for (const event of upcomingEventsList) {
-        try {
-          await syncEventToGoogle(event, providerToken);
-          successCount++;
-        } catch (e: any) {
-          console.error("Erro ao sincronizar evento:", e);
-          if (e.message.includes('401')) {
-             throw new Error('UNAUTHORIZED');
-          }
-          failCount++;
-        }
-      }
-      
-      if (failCount === 0) {
-        toast.success(`${successCount} evento(s) sincronizado(s) no Google Calendar!`);
-      } else {
-        toast.warning(`${successCount} sincronizados. ${failCount} falharam.`);
-      }
-    } catch (error: any) {
-      if (error.message === 'UNAUTHORIZED') {
-        toast.error('Sessão do Google expirou. Conecte novamente.');
-        handleConnectGoogle();
-      } else {
-        toast.error('Erro geral ao sincronizar.');
-      }
-    } finally {
-      setSyncingGoogle(false);
-    }
-  };
-
-  const handleExportICS = () => {
-    if (events.length === 0) return toast.warning("Não há eventos para exportar.");
-    const formatDateForICS = (date: Date) => date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-    let icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Frame Pro//Agenda CRM//PT\nCALSCALE:GREGORIAN\n";
-
-    events.forEach(event => {
-      const dtStart = formatDateForICS(event.date);
-      const dtEnd = formatDateForICS(addDays(event.date, 1)); 
-      icsContent += "BEGIN:VEVENT\n";
-      icsContent += `UID:${event.id}@framepro.com\n`;
-      icsContent += `DTSTAMP:${formatDateForICS(new Date())}\n`;
-      icsContent += `DTSTART;VALUE=DATE:${dtStart.substring(0, 8)}\n`;
-      icsContent += `DTEND;VALUE=DATE:${dtEnd.substring(0, 8)}\n`;
-      icsContent += `SUMMARY:${event.title}\n`;
-      let desc = `Tipo: ${event.type}\\nStatus: ${event.status}`;
-      if (event.amount) desc += `\\nValor: R$ ${event.amount}`;
-      if (event.description) desc += `\\nDetalhes: ${event.description}`;
-      icsContent += `DESCRIPTION:${desc}\n`;
-      icsContent += "END:VEVENT\n";
-    });
-
-    icsContent += "END:VCALENDAR";
-    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `agenda_framepro_${format(new Date(), 'dd_MM_yyyy')}.ics`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success("Arquivo baixado! Importe-o no seu calendário.");
   };
 
   const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
@@ -268,13 +255,18 @@ export default function Agenda() {
     return days;
   }, [currentDate]);
 
+  // Mescla eventos do CRM com eventos do Google
+  const allEvents = useMemo(() => {
+    return [...events, ...googleEvents];
+  }, [events, googleEvents]);
+
   const upcomingEventsList = useMemo(() => {
     const today = startOfDay(new Date());
     const endDate = addDays(today, upcomingDays);
-    return events
+    return allEvents
       .filter(e => e.date >= today && e.date <= endDate)
       .sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [events, upcomingDays]);
+  }, [allEvents, upcomingDays]);
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
@@ -289,30 +281,39 @@ export default function Agenda() {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-1">Agenda CRM</h1>
-            <p className="text-sm text-gray-500">Acompanhe tarefas, contratos e transações em um só lugar.</p>
+            <p className="text-sm text-gray-500">Compromissos integrados com seu Google Calendar.</p>
           </div>
           
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <div className="flex flex-wrap items-center gap-4 bg-white px-4 py-2.5 rounded-xl shadow-sm border border-gray-200 text-sm font-medium text-gray-600">
-              <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-orange-500"></div> Tarefas</div>
-              <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div> Contratos</div>
-              <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-yellow-500"></div> Pgtos Pendentes</div>
-              <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-red-500"></div> Pgtos Atrasados</div>
-            </div>
+            {session?.provider_token ? (
+              <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl shadow-sm border border-gray-200">
+                <Globe className="w-4 h-4 text-purple-500" />
+                <select 
+                  value={selectedGoogleCalendarId}
+                  onChange={(e) => setSelectedGoogleCalendarId(e.target.value)}
+                  className="bg-transparent text-sm font-bold text-gray-700 focus:outline-none cursor-pointer pr-2"
+                >
+                  <option value="">Nenhuma agenda selecionada</option>
+                  {googleCalendars.map(cal => (
+                    <option key={cal.id} value={cal.id}>{cal.summary}</option>
+                  ))}
+                </select>
+                {loadingGoogle && <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-500" />}
+              </div>
+            ) : (
+              <button 
+                onClick={handleConnectGoogle}
+                className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2 shadow-sm text-sm"
+              >
+                <img src="https://www.google.com/favicon.ico" className="w-4 h-4" alt="Google" />
+                Conectar Google Calendar
+              </button>
+            )}
 
-            <DropdownMenu>
-              <DropdownMenuTrigger className="px-4 py-2.5 bg-orange-400 text-white font-semibold rounded-xl hover:bg-orange-500 transition-colors flex items-center gap-2 shadow-sm whitespace-nowrap focus:outline-none">
-                Opções de Sincronização <ChevronDown className="w-4 h-4" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={handleSyncToGoogle} className="cursor-pointer font-medium text-gray-700 py-2.5">
-                  <RefreshCw className="w-4 h-4 mr-2 text-blue-500" /> Sincronizar Google Calendar
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportICS} className="cursor-pointer font-medium text-gray-700 py-2.5">
-                  <Download className="w-4 h-4 mr-2 text-gray-500" /> Exportar para Apple/Outlook (.ics)
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex flex-wrap items-center gap-4 bg-white px-4 py-2.5 rounded-xl shadow-sm border border-gray-200 text-sm font-medium text-gray-600">
+              <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-orange-500"></div> CRM</div>
+              <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-purple-500"></div> Google</div>
+            </div>
           </div>
         </div>
 
@@ -351,7 +352,7 @@ export default function Agenda() {
                 {calendarDays.map((day, idx) => {
                   const isCurrentMonth = isSameMonth(day, currentDate);
                   const isDayToday = isToday(day);
-                  const dayEvents = events.filter(e => isSameDay(e.date, day));
+                  const dayEvents = allEvents.filter(e => isSameDay(e.date, day));
 
                   return (
                     <div 
@@ -408,12 +409,6 @@ export default function Agenda() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-gray-50/30 relative">
-              {syncingGoogle && (
-                <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
-                   <Loader2 className="w-8 h-8 animate-spin text-orange-500 mb-2" />
-                   <span className="font-bold text-gray-700">Sincronizando...</span>
-                </div>
-              )}
               {upcomingEventsList.length > 0 ? (
                 upcomingEventsList.map(event => (
                   <div 
@@ -495,6 +490,19 @@ export default function Agenda() {
                   <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-xl border border-gray-100 whitespace-pre-wrap">
                     {selectedEvent.description}
                   </p>
+                </div>
+              )}
+
+              {selectedEvent.type === 'Google' && (
+                <div className="pt-2">
+                   <a 
+                    href={selectedEvent.originalData.htmlLink} 
+                    target="_blank" 
+                    rel="noreferrer"
+                    className="w-full py-2.5 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 text-sm"
+                   >
+                     <ExternalLink className="w-4 h-4" /> Abrir no Google Calendar
+                   </a>
                 </div>
               )}
             </div>

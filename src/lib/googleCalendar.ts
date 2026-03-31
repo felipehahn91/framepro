@@ -1,3 +1,41 @@
+export const listUserCalendars = async (providerToken: string) => {
+  const response = await fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
+    headers: {
+      'Authorization': `Bearer ${providerToken}`,
+    }
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error?.message || 'Erro ao carregar listas de calendários');
+  }
+
+  const data = await response.json();
+  return data.items || [];
+};
+
+export const listGoogleEvents = async (providerToken: string, calendarId: string, timeMin: string, timeMax: string) => {
+  const url = new URL(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`);
+  url.searchParams.append('timeMin', timeMin);
+  url.searchParams.append('timeMax', timeMax);
+  url.searchParams.append('singleEvents', 'true');
+  url.searchParams.append('orderBy', 'startTime');
+
+  const response = await fetch(url.toString(), {
+    headers: {
+      'Authorization': `Bearer ${providerToken}`,
+    }
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error?.message || 'Erro ao carregar eventos do Google');
+  }
+
+  const data = await response.json();
+  return data.items || [];
+};
+
 export const syncEventToGoogle = async (event: any, providerToken: string) => {
   // Formatando a data de início e fim para "Dia Inteiro" no Google
   const startDate = event.date.toISOString().split('T')[0];
