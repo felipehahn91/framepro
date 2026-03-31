@@ -17,9 +17,21 @@ import OpportunityDetailModal from "@/components/OpportunityDetailModal";
 interface Pipeline { id: string; name: string; }
 interface Column { id: string; pipeline_id: string; name: string; order_index: number; }
 interface Opportunity {
-  id: string; pipeline_id: string; column_id: string; name: string; tag: string;
-  email: string; phone: string; value: string; instagram: string; address: string;
-  observations: string; event_date: string; is_client: boolean;
+  id: string; 
+  pipeline_id: string; 
+  column_id: string; 
+  name: string; 
+  tag: string;
+  email: string; 
+  phone: string; 
+  value: string; 
+  instagram: string; 
+  address: string;
+  observations: string; 
+  event_date: string; 
+  is_client: boolean;
+  company: string; 
+  avatar_url: string;
 }
 interface LinkForm {
   id: string; name: string; tag: string; whatsapp_number: string; whatsapp_text: string;
@@ -132,7 +144,7 @@ export default function Oportunidades() {
 
       setPipelines(pipes);
       setColumns(cols);
-      setOpportunities(oppsRes.data || []);
+      setOpportunities(oppsRes.data as Opportunity[] || []);
       setLinkForms(formsRes.data || []);
       
       // Mapear contagem de cadências ativas por lead
@@ -377,15 +389,6 @@ export default function Oportunidades() {
       console.error(err);
       toast.error("Erro ao iniciar cadência.");
     }
-  };
-
-  const handleCadencia = (e: React.MouseEvent, opp: Opportunity) => {
-    // Mantendo a função legada de whatsapp direto (agora renomeada no click do card ou botão)
-    e.stopPropagation();
-    const phone = opp.phone;
-    if (!phone) return toast.error("Este lead não possui telefone cadastrado.");
-    const cleanPhone = phone.replace(/\D/g, '');
-    window.open(`https://wa.me/55${cleanPhone}?text=Olá ${opp.name}, `, '_blank');
   };
 
   const handleDeleteColumn = async (colId: string) => {

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { X, Save, Loader2, Trash2, User, Phone, Mail, Instagram, MapPin, Calendar, DollarSign, FileText, Tag, Clock, XCircle } from 'lucide-react';
+import { X, Save, Loader2, Trash2, User, Phone, Mail, Instagram, MapPin, Calendar, DollarSign, FileText, Tag, Clock, XCircle, Building2, Camera } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface Opportunity {
   id: string;
@@ -13,6 +14,8 @@ interface Opportunity {
   phone: string;
   value: string;
   instagram: string;
+  company: string;
+  avatar_url: string;
   address: string;
   observations: string;
   event_date: string;
@@ -42,14 +45,15 @@ const PHOTO_TYPES = [
 export default function OpportunityDetailModal({ isOpen, onClose, opportunity, onSave, onDelete, onCadenceUpdated }: OpportunityDetailModalProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<Partial<Opportunity>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Estados da Cadência
   const [pendingCadences, setPendingCadences] = useState<any[]>([]);
   const [loadingCadences, setLoadingCadences] = useState(false);
 
-  // Estados de Anotações (JSON)
   const [notes, setNotes] = useState<any[]>([]);
   const [newNote, setNewNote] = useState('');
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   const parseNotes = (obs: string | null | undefined) => {
     if (!obs) return [];
@@ -67,6 +71,8 @@ export default function OpportunityDetailModal({ isOpen, onClose, opportunity, o
       setFormData(opportunity);
       setNotes(parseNotes(opportunity.observations));
       setNewNote('');
+      setAvatarPreview(opportunity.avatar_url || null);
+      setAvatarFile(null);
       fetchCadences();
     }
   }, [opportunity, isOpen]);
@@ -90,37 +96,36 @@ export default function OpportunityDetailModal({ isOpen, onClose, opportunity, o
     }
   };
 
-  const handleCancelCadences = async () => {
-    if (!opportunity) return;
-    if (!confirm("Tem certeza que deseja cancelar todos os envios automáticos pendentes para este lead?")) return;
-    
-    setLoadingCadences(true);
-    try {
-      await supabase
-        .from('cadencia_queue')
-        .update({ status: 'cancelled' })
-        .eq('opportunity_id', opportunity.id)
-        .eq('status', 'pending');
-        
-      toast.success("Envios automáticos cancelados com sucesso.");
-      fetchCadences();
-      if (onCadenceUpdated) onCadenceUpdated();
-    } catch (error) {
-      toast.error("Erro ao cancelar cadências.");
-      setLoadingCadences(false);
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(file));
     }
-  };
-
-  if (!isOpen || !opportunity) return null;
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSave = async () => {
     setLoading(true);
     try {
+      let avatarUrl = formData.avatar_url || null;
+
+      if (avatarFile && opportunity) {
+        const fileExt = avatarFile.name.split('.').pop();
+        const fileName = `opp_${Date.now()}.${fileExt}`;
+        const filePath = `shared/avatars/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('contract_images')
+          .upload(filePath, avatarFile);
+
+        if (!uploadError) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('contract_images')
+            .getPublicUrl(filePath);
+          avatarUrl = publicUrl;
+        }
+      }
+
       let finalObservations = JSON.stringify(notes);
       if (newNote.trim()) {
         const newNoteObj = {
@@ -138,6 +143,8 @@ export default function OpportunityDetailModal({ isOpen, onClose, opportunity, o
           email: formData.email,
           phone: formData.phone,
           instagram: formData.instagram,
+          company: formData.company,
+          avatar_url: avatarUrl,
           value: formData.value,
           address: formData.address,
           event_date: formData.event_date,
@@ -150,7 +157,7 @@ export default function OpportunityDetailModal({ isOpen, onClose, opportunity, o
 
       if (error) throw error;
       
-      toast.success('Dados atualizados com sucesso!');
+      toast.success('Dados atualizados!');
       onSave(data as Opportunity);
       onClose();
     } catch (error) {
@@ -160,233 +167,109 @@ export default function OpportunityDetailModal({ isOpen, onClose, opportunity, o
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm('Tem certeza que deseja excluir esta oportunidade?')) return;
-    setLoading(true);
-    try {
-      const { error } = await supabase.from('opportunities').delete().eq('id', opportunity.id);
-      if (error) throw error;
-      
-      toast.success('Oportunidade excluída.');
-      onDelete(opportunity.id);
-      onClose();
-    } catch (error) {
-      toast.error('Erro ao excluir oportunidade.');
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (!isOpen || !opportunity) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl w-full max-w-3xl shadow-2xl flex flex-col animate-in fade-in zoom-in-95 max-h-[95vh] overflow-hidden">
+      <div className="relative bg-white rounded-3xl w-full max-w-3xl shadow-2xl flex flex-col animate-in zoom-in-95 max-h-[95vh] overflow-hidden">
         
-        {/* Header */}
-        <div className="px-6 py-5 border-b border-gray-100 flex items-start justify-between bg-gray-50/50">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center shrink-0">
-              <User className="w-6 h-6" />
+        <div className="px-6 py-6 border-b border-gray-100 flex items-start justify-between bg-gray-50/50">
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <Avatar className="w-14 h-14 border-2 border-white shadow-sm">
+                <AvatarImage src={avatarPreview || ''} />
+                <AvatarFallback className="bg-orange-100 text-orange-500 font-bold">
+                  {formData.name?.substring(0,2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute -bottom-1 -right-1 p-1.5 bg-orange-400 text-white rounded-full border border-white hover:bg-orange-500 transition-colors"
+              >
+                <Camera className="w-3 h-3" />
+              </button>
+              <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleAvatarChange} />
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">{formData.name}</h2>
-              <p className="text-sm text-gray-500">Detalhes da Oportunidade</p>
+              <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">{formData.is_client ? 'Perfil do Cliente' : 'Lead em Prospecção'}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-700 bg-white rounded-full border border-gray-200 shadow-sm transition-colors">
+          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-700 bg-white rounded-full border border-gray-200">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Body / Scrollable Content */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-6">
-          
-          {/* Seção de Automação de Cadência */}
-          <div className="col-span-1 sm:col-span-2 bg-orange-50/50 p-4 rounded-xl border border-orange-100">
-            <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-orange-500" /> Automação de Cadência
-            </h3>
-            
-            {loadingCadences ? (
-              <div className="flex items-center gap-2 text-sm text-gray-500">
-                <Loader2 className="w-4 h-4 animate-spin" /> Carregando status...
-              </div>
-            ) : pendingCadences.length > 0 ? (
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-3 rounded-lg border border-orange-100 shadow-sm">
-                <div>
-                  <p className="text-sm text-gray-800">
-                    Há <strong>{pendingCadences.length}</strong> mensagem(ns) agendada(s) para este lead.
-                  </p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Próximo envio: {new Date(pendingCadences[0].scheduled_for).toLocaleString('pt-BR')}
-                  </p>
-                </div>
-                <button
-                  onClick={handleCancelCadences}
-                  className="px-3 py-1.5 text-xs text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 rounded-md font-semibold flex items-center gap-1.5 transition-colors shrink-0"
-                >
-                  <XCircle className="w-3.5 h-3.5" /> Cancelar Envios
-                </button>
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500">
-                Nenhuma cadência ativa no momento. Você pode iniciar uma no botão "Cadência" no quadro principal.
-              </p>
-            )}
-          </div>
-
+        <div className="p-6 overflow-y-auto flex-1 space-y-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            
-            {/* Nome */}
             <div>
-              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-1.5">
-                <User className="w-4 h-4 text-gray-400" /> Nome do Lead
-              </label>
+              <label className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase mb-1.5">Nome do Lead</label>
               <input 
-                name="name" value={formData.name || ''} onChange={handleChange}
-                className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-shadow"
+                value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})}
+                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none"
               />
             </div>
 
-            {/* Tag / Tipo de Foto */}
             <div>
-              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-1.5">
-                <Tag className="w-4 h-4 text-gray-400" /> Tipo de Foto (Tag)
-              </label>
+              <label className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase mb-1.5">Empresa</label>
+              <div className="relative">
+                <Building2 className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input 
+                  value={formData.company || ''} onChange={e => setFormData({...formData, company: e.target.value})}
+                  className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none"
+                  placeholder="Nome da empresa"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase mb-1.5">WhatsApp</label>
+              <input 
+                value={formData.phone || ''} onChange={e => setFormData({...formData, phone: e.target.value})}
+                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="flex items-center gap-2 text-xs font-bold text-gray-400 uppercase mb-1.5">Tag / Tipo</label>
               <select 
-                name="tag" value={formData.tag || ''} onChange={handleChange}
-                className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-shadow"
+                value={formData.tag || ''} onChange={e => setFormData({...formData, tag: e.target.value})}
+                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none"
               >
                 <option value="">Sem Tag</option>
                 {PHOTO_TYPES.map(pt => <option key={pt.value} value={pt.value}>{pt.label}</option>)}
               </select>
             </div>
-
-            {/* Telefone */}
-            <div>
-              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-1.5">
-                <Phone className="w-4 h-4 text-gray-400" /> Telefone / WhatsApp
-              </label>
-              <input 
-                name="phone" value={formData.phone || ''} onChange={handleChange}
-                className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-shadow"
-              />
-            </div>
-
-            {/* E-mail */}
-            <div>
-              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-1.5">
-                <Mail className="w-4 h-4 text-gray-400" /> E-mail
-              </label>
-              <input 
-                name="email" type="email" value={formData.email || ''} onChange={handleChange}
-                className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-shadow"
-              />
-            </div>
-
-            {/* Instagram */}
-            <div>
-              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-1.5">
-                <Instagram className="w-4 h-4 text-gray-400" /> Instagram (@)
-              </label>
-              <input 
-                name="instagram" value={formData.instagram || ''} onChange={handleChange}
-                className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-shadow"
-              />
-            </div>
-
-            {/* Valor */}
-            <div>
-              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-1.5">
-                <DollarSign className="w-4 h-4 text-gray-400" /> Valor da Proposta
-              </label>
-              <input 
-                name="value" value={formData.value || ''} onChange={handleChange} placeholder="0.00"
-                className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-shadow"
-              />
-            </div>
-
-            {/* Data do Evento */}
-            <div>
-              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-1.5">
-                <Calendar className="w-4 h-4 text-gray-400" /> Data do Evento
-              </label>
-              <input 
-                name="event_date" type="date" value={formData.event_date || ''} onChange={handleChange}
-                className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-shadow"
-              />
-            </div>
-
-            {/* Local */}
-            <div>
-              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-1.5">
-                <MapPin className="w-4 h-4 text-gray-400" /> Local do Evento
-              </label>
-              <input 
-                name="address" value={formData.address || ''} onChange={handleChange}
-                className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-shadow"
-              />
-            </div>
           </div>
 
-          {/* Observações e Histórico */}
-          <div className="col-span-1 sm:col-span-2 bg-gray-50 p-5 rounded-xl border border-gray-100">
-            <label className="flex items-center gap-2 text-sm font-bold text-gray-800 mb-4">
-              <FileText className="w-4 h-4 text-orange-500" /> Histórico e Observações
-            </label>
-            
-            <div className="space-y-3 mb-4 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-              {notes.length > 0 ? (
-                notes.map((note: any) => (
-                   <div key={note.id} className="bg-white p-3.5 rounded-lg border border-gray-200 shadow-sm">
-                     <p className="text-[11px] font-bold text-gray-400 mb-1.5 uppercase tracking-wider">
-                       {new Date(note.created_at).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                     </p>
-                     <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{note.content}</p>
-                   </div>
-                ))
-              ) : (
-                <p className="text-sm text-gray-500 italic">Nenhuma observação registrada.</p>
-              )}
+          <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
+            <label className="flex items-center gap-2 text-sm font-bold text-gray-800 mb-4">Anotações e Histórico</label>
+            <div className="space-y-4 mb-6 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+              {notes.map((note: any) => (
+                <div key={note.id} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                  <p className="text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-wider">{new Date(note.created_at).toLocaleString()}</p>
+                  <p className="text-sm text-gray-700 leading-relaxed">{note.content}</p>
+                </div>
+              ))}
             </div>
-
             <textarea
               value={newNote} onChange={e => setNewNote(e.target.value)} rows={2}
-              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-shadow resize-none"
-              placeholder="Adicione uma nova anotação ou atualização..."
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none resize-none"
+              placeholder="Adicione um comentário..."
             />
           </div>
         </div>
 
-        {/* Footer Actions */}
-        <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 flex items-center justify-between shrink-0">
-          <button 
-            onClick={handleDelete} 
-            disabled={loading}
-            className="px-4 py-2 text-red-600 font-semibold rounded-lg hover:bg-red-50 flex items-center gap-2 transition-colors disabled:opacity-50"
-          >
-            <Trash2 className="w-4 h-4" /> Excluir
-          </button>
-
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={onClose} 
-              disabled={loading}
-              className="px-6 py-2 text-gray-700 font-semibold border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-50 bg-white"
-            >
-              Cancelar
-            </button>
-            <button 
-              onClick={handleSave} 
-              disabled={loading}
-              className="px-6 py-2 bg-orange-400 text-white font-semibold rounded-lg hover:bg-orange-500 transition-colors disabled:opacity-50 flex items-center gap-2 shadow-sm"
-            >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} 
-              Salvar Alterações
+        <div className="px-6 py-5 border-t border-gray-100 bg-gray-50/50 flex items-center justify-between">
+          <button onClick={() => { if(confirm('Excluir?')) onDelete(opportunity.id); }} className="text-red-500 font-bold text-sm hover:underline">Excluir Registro</button>
+          <div className="flex gap-3">
+            <button onClick={onClose} className="px-6 py-2.5 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition-colors">Cancelar</button>
+            <button onClick={handleSave} disabled={loading} className="px-8 py-2.5 bg-orange-400 text-white font-bold rounded-xl shadow-md hover:bg-orange-500 transition-all flex items-center gap-2">
+              {loading && <Loader2 className="w-4 h-4 animate-spin" />} Salvar
             </button>
           </div>
         </div>
-
       </div>
     </div>
   );
