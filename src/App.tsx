@@ -30,6 +30,7 @@ import LinkFormPage from "./pages/LinkFormPage";
 import Pricing from "./pages/Pricing";
 import FounderPack from "./pages/FounderPack";
 import BillingSuccess from "./pages/BillingSuccess";
+import BillingCancel from "./pages/BillingCancel";
 import NotFound from "./pages/NotFound";
 
 applyTheme(getActiveTheme());
@@ -57,7 +58,7 @@ const App = () => (
               <Route path="/precos" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
               <Route path="/founders" element={<ProtectedRoute><FounderPack /></ProtectedRoute>} />
               <Route path="/billing-success" element={<ProtectedRoute><BillingSuccess /></ProtectedRoute>} />
-              <Route path="/billing-cancel" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
+              <Route path="/billing-cancel" element={<ProtectedRoute><BillingCancel /></ProtectedRoute>} />
               
               <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
               <Route path="/oportunidades" element={<ProtectedRoute><Oportunidades /></ProtectedRoute>} />
