@@ -156,7 +156,7 @@ export default function OrcamentoAnalytics() {
       const rawAnalytics = analyticsData.data || [];
       const rawTracking = trackingData.data || [];
 
-      // Reconstrói o replay a partir dos eventos que foram inseridos com sucesso (fugindo do bloqueio RLS)
+      // Reconstrói o replay a partir dos eventos que foram inseridos com sucesso
       const analyticsWithEvents = rawAnalytics.map(session => {
         const sessionEvents = rawTracking
           .filter(t => t.session_id === session.session_id)
@@ -321,6 +321,15 @@ export default function OrcamentoAnalytics() {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  const formatDurationText = (ms: number) => {
+    if (!ms) return "0s";
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    if (minutes > 0) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
+  };
+
   const getDeviceIcon = (device: string) => {
     if (device === 'mobile') return <Smartphone className="w-4 h-4" />;
     if (device === 'tablet') return <Tablet className="w-4 h-4" />;
@@ -332,12 +341,15 @@ export default function OrcamentoAnalytics() {
   const clicksCount = tracking.filter(t => t.event_type === 'click').length;
   const heatmapClicksCount = tracking.filter(t => t.event_type === 'click' && getDeviceForSession(t.session_id) === heatmapDevice).length;
   
-  const totalDurationMs = analytics.reduce((acc, session) => {
-    const events = session.replay_data?.events || [];
-    if (events.length > 0) return acc + events[events.length - 1].timeOffset;
-    return acc;
+  // Ignora sessões inválidas/antigas vazias na hora de fazer a média
+  const validSessions = analytics.filter(s => s.replay_data?.events?.length > 0);
+  const totalDurationMs = validSessions.reduce((acc, session) => {
+    const events = session.replay_data.events;
+    return acc + events[events.length - 1].timeOffset;
   }, 0);
-  const avgTimeMinutes = analytics.length > 0 ? Math.floor((totalDurationMs / analytics.length) / 60000) : 0;
+  
+  const avgTimeMs = validSessions.length > 0 ? totalDurationMs / validSessions.length : 0;
+  const avgTimeString = formatDurationText(avgTimeMs);
 
   const loadedSections = orcamento?.sections || [];
   const globalSec = loadedSections.find((s: any) => s.type === 'global-settings');
@@ -388,7 +400,7 @@ export default function OrcamentoAnalytics() {
               <span className="text-sm font-medium text-gray-500">Tempo Médio Gasto</span>
               <Clock className="w-5 h-5 text-green-500" />
             </div>
-            <div className="text-3xl font-bold text-gray-900">{avgTimeMinutes} min</div>
+            <div className="text-3xl font-bold text-gray-900">{avgTimeString}</div>
           </div>
           <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
             <div className="flex items-center justify-between mb-2">
