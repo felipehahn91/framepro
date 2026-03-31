@@ -6,7 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { 
   Search, Plus, FileText, Loader2, Edit2, Trash2, 
   ExternalLink, Copy, LayoutTemplate, FileUp, 
-  User, Clock, Eye, Link as LinkIcon, Activity
+  User, Clock, Eye, Link as LinkIcon, Activity, Mail
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -26,6 +26,7 @@ interface Orcamento {
   updated_at: string;
   opportunity_id?: string | null;
   opportunities?: { name: string } | null;
+  sections?: any[];
 }
 
 interface Opportunity {
@@ -114,9 +115,34 @@ export default function Orcamentos() {
       toast.success("Orçamento criado!");
       navigate(`/orcamentos/editar/${data.id}`);
     } catch (error) {
-      toast.error("Erro ao criar. Verifique se a tabela 'orcamentos' existe no banco.");
+      toast.error("Erro ao criar.");
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleDuplicate = async (orc: Orcamento) => {
+    try {
+      const share_token = crypto.randomUUID();
+      const { data, error } = await supabase
+        .from('orcamentos')
+        .insert({
+          user_id: user?.id,
+          name: `${orc.name} (Cópia)`,
+          type: orc.type,
+          share_token,
+          view_count: 0,
+          sections: orc.sections,
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      setOrcamentos([data, ...orcamentos]);
+      toast.success("Orçamento duplicado!");
+    } catch (e) {
+      toast.error("Erro ao duplicar.");
     }
   };
 
@@ -206,116 +232,110 @@ export default function Orcamentos() {
           </div>
         </div>
 
-        {/* Lista de Orçamentos (Full Width Cards) */}
-        <div className="bg-transparent flex-1 pb-6">
+        {/* Grade de Orçamentos (Cards centralizados) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-12">
           {filteredOrcamentos.length > 0 ? (
-            <div className="flex flex-col gap-4">
-              {filteredOrcamentos.map(orc => (
-                <div key={orc.id} className="flex flex-col lg:flex-row items-start lg:items-center justify-between p-5 border border-gray-200 rounded-2xl bg-white hover:border-orange-300 hover:shadow-md transition-all gap-4">
+            filteredOrcamentos.map(orc => (
+              <div key={orc.id} className="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col">
+                
+                {/* Parte Superior: Info Centralizada */}
+                <div className="p-8 flex flex-col items-center text-center space-y-4">
+                  <h3 className="text-xl font-bold text-gray-900 leading-tight">{orc.name}</h3>
                   
-                  {/* Left Side: Info */}
-                  <div className="flex items-center gap-4 flex-1 min-w-0 w-full">
-                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center shrink-0 ${orc.type === 'pdf' ? 'bg-blue-50 text-blue-500' : 'bg-purple-50 text-purple-500'}`}>
-                      {orc.type === 'pdf' ? <FileUp className="w-7 h-7" /> : <LayoutTemplate className="w-7 h-7" />}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-1.5">
-                        <h3 className="font-bold text-gray-900 text-lg truncate">{orc.name}</h3>
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${orc.type === 'pdf' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-purple-50 text-purple-600 border-purple-100'}`}>
-                          {orc.type === 'pdf' ? 'PDF' : 'Construtor'}
-                        </span>
-                      </div>
-                      
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-500">
-                        <span className="flex items-center gap-1.5">
-                          <User className="w-4 h-4" /> 
-                          {orc.opportunities?.name ? (
-                            <span className="text-gray-900 font-medium">{orc.opportunities.name}</span>
-                          ) : (
-                            <span className="text-gray-400 italic">Sem lead vinculado</span>
-                          )}
-                        </span>
-                        <span className="hidden sm:block w-1 h-1 bg-gray-300 rounded-full"></span>
-                        <span className="flex items-center gap-1.5">
-                          <Clock className="w-4 h-4" /> Atualizado em {new Date(orc.updated_at).toLocaleDateString('pt-BR')}
-                        </span>
-                        <span className="hidden sm:block w-1 h-1 bg-gray-300 rounded-full"></span>
-                        <span className="flex items-center gap-1.5 text-orange-600 font-medium bg-orange-50 px-2 py-0.5 rounded-md">
-                          <Eye className="w-4 h-4" /> {orc.view_count || 0} views
-                        </span>
-                      </div>
-                    </div>
+                  {/* Badge de Views */}
+                  <div className="bg-gray-100 text-gray-500 px-3 py-1 rounded-full flex items-center gap-1.5 text-xs font-bold">
+                    <Eye className="w-3.5 h-3.5" /> {orc.view_count || 0} views
                   </div>
 
-                  {/* Right Side: Actions */}
-                  <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto pb-2 lg:pb-0 hide-scrollbar">
-                    
-                    <button 
-                      onClick={() => navigate(`/orcamentos/analytics/${orc.id}`)}
-                      className="px-4 py-2.5 bg-purple-50 text-purple-600 font-semibold rounded-lg hover:bg-purple-100 transition-all flex items-center gap-2 whitespace-nowrap text-sm border border-purple-100"
-                    >
-                      <Activity className="w-4 h-4" /> Analytics
-                    </button>
-                    
-                    <button 
-                      onClick={() => openLinkModal(orc)}
-                      className="px-4 py-2.5 bg-gray-50 text-gray-700 font-semibold rounded-lg hover:bg-gray-100 transition-all flex items-center gap-2 whitespace-nowrap text-sm border border-gray-200"
-                    >
-                      <LinkIcon className="w-4 h-4" /> Vincular Lead
-                    </button>
-
-                    <button 
-                      onClick={() => navigate(`/orcamentos/editar/${orc.id}`)}
-                      className="px-4 py-2.5 bg-orange-50 text-orange-600 font-semibold rounded-lg hover:bg-orange-100 transition-all flex items-center gap-2 whitespace-nowrap text-sm border border-orange-100"
-                    >
-                      <Edit2 className="w-4 h-4" /> Editar
-                    </button>
-
-                    <button 
-                      onClick={() => handleCopyLink(orc.share_token)}
-                      className="p-2.5 text-gray-500 hover:text-gray-900 bg-gray-50 hover:bg-gray-100 rounded-lg transition-all border border-gray-200"
-                      title="Copiar Link"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </button>
-
-                    <button 
-                      onClick={() => window.open(`/orcamentos/public/${orc.share_token}`, '_blank')}
-                      className="p-2.5 text-gray-500 hover:text-blue-600 bg-gray-50 hover:bg-blue-50 rounded-lg transition-all border border-gray-200"
-                      title="Visualizar Proposta"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </button>
-
-                    <button 
-                      onClick={() => handleDelete(orc.id)}
-                      className="p-2.5 text-gray-500 hover:text-red-600 bg-gray-50 hover:bg-red-50 rounded-lg transition-all border border-gray-200"
-                      title="Excluir"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                  {/* Lead e Data */}
+                  <div className="flex flex-col items-center gap-2 text-sm text-gray-500 font-medium">
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-gray-400" />
+                      {orc.opportunities?.name || "Nenhum lead vinculado"}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-gray-400" />
+                      Atualizado em {new Date(orc.updated_at).toLocaleDateString('pt-BR')}
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
+
+                <div className="h-px bg-gray-100 w-full"></div>
+
+                {/* Parte Inferior: Barra de Ações Centralizada */}
+                <div className="px-4 py-6 flex flex-wrap justify-center gap-2.5">
+                  <button 
+                    onClick={() => window.open(`/orcamentos/public/${orc.share_token}`, '_blank')}
+                    className="w-10 h-10 flex items-center justify-center border border-gray-200 rounded-lg text-gray-400 hover:text-orange-500 hover:border-orange-200 hover:bg-orange-50 transition-all"
+                    title="Visualizar Proposta"
+                  >
+                    <ExternalLink className="w-5 h-5" />
+                  </button>
+
+                  <button 
+                    onClick={() => handleCopyLink(orc.share_token)}
+                    className="w-10 h-10 flex items-center justify-center border border-gray-200 rounded-lg text-gray-400 hover:text-orange-500 hover:border-orange-200 hover:bg-orange-50 transition-all"
+                    title="Copiar Link"
+                  >
+                    <LinkIcon className="w-5 h-5" />
+                  </button>
+
+                  <button 
+                    onClick={() => handleDuplicate(orc)}
+                    className="w-10 h-10 flex items-center justify-center border border-gray-200 rounded-lg text-gray-400 hover:text-orange-500 hover:border-orange-200 hover:bg-orange-50 transition-all"
+                    title="Duplicar"
+                  >
+                    <Copy className="w-5 h-5" />
+                  </button>
+
+                  <button 
+                    onClick={() => openLinkModal(orc)}
+                    className="w-10 h-10 flex items-center justify-center border border-gray-200 rounded-lg text-gray-400 hover:text-orange-500 hover:border-orange-200 hover:bg-orange-50 transition-all"
+                    title="Vincular Lead"
+                  >
+                    <User className="w-5 h-5" />
+                  </button>
+
+                  <button 
+                    onClick={() => navigate(`/orcamentos/editar/${orc.id}`)}
+                    className="w-10 h-10 flex items-center justify-center border border-gray-200 rounded-lg text-gray-400 hover:text-orange-500 hover:border-orange-200 hover:bg-orange-50 transition-all"
+                    title="Editar"
+                  >
+                    <Edit2 className="w-5 h-5" />
+                  </button>
+
+                  <button 
+                    className="w-10 h-10 flex items-center justify-center border border-gray-200 rounded-lg text-gray-400 hover:text-orange-500 hover:border-orange-200 hover:bg-orange-50 transition-all"
+                    title="Enviar por Email"
+                  >
+                    <Mail className="w-5 h-5" />
+                  </button>
+
+                  <button 
+                    onClick={() => navigate(`/orcamentos/analytics/${orc.id}`)}
+                    className="w-10 h-10 flex items-center justify-center border border-gray-200 rounded-lg text-gray-400 hover:text-orange-500 hover:border-orange-200 hover:bg-orange-50 transition-all"
+                    title="Analytics"
+                  >
+                    <Activity className="w-5 h-5" />
+                  </button>
+
+                  <button 
+                    onClick={() => handleDelete(orc.id)}
+                    className="w-10 h-10 flex items-center justify-center border border-gray-200 rounded-lg text-gray-400 hover:text-red-600 hover:border-red-200 hover:bg-red-50 transition-all"
+                    title="Excluir"
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+            ))
           ) : (
-            <div className="bg-white border border-gray-200 rounded-2xl flex flex-col items-center justify-center h-full py-20 text-center shadow-sm">
+            <div className="col-span-full bg-white border border-gray-200 rounded-2xl flex flex-col items-center justify-center py-20 text-center shadow-sm">
               <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center mb-6">
                 <FileText className="w-10 h-10 text-orange-400" />
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">Nenhum orçamento encontrado</h3>
-              <p className="text-sm text-gray-500 max-w-md mb-8">
-                {searchQuery ? "Nenhum resultado para a sua busca." : "Crie orçamentos lindíssimos em PDF ou pelo construtor de páginas, envie para seus clientes e saiba quando eles visualizarem."}
-              </p>
-              {!searchQuery && (
-                <button 
-                  onClick={() => { setIsCreateOpen(true); setNewType(null); setNewName(""); }}
-                  className="px-6 py-3 bg-orange-400 text-white font-semibold rounded-xl hover:bg-orange-500 transition-all shadow-md flex items-center gap-2"
-                >
-                  <Plus className="w-5 h-5" /> Criar Primeiro Orçamento
-                </button>
-              )}
+              <p className="text-sm text-gray-500 max-w-md">Crie propostas interativas para seus clientes.</p>
             </div>
           )}
         </div>
@@ -370,7 +390,6 @@ export default function Orcamentos() {
                   placeholder="Ex: Proposta Casamento João e Maria"
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all"
                   autoFocus
-                  onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
                 />
               </div>
             )}
@@ -434,16 +453,6 @@ export default function Orcamentos() {
           </div>
         </DialogContent>
       </Dialog>
-
-      <style dangerouslySetInnerHTML={{__html: `
-        .hide-scrollbar::-webkit-scrollbar {
-          display: none;
-        }
-        .hide-scrollbar {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-      `}} />
     </Layout>
   );
 }
