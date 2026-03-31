@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
   Edit2, TrendingUp, Clock, AlertCircle, Users, 
-  Target, FileText, ChevronRight, Inbox, CheckSquare 
+  Target, FileText, ChevronRight, Inbox, CheckSquare, Loader2
 } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -56,7 +56,7 @@ const Index = () => {
       setGoal(currentGoal);
       setNewGoal(currentGoal.toString());
 
-      const { data: transactions, error: txError } = await supabase
+      const { data: transactions } = await supabase
         .from('transactions')
         .select('*')
         .eq('user_id', user?.id);
@@ -169,7 +169,6 @@ const Index = () => {
 
     } catch (error) {
       console.error("Dashboard fetch error:", error);
-      toast.error("Erro ao carregar dados do dashboard.");
     } finally {
       setLoading(false);
     }
@@ -194,174 +193,142 @@ const Index = () => {
       setIsGoalModalOpen(false);
       toast.success("Meta atualizada com sucesso!");
     } catch (error) {
-      console.error(error);
       toast.error("Erro ao atualizar a meta.");
     }
   };
 
   const percentage = goal > 0 ? Math.min(Math.round((realized / goal) * 100), 100) : 0;
 
+  if (loading) {
+    return <Layout><div className="flex h-full items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div></Layout>;
+  }
+
   return (
     <Layout>
-      <div className="max-w-6xl mx-auto space-y-8 pb-10">
-        <div className="flex justify-between items-end">
-          <div>
-            <h1 className="text-4xl font-black text-gray-900 tracking-tight">Dashboard</h1>
-            <p className="text-gray-500 mt-1 font-medium">Bem-vindo ao seu centro de controle</p>
-          </div>
+      <div className="max-w-7xl mx-auto space-y-6 pb-10">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-gray-500 text-sm">Visão geral do seu negócio</p>
         </div>
 
-        {/* Bloco de Meta - SUPER DESTAQUE */}
-        <div className="bg-white rounded-3xl p-8 sm:p-10 shadow-xl border border-orange-100 relative overflow-hidden group transition-all hover:shadow-2xl">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-orange-50 rounded-full -mr-20 -mt-20 opacity-40 group-hover:scale-110 transition-transform duration-700"></div>
+        {/* Card de Meta Principal */}
+        <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm relative group">
+          <div className="flex justify-between items-start mb-2">
+            <h3 className="font-bold text-gray-900 text-base">Meta de Faturamento Mensal</h3>
+            <button 
+              onClick={() => setIsGoalModalOpen(true)}
+              className="text-gray-400 hover:text-gray-900 transition-colors"
+            >
+              <Edit2 className="w-4 h-4" />
+            </button>
+          </div>
           
-          <button 
-            onClick={() => setIsGoalModalOpen(true)}
-            className="absolute top-8 right-8 p-2 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-full transition-all z-10"
-          >
-            <Edit2 className="w-5 h-5" />
-          </button>
+          <div className="flex items-baseline gap-3 mb-6">
+            <span className="text-4xl font-bold text-gray-900 tracking-tight">
+              {formatCurrency(goal)}
+            </span>
+            <span className="text-gray-500 font-semibold text-sm">
+              {percentage}% alcançado
+            </span>
+          </div>
           
-          <div className="relative z-10">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-orange-500 mb-4">Meta de Faturamento Mensal</h3>
-            <div className="flex flex-col sm:flex-row sm:items-baseline gap-4 mb-8">
-              <span className="text-5xl sm:text-6xl font-black text-gray-900 tracking-tighter">
-                {formatCurrency(goal)}
-              </span>
-              <span className="inline-flex items-center px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-bold">
-                {percentage}% alcançado
-              </span>
+          <div className="space-y-3">
+            <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-orange-400 transition-all duration-1000 ease-out"
+                style={{ width: `${percentage}%` }}
+              ></div>
             </div>
-            
-            <div className="space-y-3">
-              <div className="h-4 w-full bg-gray-100 rounded-full overflow-hidden shadow-inner">
-                <div
-                  className="h-full bg-gradient-to-r from-orange-400 to-orange-500 rounded-full transition-all duration-1000 ease-out"
-                  style={{ width: `${percentage}%` }}
-                ></div>
-              </div>
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-gray-500 font-bold">
-                  Realizado: <span className="text-gray-900">{formatCurrency(realized)}</span>
-                </p>
-                <p className="text-sm text-gray-400 font-medium">
-                  Faltam: {formatCurrency(Math.max(0, goal - realized))}
-                </p>
-              </div>
-            </div>
+            <p className="text-xs text-gray-500 font-medium">
+              Realizado: {formatCurrency(realized)}
+            </p>
           </div>
         </div>
 
-        {/* Faturamento Cards */}
+        {/* Linha 1: Faturamentos */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 flex flex-col justify-between h-36 transition-all hover:-translate-y-1 hover:shadow-xl">
-            <div className="flex justify-between items-start">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                <TrendingUp className="w-5 h-5" />
-              </div>
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Total</span>
+          <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all">
+            <div className="flex justify-between items-start mb-4">
+              <span className="text-xs font-semibold text-gray-500">Faturamento Total</span>
+              <TrendingUp className="w-4 h-4 text-green-500" />
             </div>
-            <div>
-              <h3 className="text-sm font-bold text-gray-500 mb-1">Faturamento Total</h3>
-              <span className="text-2xl font-black text-gray-900">{formatCurrency(totalRevenue)}</span>
-            </div>
+            <span className="text-2xl font-bold text-gray-900">{formatCurrency(totalRevenue)}</span>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 flex flex-col justify-between h-36 transition-all hover:-translate-y-1 hover:shadow-xl">
-            <div className="flex justify-between items-start">
-              <div className="w-10 h-10 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center">
-                <Clock className="w-5 h-5" />
-              </div>
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">A Receber</span>
+          <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all">
+            <div className="flex justify-between items-start mb-4">
+              <span className="text-xs font-semibold text-gray-500">Faturamento Pendente</span>
+              <Clock className="w-4 h-4 text-orange-400" />
             </div>
-            <div>
-              <h3 className="text-sm font-bold text-gray-500 mb-1">Faturamento Pendente</h3>
-              <span className="text-2xl font-black text-gray-900">{formatCurrency(pendingRevenue)}</span>
-            </div>
+            <span className="text-2xl font-bold text-gray-900">{formatCurrency(pendingRevenue)}</span>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 flex flex-col justify-between h-36 transition-all hover:-translate-y-1 hover:shadow-xl">
-            <div className="flex justify-between items-start">
-              <div className="w-10 h-10 rounded-xl bg-red-50 text-red-500 flex items-center justify-center">
-                <AlertCircle className="w-5 h-5" />
-              </div>
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Atrasado</span>
+          <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all">
+            <div className="flex justify-between items-start mb-4">
+              <span className="text-xs font-semibold text-gray-500">Faturamento Atrasado</span>
+              <AlertCircle className="w-4 h-4 text-red-500" />
             </div>
-            <div>
-              <h3 className="text-sm font-bold text-gray-500 mb-1">Faturamento Atrasado</h3>
-              <span className="text-2xl font-black text-gray-900">{formatCurrency(overdueRevenue)}</span>
-            </div>
+            <span className="text-2xl font-bold text-gray-900">{formatCurrency(overdueRevenue)}</span>
           </div>
         </div>
 
-        {/* Stats Cards */}
+        {/* Linha 2: Estatísticas */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-50 flex items-center gap-4 transition-all hover:shadow-xl">
-            <div className="w-12 h-12 rounded-2xl bg-gray-100 text-gray-600 flex items-center justify-center shrink-0">
-              <Users className="w-6 h-6" />
+          <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-all">
+            <div className="flex justify-between items-start mb-2">
+              <span className="text-xs font-semibold text-gray-500">Total de clientes</span>
+              <Users className="w-4 h-4 text-gray-300" />
             </div>
-            <div>
-              <p className="text-sm font-bold text-gray-500">Total de clientes</p>
-              <p className="text-2xl font-black text-gray-900">{totalClients}</p>
-            </div>
+            <span className="text-2xl font-bold text-gray-900">{totalClients}</span>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-50 flex items-center gap-4 transition-all hover:shadow-xl">
-            <div className="w-12 h-12 rounded-2xl bg-gray-100 text-gray-600 flex items-center justify-center shrink-0">
-              <Target className="w-6 h-6" />
+          <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-all">
+            <div className="flex justify-between items-start mb-2">
+              <span className="text-xs font-semibold text-gray-500">Oportunidades abertas</span>
+              <Target className="w-4 h-4 text-gray-300" />
             </div>
-            <div>
-              <p className="text-sm font-bold text-gray-500">Oportunidades</p>
-              <p className="text-2xl font-black text-gray-900">{openOpportunities}</p>
-            </div>
+            <span className="text-2xl font-bold text-gray-900">{openOpportunities}</span>
           </div>
 
-          <div className="bg-white rounded-2xl p-6 shadow-lg border border-gray-50 flex items-center gap-4 transition-all hover:shadow-xl">
-            <div className="w-12 h-12 rounded-2xl bg-gray-100 text-gray-600 flex items-center justify-center shrink-0">
-              <FileText className="w-6 h-6" />
+          <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-all">
+            <div className="flex justify-between items-start mb-2">
+              <span className="text-xs font-semibold text-gray-500">Contratos ativos</span>
+              <FileText className="w-4 h-4 text-gray-300" />
             </div>
-            <div>
-              <p className="text-sm font-bold text-gray-500">Contratos ativos</p>
-              <p className="text-2xl font-black text-gray-900">{activeContracts}</p>
-            </div>
+            <span className="text-2xl font-bold text-gray-900">{activeContracts}</span>
           </div>
         </div>
 
-        {/* Bottom Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-white rounded-3xl p-8 shadow-lg border border-gray-100 transition-all hover:shadow-xl">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h3 className="text-lg font-black text-gray-900">Pipeline de Vendas</h3>
-                <p className="text-sm text-gray-500 font-medium">Distribuição por etapa</p>
-              </div>
-              <div className="p-2 bg-gray-50 rounded-xl">
-                <Target className="w-5 h-5 text-gray-400" />
-              </div>
+        {/* Linha 3: Gráficos e Listas */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm">
+            <div className="mb-6">
+              <h3 className="text-base font-bold text-gray-900">Pipeline de oportunidades</h3>
+              <p className="text-xs text-gray-500">Distribuição por status</p>
             </div>
-            <div className="h-[300px] w-full">
+            <div className="h-[250px] w-full">
               {pipelineData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={pipelineData}>
+                  <BarChart data={pipelineData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                     <XAxis
                       dataKey="name"
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fill: '#6b7280', fontSize: 12, fontWeight: 600 }}
+                      tick={{ fill: '#9ca3af', fontSize: 11 }}
                       dy={10}
                     />
                     <YAxis
                       axisLine={false}
                       tickLine={false}
-                      tick={{ fill: '#6b7280', fontSize: 12 }}
+                      tick={{ fill: '#9ca3af', fontSize: 11 }}
                     />
                     <Tooltip
                       cursor={{ fill: '#f9fafb' }}
-                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
+                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     />
-                    <Bar dataKey="quantidade" radius={[6, 6, 0, 0]} barSize={40}>
-                      {pipelineData.map((entry, index) => (
+                    <Bar dataKey="quantidade" radius={[4, 4, 0, 0]} barSize={30}>
+                      {pipelineData.map((_entry, index) => (
                         <Cell key={`cell-${index}`} fill={['#f97316', '#fb923c', '#fdba74', '#fed7aa'][index % 4]} />
                       ))}
                     </Bar>
@@ -370,82 +337,70 @@ const Index = () => {
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-2">
                   <Inbox className="w-10 h-10 opacity-20" />
-                  <p className="text-sm font-bold">Sem dados no pipeline</p>
+                  <p className="text-xs font-medium">Sem dados no pipeline</p>
                 </div>
               )}
             </div>
           </div>
           
-          <div className="bg-white rounded-3xl p-8 shadow-lg border border-gray-100 transition-all hover:shadow-xl">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h3 className="text-lg font-black text-gray-900">Atividades Recentes</h3>
-                <p className="text-sm text-gray-500 font-medium">Suas últimas tarefas</p>
-              </div>
-              <button className="text-xs font-bold text-orange-500 hover:underline uppercase tracking-wider">Ver todas</button>
+          <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm flex flex-col">
+            <div className="mb-6">
+              <h3 className="text-base font-bold text-gray-900">Atividades recentes</h3>
+              <p className="text-xs text-gray-500">Últimas tarefas criadas</p>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-3 flex-1">
               {recentTasks.length > 0 ? (
                 recentTasks.map((task) => (
-                  <div key={task.id} className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 border border-gray-100 hover:bg-white hover:border-orange-200 transition-all group">
-                    <div className="h-12 w-12 rounded-xl bg-white shadow-sm text-blue-600 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                      <CheckSquare className="w-6 h-6" />
+                  <div key={task.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
+                        <CheckSquare className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="text-sm font-semibold text-gray-900 truncate">{task.title}</h4>
+                        <p className="text-[10px] text-gray-400 font-medium">
+                          {new Date(task.created_at).toLocaleDateString('pt-BR')}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-bold text-gray-900 truncate">{task.title}</h4>
-                      <p className="text-xs text-gray-500 font-medium mt-0.5">
-                        Criada em {new Date(task.created_at).toLocaleDateString('pt-BR')}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                        task.status === 'Concluída' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
-                      }`}>
-                        {task.status || 'Pendente'}
-                      </span>
-                      <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-orange-400 transition-colors" />
-                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-300" />
                   </div>
                 ))
               ) : (
-                <div className="flex flex-col items-center justify-center h-64 text-gray-400 space-y-2">
-                  <CheckSquare className="w-10 h-10 opacity-20" />
-                  <p className="text-sm font-bold">Nenhuma tarefa recente</p>
+                <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-2 py-10">
+                  <CheckSquare className="w-8 h-8 opacity-20" />
+                  <p className="text-xs font-medium">Nenhuma tarefa recente</p>
                 </div>
               )}
             </div>
           </div>
         </div>
-
       </div>
 
       <Dialog open={isGoalModalOpen} onOpenChange={setIsGoalModalOpen}>
-        <DialogContent className="sm:max-w-[425px] rounded-3xl">
+        <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black text-gray-900">Configurar Meta Mensal</DialogTitle>
+            <DialogTitle className="font-bold text-gray-900 text-lg">Configurar Meta Mensal</DialogTitle>
           </DialogHeader>
-          <div className="py-6">
-            <label className="text-sm font-bold text-gray-700 block mb-3 uppercase tracking-wider">
-              Qual é o seu objetivo para este mês?
+          <div className="py-4">
+            <label className="text-sm font-semibold text-gray-700 block mb-2">
+              Valor do objetivo (R$)
             </label>
-            <div className="relative group">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold group-focus-within:text-orange-500 transition-colors">R$</span>
-              <Input
-                type="number"
-                value={newGoal}
-                onChange={(e) => setNewGoal(e.target.value)}
-                className="pl-12 h-14 text-xl font-bold rounded-2xl bg-gray-50 border-gray-200 focus:ring-2 focus:ring-orange-400 focus:bg-white transition-all"
-                placeholder="0,00"
-                step="0.01"
-              />
-            </div>
+            <Input
+              type="number"
+              value={newGoal}
+              onChange={(e) => setNewGoal(e.target.value)}
+              className="h-11 rounded-lg border-gray-200 focus:ring-orange-400"
+              placeholder="0,00"
+              step="0.01"
+            />
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setIsGoalModalOpen(false)} className="rounded-xl h-12 font-bold text-gray-500">
+            <Button variant="outline" onClick={() => setIsGoalModalOpen(false)} className="rounded-lg h-10 font-semibold text-gray-500">
               Cancelar
             </Button>
-            <Button onClick={handleUpdateGoal} className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl h-12 px-8 font-bold shadow-lg shadow-orange-200">
-              Salvar Nova Meta
+            <Button onClick={handleUpdateGoal} className="bg-orange-400 hover:bg-orange-500 text-white rounded-lg h-10 px-6 font-bold">
+              Salvar
             </Button>
           </DialogFooter>
         </DialogContent>
