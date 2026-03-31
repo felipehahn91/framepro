@@ -509,7 +509,7 @@ export default function Oportunidades() {
                   {activeColumns.map((col, index) => {
                     const colOpps = filteredOpportunities.filter(o => o.column_id === col.id);
                     const colOppsIds = colOpps.map(o => o.id);
-                    const allSelected = colOpps.length > 0 && colOpps.every(o => selectedOpps.includes(o.id));
+                    const allSelected = colOppsIds.length > 0 && colOppsIds.every(id => selectedOpps.includes(id));
                     const someSelected = colOpps.some(o => selectedOpps.includes(o.id));
 
                     return (
@@ -653,7 +653,7 @@ export default function Oportunidades() {
             <div className="flex bg-gray-50 p-1 rounded-xl mb-6">
               <button onClick={() => setActiveTab('opp')} className={`flex-1 py-2 text-sm font-semibold rounded-lg ${activeTab === 'opp' ? 'bg-white shadow-sm' : ''}`}>Oportunidade</button>
               <button onClick={() => setActiveTab('link')} className={`flex-1 py-2 text-sm font-semibold rounded-lg ${activeTab === 'link' ? 'bg-white shadow-sm' : ''}`}>Link Form</button>
-              <button onClick={() => setActiveTab('trigger')} className={`flex-1 py-2 text-sm font-semibold rounded-lg ${activeTab === 'trigger' ? 'bg-white shadow-sm' : ''}`}>Gatilho Zap</button>
+              <button onClick={() => setActiveTab('trigger')} className={`flex-1 py-2 text-sm font-semibold rounded-lg ${activeTab === 'trigger' ? 'bg-white shadow-sm' : ''}`}>Gatilho WhatsApp</button>
             </div>
 
             <div className="space-y-4">
