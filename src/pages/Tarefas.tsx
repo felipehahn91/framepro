@@ -74,19 +74,16 @@ export default function Tarefas() {
     }
   };
 
-  // Lógica de filtragem baseada na sidebar
+  // Lógica de filtragem baseada na sidebar/menu mobile
   const filteredTasks = useMemo(() => {
     const today = startOfDay(new Date());
     const next7 = endOfDay(addDays(today, 7));
 
     let result = tasks.filter(task => {
-      // Filtro de busca
       if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
 
-      // Filtro de Categoria/Sidebar
       if (activeFilter === 'completed') return task.status === 'Concluída';
       
-      // Para os outros filtros, ignoramos as já concluídas
       if (task.status === 'Concluída') return false;
 
       if (activeFilter === 'inbox') return true;
@@ -102,7 +99,6 @@ export default function Tarefas() {
         return isWithinInterval(d, { start: today, end: next7 });
       }
 
-      // Se for um projeto específico
       if (PROJECTS.includes(activeFilter)) {
         return task.project === activeFilter;
       }
@@ -110,7 +106,6 @@ export default function Tarefas() {
       return true;
     });
 
-    // Ordenação
     result.sort((a, b) => {
       if (sortBy === 'date_asc') {
         if (!a.due_date) return 1;
@@ -123,7 +118,6 @@ export default function Tarefas() {
     return result;
   }, [tasks, activeFilter, searchQuery, sortBy]);
 
-  // Contadores para a sidebar
   const counts = useMemo(() => {
     const today = startOfDay(new Date());
     const next7 = endOfDay(addDays(today, 7));
@@ -233,56 +227,69 @@ export default function Tarefas() {
     return activeFilter;
   };
 
+  const mobileFilters = [
+    { id: 'inbox', label: 'Entrada', count: counts.inbox, icon: Inbox },
+    { id: 'today', label: 'Hoje', count: counts.today, icon: Calendar },
+    { id: 'next_7', label: 'Próx. 7 dias', count: counts.next_7, icon: Clock },
+    { id: 'completed', label: 'Concluídas', count: counts.completed, icon: CheckCircle2 },
+    ...PROJECTS.map(p => ({ id: p, label: p, count: counts.projects[p], icon: Hash }))
+  ];
+
   if (loading) return <Layout><div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div></Layout>;
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto flex h-full gap-8">
+      {/* FAB para Mobile */}
+      <button 
+        onClick={() => handleOpenModal()} 
+        className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-orange-400 text-white rounded-full shadow-[0_4px_20px_rgba(249,115,22,0.4)] flex items-center justify-center z-40 hover:bg-orange-500 transition-transform active:scale-95"
+      >
+        <Plus className="w-6 h-6" />
+      </button>
+
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row h-full gap-4 md:gap-8 pb-20 md:pb-0">
         
-        {/* SIDEBAR TAREFAS */}
-        <div className="w-64 shrink-0 flex flex-col pt-2">
-          <div className="space-y-1 mb-8">
-            <button 
-              onClick={() => setActiveFilter('inbox')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${activeFilter === 'inbox' ? 'bg-orange-50 text-orange-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}
+        {/* Filtros Pílula Mobile (Horizontal Scroll) */}
+        <div className="md:hidden flex overflow-x-auto gap-2 pb-2 mb-2 custom-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0 shrink-0">
+          {mobileFilters.map(filter => (
+            <button
+              key={filter.id}
+              onClick={() => setActiveFilter(filter.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap text-sm font-bold border transition-colors ${
+                activeFilter === filter.id 
+                  ? 'bg-orange-50 border-orange-200 text-orange-600' 
+                  : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+              }`}
             >
-              <div className="flex items-center gap-3">
-                <Inbox className={`w-5 h-5 ${activeFilter === 'inbox' ? 'text-orange-500' : 'text-gray-400'}`} />
-                <span className="text-sm">Entrada</span>
-              </div>
+              <filter.icon className={`w-4 h-4 ${activeFilter === filter.id ? 'text-orange-500' : 'text-gray-400'}`} />
+              {filter.label}
+              <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[10px] ${activeFilter === filter.id ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500'}`}>
+                {filter.count}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        {/* SIDEBAR TAREFAS DESKTOP */}
+        <div className="hidden md:flex w-64 shrink-0 flex-col pt-2">
+          <div className="space-y-1 mb-8">
+            <button onClick={() => setActiveFilter('inbox')} className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${activeFilter === 'inbox' ? 'bg-orange-50 text-orange-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}>
+              <div className="flex items-center gap-3"><Inbox className={`w-5 h-5 ${activeFilter === 'inbox' ? 'text-orange-500' : 'text-gray-400'}`} /><span className="text-sm">Entrada</span></div>
               <span className="text-xs opacity-60">{counts.inbox}</span>
             </button>
 
-            <button 
-              onClick={() => setActiveFilter('today')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${activeFilter === 'today' ? 'bg-orange-50 text-orange-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
-              <div className="flex items-center gap-3">
-                <Calendar className={`w-5 h-5 ${activeFilter === 'today' ? 'text-green-500' : 'text-gray-400'}`} />
-                <span className="text-sm">Hoje</span>
-              </div>
+            <button onClick={() => setActiveFilter('today')} className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${activeFilter === 'today' ? 'bg-orange-50 text-orange-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}>
+              <div className="flex items-center gap-3"><Calendar className={`w-5 h-5 ${activeFilter === 'today' ? 'text-green-500' : 'text-gray-400'}`} /><span className="text-sm">Hoje</span></div>
               <span className="text-xs opacity-60">{counts.today}</span>
             </button>
 
-            <button 
-              onClick={() => setActiveFilter('next_7')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${activeFilter === 'next_7' ? 'bg-orange-50 text-orange-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
-              <div className="flex items-center gap-3">
-                <Clock className={`w-5 h-5 ${activeFilter === 'next_7' ? 'text-purple-500' : 'text-gray-400'}`} />
-                <span className="text-sm">Próximos 7 dias</span>
-              </div>
+            <button onClick={() => setActiveFilter('next_7')} className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${activeFilter === 'next_7' ? 'bg-orange-50 text-orange-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}>
+              <div className="flex items-center gap-3"><Clock className={`w-5 h-5 ${activeFilter === 'next_7' ? 'text-purple-500' : 'text-gray-400'}`} /><span className="text-sm">Próximos 7 dias</span></div>
               <span className="text-xs opacity-60">{counts.next_7}</span>
             </button>
 
-            <button 
-              onClick={() => setActiveFilter('completed')}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${activeFilter === 'completed' ? 'bg-orange-50 text-orange-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className={`w-5 h-5 ${activeFilter === 'completed' ? 'text-orange-500' : 'text-gray-400'}`} />
-                <span className="text-sm">Concluídas</span>
-              </div>
+            <button onClick={() => setActiveFilter('completed')} className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${activeFilter === 'completed' ? 'bg-orange-50 text-orange-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}>
+              <div className="flex items-center gap-3"><CheckCircle2 className={`w-5 h-5 ${activeFilter === 'completed' ? 'text-orange-500' : 'text-gray-400'}`} /><span className="text-sm">Concluídas</span></div>
               <span className="text-xs opacity-60">{counts.completed}</span>
             </button>
           </div>
@@ -290,15 +297,8 @@ export default function Tarefas() {
           <div className="space-y-2">
             <h4 className="px-3 text-[11px] font-bold uppercase text-gray-400 tracking-wider mb-2">Projetos</h4>
             {PROJECTS.map(project => (
-              <button 
-                key={project}
-                onClick={() => setActiveFilter(project)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${activeFilter === project ? 'bg-orange-50 text-orange-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}
-              >
-                <div className="flex items-center gap-3">
-                  <Hash className="w-4 h-4 text-gray-400" />
-                  <span className="text-sm">{project}</span>
-                </div>
+              <button key={project} onClick={() => setActiveFilter(project)} className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${activeFilter === project ? 'bg-orange-50 text-orange-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}>
+                <div className="flex items-center gap-3"><Hash className="w-4 h-4 text-gray-400" /><span className="text-sm">{project}</span></div>
                 <span className="text-xs opacity-60">{counts.projects[project]}</span>
               </button>
             ))}
@@ -308,44 +308,41 @@ export default function Tarefas() {
         {/* CONTEÚDO PRINCIPAL */}
         <div className="flex-1 flex flex-col pt-2 min-w-0">
           
-          {/* Header Seção */}
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-4 md:mb-2">
             <div>
               <h2 className="text-2xl font-bold text-gray-900">{getSectionTitle()}</h2>
               <p className="text-xs text-gray-400 font-medium">{filteredTasks.length} tarefas</p>
             </div>
             <button 
               onClick={() => handleOpenModal()}
-              className="px-4 py-2 bg-orange-400 hover:bg-orange-500 text-white font-bold rounded-lg transition-colors flex items-center gap-2 shadow-sm"
+              className="hidden md:flex px-4 py-2 bg-orange-400 hover:bg-orange-500 text-white font-bold rounded-lg transition-colors items-center gap-2 shadow-sm"
             >
               <Plus className="w-4 h-4" /> Nova Tarefa
             </button>
           </div>
 
-          {/* Barra de Busca e Sort */}
-          <div className="flex items-center gap-3 mb-8">
-            <div className="relative flex-1">
+          <div className="flex flex-col sm:flex-row items-center gap-3 mb-6 md:mb-8">
+            <div className="relative w-full sm:flex-1">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input 
                 type="text" 
                 placeholder="Buscar tarefas..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all"
+                className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all shadow-sm"
               />
             </div>
             <select 
               value={sortBy}
               onChange={e => setSortBy(e.target.value)}
-              className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 font-medium focus:outline-none"
+              className="w-full sm:w-auto bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 font-medium focus:outline-none focus:ring-2 focus:ring-orange-400 shadow-sm"
             >
               <option value="date_asc">Data (Mais próxima)</option>
               <option value="created_desc">Recentemente criadas</option>
             </select>
           </div>
 
-          {/* Lista de Tarefas */}
-          <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-1">
+          <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-2">
             {filteredTasks.length > 0 ? (
               filteredTasks.map((task) => {
                 const completed = task.status === 'Concluída';
@@ -353,47 +350,51 @@ export default function Tarefas() {
                   <div 
                     key={task.id}
                     onClick={() => handleOpenModal(task)}
-                    className="group flex items-start gap-4 p-3 rounded-xl hover:bg-white transition-all cursor-pointer border border-transparent hover:border-gray-100 hover:shadow-sm"
+                    className="group flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 p-4 rounded-xl bg-white border border-gray-200 hover:border-orange-200 hover:shadow-md transition-all cursor-pointer relative"
                   >
-                    <button 
-                      onClick={(e) => handleToggleComplete(task, e)}
-                      className={`mt-1 shrink-0 transition-colors ${completed ? 'text-green-500' : 'text-gray-300 hover:text-orange-400'}`}
-                    >
-                      {completed ? <CheckCircle2 className="w-6 h-6" /> : <Circle className="w-6 h-6" />}
-                    </button>
-                    
-                    <div className="flex-1 min-w-0">
-                      <h3 className={`text-[15px] font-semibold truncate ${completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                        {task.title}
-                      </h3>
-                      <div className="flex items-center gap-3 mt-1">
-                        {task.due_date && (
-                          <div className={`flex items-center gap-1 text-[11px] font-bold ${new Date(task.due_date) < new Date() && !completed ? 'text-red-500' : 'text-gray-400'}`}>
-                            <CalendarIcon className="w-3 h-3" />
-                            {format(new Date(task.due_date), "dd 'de' MMM", { locale: ptBR })}
-                          </div>
-                        )}
-                        {task.project && (
-                          <div className="flex items-center gap-1 text-[11px] font-bold text-orange-400/80">
-                            <Hash className="w-3 h-3" />
-                            {task.project}
-                          </div>
-                        )}
+                    <div className="flex items-start gap-3 w-full sm:w-auto flex-1">
+                      <button 
+                        onClick={(e) => handleToggleComplete(task, e)}
+                        className={`mt-0.5 shrink-0 transition-colors ${completed ? 'text-green-500' : 'text-gray-300 hover:text-orange-400'}`}
+                      >
+                        {completed ? <CheckCircle2 className="w-6 h-6" /> : <Circle className="w-6 h-6" />}
+                      </button>
+                      
+                      <div className="flex-1 min-w-0 pr-8 sm:pr-0">
+                        <h3 className={`text-[15px] font-bold truncate ${completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                          {task.title}
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-3 mt-1.5">
+                          {task.due_date && (
+                            <div className={`flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md border ${new Date(task.due_date) < new Date() && !completed ? 'text-red-600 bg-red-50 border-red-100' : 'text-gray-500 bg-gray-50 border-gray-100'}`}>
+                              <CalendarIcon className="w-3 h-3" />
+                              {format(new Date(task.due_date), "dd 'de' MMM", { locale: ptBR })}
+                            </div>
+                          )}
+                          {task.project && (
+                            <div className="flex items-center gap-1 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md">
+                              <Hash className="w-3 h-3" />
+                              {task.project}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={(e) => { e.stopPropagation(); setSelectedTask(task); setIsDeleteModalOpen(true); }} className="p-2 text-gray-300 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setSelectedTask(task); setIsDeleteModalOpen(true); }} 
+                      className="absolute right-3 top-3 sm:relative sm:top-0 sm:right-0 p-2 text-gray-400 hover:text-red-500 bg-gray-50 sm:bg-transparent rounded-lg hover:bg-red-50 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 )
               })
             ) : (
-              <div className="flex flex-col items-center justify-center py-20 text-center opacity-50">
+              <div className="flex flex-col items-center justify-center py-20 text-center opacity-50 bg-white rounded-xl border border-gray-100 shadow-sm h-full max-h-[300px]">
                 <CheckSquare className="w-12 h-12 text-gray-300 mb-4" />
-                <p className="text-gray-500 font-medium">Nenhuma tarefa encontrada.</p>
+                <p className="text-gray-500 font-bold">Nenhuma tarefa encontrada.</p>
+                <p className="text-sm mt-1">Crie sua primeira tarefa usando o botão (+).</p>
               </div>
             )}
           </div>
@@ -407,7 +408,7 @@ export default function Tarefas() {
           <div className="relative bg-white rounded-2xl w-full max-w-lg shadow-2xl animate-in zoom-in-95">
             <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 rounded-t-2xl">
               <h2 className="text-xl font-bold text-gray-900">{selectedTask ? 'Editar Tarefa' : 'Nova Tarefa'}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 text-gray-400 hover:text-gray-700 transition-colors">
+              <button onClick={() => setIsModalOpen(false)} className="p-2 text-gray-400 hover:text-gray-700 transition-colors bg-white rounded-full shadow-sm border border-gray-200">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -434,20 +435,20 @@ export default function Tarefas() {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1.5">Data de Vencimento</label>
                   <input 
                     type="date"
                     value={formData.due_date} onChange={e => setFormData({...formData, due_date: e.target.value})}
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-gray-700"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-gray-700"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1.5">Prioridade</label>
                   <select 
                     value={formData.priority} onChange={e => setFormData({...formData, priority: e.target.value})}
-                    className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none"
                   >
                     <option value="Baixa">Baixa</option>
                     <option value="Média">Média</option>
@@ -466,9 +467,9 @@ export default function Tarefas() {
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-4">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2.5 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition-colors">Cancelar</button>
-                <button type="submit" disabled={isSubmitting} className="px-8 py-2.5 bg-orange-400 hover:bg-orange-500 text-white font-bold rounded-xl shadow-md transition-all flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t border-gray-100">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto px-6 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition-colors order-2 sm:order-1">Cancelar</button>
+                <button type="submit" disabled={isSubmitting} className="w-full sm:w-auto px-8 py-3 bg-orange-400 hover:bg-orange-500 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 order-1 sm:order-2">
                   {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
                   {selectedTask ? 'Salvar Alterações' : 'Adicionar Tarefa'}
                 </button>
@@ -482,13 +483,13 @@ export default function Tarefas() {
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsDeleteModalOpen(false)} />
-          <div className="relative bg-white rounded-2xl w-full max-w-sm shadow-2xl p-8 text-center animate-in zoom-in-95">
+          <div className="relative bg-white rounded-3xl w-full max-w-sm shadow-2xl p-8 text-center animate-in zoom-in-95">
             <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100">
               <Trash2 className="w-8 h-8" />
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">Remover tarefa?</h3>
             <p className="text-gray-500 text-sm mb-8">Esta ação não pode ser desfeita. A tarefa será excluída permanentemente.</p>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-colors">Cancelar</button>
               <button onClick={handleDelete} className="flex-1 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-colors">Excluir</button>
             </div>

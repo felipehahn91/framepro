@@ -216,9 +216,17 @@ export default function Clientes() {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto flex flex-col h-full">
+      <div className="max-w-7xl mx-auto flex flex-col h-full relative">
         
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        {/* FAB para Mobile */}
+        <button 
+          onClick={() => handleOpenEditModal()} 
+          className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-orange-400 text-white rounded-full shadow-[0_4px_20px_rgba(249,115,22,0.4)] flex items-center justify-center z-40 hover:bg-orange-500 transition-transform active:scale-95"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-1">Clientes</h1>
             <p className="text-sm text-gray-500">Gerencie sua base de clientes, empresas e contatos</p>
@@ -236,80 +244,148 @@ export default function Clientes() {
             </div>
             <button
               onClick={() => handleOpenEditModal()}
-              className="w-full sm:w-auto px-5 py-2.5 bg-orange-400 text-white font-bold rounded-xl hover:bg-orange-500 transition-colors flex items-center justify-center gap-2 shadow-sm"
+              className="hidden md:flex w-full sm:w-auto px-5 py-2.5 bg-orange-400 text-white font-bold rounded-xl hover:bg-orange-500 transition-colors items-center justify-center gap-2 shadow-sm"
             >
               <Plus className="w-4 h-4" /> Novo cliente
             </button>
           </div>
         </div>
 
-        <div className="flex-1 overflow-x-auto">
+        <div className="flex-1 overflow-x-auto pb-20 md:pb-0">
           {filteredClients.length > 0 ? (
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Cliente</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Empresa</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Contato</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
+            <>
+              {/* VISÃO DESKTOP (Tabela) */}
+              <div className="hidden md:block bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-200 bg-gray-50/50">
+                      <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Cliente</th>
+                      <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Empresa</th>
+                      <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider">Contato</th>
+                      <th className="px-6 py-4 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredClients.map((client) => (
+                      <tr 
+                        key={client.id} 
+                        onClick={() => setViewingClient(client)}
+                        className="hover:bg-gray-50 transition-colors group cursor-pointer"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-3">
+                            <Avatar className="w-10 h-10 border border-gray-200">
+                              <AvatarImage src={client.avatar_url} />
+                              <AvatarFallback className="bg-orange-50 text-orange-500 font-bold text-xs">
+                                {getInitials(client.name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-bold text-gray-900 group-hover:text-orange-600 transition-colors">{client.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {client.company ? (
+                            <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
+                              <Building2 className="w-3.5 h-3.5 text-gray-400" /> {client.company}
+                            </div>
+                          ) : <span className="text-xs text-gray-300 italic">Individual</span>}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-col gap-0.5">
+                            {client.email && <span className="text-xs font-medium text-gray-600">{client.email}</span>}
+                            {client.phone && <span className="text-[11px] text-gray-400">{client.phone}</span>}
+                            {!client.email && !client.phone && <span className="text-xs text-gray-400">-</span>}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right">
+                          <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button 
+                              onClick={(e) => handleOpenEditModal(client, e)}
+                              className="p-2 text-gray-400 hover:text-orange-500 hover:bg-white rounded-lg transition-all"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={(e) => handleDeleteClick(client, e)}
+                              className="p-2 text-gray-400 hover:text-red-500 hover:bg-white rounded-lg transition-all"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* VISÃO MOBILE (Cards) */}
+              <div className="md:hidden flex flex-col gap-3">
                 {filteredClients.map((client) => (
-                  <tr 
+                  <div 
                     key={client.id} 
                     onClick={() => setViewingClient(client)}
-                    className="hover:bg-white/50 transition-colors group cursor-pointer"
+                    className="bg-white border border-gray-200 rounded-2xl p-4 shadow-sm flex flex-col gap-4 cursor-pointer active:scale-[0.98] transition-transform"
                   >
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
-                        <Avatar className="w-10 h-10 border border-gray-200">
+                        <Avatar className="w-12 h-12 border border-gray-200">
                           <AvatarImage src={client.avatar_url} />
-                          <AvatarFallback className="bg-orange-50 text-orange-500 font-bold text-xs">
+                          <AvatarFallback className="bg-orange-50 text-orange-500 font-bold text-sm">
                             {getInitials(client.name)}
                           </AvatarFallback>
                         </Avatar>
-                        <span className="text-sm font-bold text-gray-900 group-hover:text-orange-600 transition-colors">{client.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {client.company ? (
-                        <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
-                          <Building2 className="w-3.5 h-3.5 text-gray-400" /> {client.company}
+                        <div>
+                          <h3 className="font-bold text-gray-900 leading-tight">{client.name}</h3>
+                          {client.company && (
+                            <p className="text-xs font-semibold text-orange-500 mt-0.5 flex items-center gap-1">
+                              <Building2 className="w-3 h-3" /> {client.company}
+                            </p>
+                          )}
                         </div>
-                      ) : <span className="text-xs text-gray-300 italic">Individual</span>}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-xs font-medium text-gray-600">{client.email || '-'}</span>
-                        <span className="text-[11px] text-gray-400">{client.phone || '-'}</span>
                       </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center gap-1 shrink-0">
                         <button 
                           onClick={(e) => handleOpenEditModal(client, e)}
-                          className="p-2 text-gray-400 hover:text-orange-500 hover:bg-white rounded-lg transition-all"
+                          className="p-2 text-gray-400 hover:text-orange-500 bg-gray-50 rounded-lg transition-all"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button 
                           onClick={(e) => handleDeleteClick(client, e)}
-                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-white rounded-lg transition-all"
+                          className="p-2 text-gray-400 hover:text-red-500 bg-gray-50 rounded-lg transition-all"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                    </td>
-                  </tr>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 text-sm">
+                      {client.email && (
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Mail className="w-4 h-4 text-gray-400 shrink-0" />
+                          <span className="truncate">{client.email}</span>
+                        </div>
+                      )}
+                      {client.phone && (
+                        <div className="flex items-center gap-2 text-gray-600">
+                          <Phone className="w-4 h-4 text-gray-400 shrink-0" />
+                          <span>{client.phone}</span>
+                        </div>
+                      )}
+                      {!client.email && !client.phone && (
+                        <span className="text-xs text-gray-400 italic">Nenhum contato salvo</span>
+                      )}
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </>
           ) : (
-            <div className="py-20 text-center">
-              <Users className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+            <div className="py-20 text-center bg-white border border-gray-200 rounded-2xl shadow-sm">
+              <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-bold text-gray-900">Nenhum cliente por aqui</h3>
-              <p className="text-sm text-gray-500">Comece cadastrando seu primeiro cliente ou importe do pipeline.</p>
+              <p className="text-sm text-gray-500 max-w-sm mx-auto mt-1">Comece cadastrando seu primeiro cliente clicando no botão de adicionar.</p>
             </div>
           )}
         </div>
@@ -342,7 +418,7 @@ export default function Clientes() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveClient} className="p-8 space-y-6">
+            <form onSubmit={handleSaveClient} className="p-6 sm:p-8 space-y-6">
               {/* Upload Foto Perfil */}
               <div className="flex flex-col items-center gap-3">
                 <div className="relative group">
@@ -386,7 +462,7 @@ export default function Clientes() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-1.5">E-mail</label>
                     <input 
@@ -404,9 +480,9 @@ export default function Clientes() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2.5 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition-colors">Cancelar</button>
-                <button type="submit" disabled={isSubmitting} className="px-8 py-2.5 bg-orange-400 text-white font-bold rounded-xl shadow-md hover:bg-orange-500 transition-all flex items-center gap-2 disabled:opacity-50">
+              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-gray-100">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto px-6 py-3 sm:py-2.5 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition-colors order-2 sm:order-1">Cancelar</button>
+                <button type="submit" disabled={isSubmitting} className="w-full sm:w-auto px-8 py-3 sm:py-2.5 bg-orange-400 text-white font-bold rounded-xl shadow-md hover:bg-orange-500 transition-all flex items-center justify-center gap-2 disabled:opacity-50 order-1 sm:order-2">
                   {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
                   {selectedClient ? 'Atualizar Cliente' : 'Salvar Cliente'}
                 </button>
@@ -425,7 +501,7 @@ export default function Clientes() {
             <p className="text-sm text-gray-500 mb-8">
               O lead <strong>{selectedClient?.name}</strong> deixará de aparecer na lista de clientes, mas continuará existindo no funil de vendas.
             </p>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button onClick={() => setIsDeleteModalOpen(false)} className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl">Cancelar</button>
               <button onClick={confirmDelete} className="flex-1 py-3 bg-orange-400 text-white font-bold rounded-xl">Confirmar</button>
             </div>
