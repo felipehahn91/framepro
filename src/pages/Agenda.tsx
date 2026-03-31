@@ -2,10 +2,11 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Layout } from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { syncEventToGoogle } from "@/lib/googleCalendar";
 import { 
   ChevronLeft, ChevronRight, Calendar as CalendarIcon, 
   CheckSquare, FileText, DollarSign, AlertCircle, Clock, 
-  Loader2, X, ChevronDown, Download
+  Loader2, X, ChevronDown, Download, RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
 import { 
@@ -21,7 +22,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// --- Tipos ---
 interface CalendarEvent {
   id: string;
   title: string;
@@ -37,15 +37,13 @@ interface CalendarEvent {
 }
 
 export default function Agenda() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [syncingGoogle, setSyncingGoogle] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   
-  // Modal de Detalhes
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
-  
-  // Próximos dias
   const [upcomingDays, setUpcomingDays] = useState(7);
 
   useEffect(() => {
@@ -68,11 +66,9 @@ export default function Agenda() {
       const parsedEvents: CalendarEvent[] = [];
       const todayStart = startOfDay(new Date());
 
-      // 1. Processar Tarefas
       tasks.forEach(task => {
         if (!task.due_date) return;
         const taskDate = startOfDay(parseISO(task.due_date));
-        
         parsedEvents.push({
           id: `task-${task.id}`,
           title: task.title,
@@ -87,11 +83,9 @@ export default function Agenda() {
         });
       });
 
-      // 2. Processar Contratos
       contracts.forEach(contract => {
         if (!contract.start_date) return;
         const contractDate = startOfDay(parseISO(contract.start_date));
-        
         parsedEvents.push({
           id: `contract-${contract.id}`,
           title: contract.opportunities?.name ? `Contrato: ${contract.opportunities.name}` : 'Novo Contrato',
@@ -107,10 +101,8 @@ export default function Agenda() {
         });
       });
 
-      // 3. Processar Financeiro (Transações e Parcelas)
       transactions.forEach(tx => {
         const clientName = tx.clients?.name ? ` - ${tx.clients.name}` : '';
-        
         if (tx.is_installment && tx.installments) {
           let insts = [];
           if (typeof tx.installments === 'string') {
@@ -118,13 +110,10 @@ export default function Agenda() {
           } else {
             insts = tx.installments;
           }
-
           insts.forEach((inst: any) => {
-            if (inst.status === 'Pago') return; // Ignora os pagos na agenda
-            
+            if (inst.status === 'Pago') return;
             const dueDate = startOfDay(parseISO(inst.dueDate));
             const isOverdue = dueDate < todayStart;
-            
             parsedEvents.push({
               id: `tx-${tx.id}-inst-${inst.id}`,
               title: `Parcela ${inst.number}/${tx.installment_count}${clientName}`,
@@ -141,10 +130,8 @@ export default function Agenda() {
           });
         } else {
           if (tx.status === 'Recebido' || tx.status === 'Cancelado') return;
-          
           const txDate = startOfDay(parseISO(tx.date));
           const isOverdue = tx.status === 'Atrasado' || txDate < todayStart;
-
           parsedEvents.push({
             id: `tx-${tx.id}`,
             title: `${tx.description}${clientName}`,
@@ -159,50 +146,100 @@ export default function Agenda() {
           });
         }
       });
-
       setEvents(parsedEvents);
     } catch (error) {
-      console.error(error);
       toast.error("Erro ao carregar dados da agenda.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Exportar para ICS (Google Calendar / Apple Calendar)
-  const handleExportICS = () => {
-    if (events.length === 0) {
-      return toast.warning("Não há eventos para exportar.");
+  // Autenticação com Google para obter o token de provider
+  const handleConnectGoogle = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          scopes: 'https://www.googleapis.com/auth/calendar.events',
+          redirectTo: window.location.origin + '/agenda'
+        }
+      });
+      if (error) throw error;
+    } catch (error) {
+      toast.error('Erro ao conectar com Google. Verifique a configuração do Supabase.');
+    }
+  };
+
+  // Sincroniza os eventos próximos (dos próximos X dias) com o Google Calendar
+  const handleSyncToGoogle = async () => {
+    const providerToken = session?.provider_token;
+    
+    if (!providerToken) {
+      toast.info('Precisamos conectar sua conta do Google primeiro!');
+      return handleConnectGoogle();
     }
 
-    const formatDateForICS = (date: Date) => {
-      return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-    };
+    if (upcomingEventsList.length === 0) {
+      return toast.warning('Nenhum evento próximo para sincronizar.');
+    }
 
+    setSyncingGoogle(true);
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
+      for (const event of upcomingEventsList) {
+        try {
+          await syncEventToGoogle(event, providerToken);
+          successCount++;
+        } catch (e: any) {
+          console.error("Erro ao sincronizar evento:", e);
+          if (e.message.includes('401')) {
+             throw new Error('UNAUTHORIZED');
+          }
+          failCount++;
+        }
+      }
+      
+      if (failCount === 0) {
+        toast.success(`${successCount} evento(s) sincronizado(s) no Google Calendar!`);
+      } else {
+        toast.warning(`${successCount} sincronizados. ${failCount} falharam.`);
+      }
+    } catch (error: any) {
+      if (error.message === 'UNAUTHORIZED') {
+        toast.error('Sessão do Google expirou. Conecte novamente.');
+        handleConnectGoogle();
+      } else {
+        toast.error('Erro geral ao sincronizar.');
+      }
+    } finally {
+      setSyncingGoogle(false);
+    }
+  };
+
+  const handleExportICS = () => {
+    if (events.length === 0) return toast.warning("Não há eventos para exportar.");
+    const formatDateForICS = (date: Date) => date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
     let icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Frame Pro//Agenda CRM//PT\nCALSCALE:GREGORIAN\n";
 
     events.forEach(event => {
       const dtStart = formatDateForICS(event.date);
-      // Evento de dia inteiro (adiciona 1 dia para o DTEEND exclusivo)
       const dtEnd = formatDateForICS(addDays(event.date, 1)); 
-
       icsContent += "BEGIN:VEVENT\n";
       icsContent += `UID:${event.id}@framepro.com\n`;
       icsContent += `DTSTAMP:${formatDateForICS(new Date())}\n`;
       icsContent += `DTSTART;VALUE=DATE:${dtStart.substring(0, 8)}\n`;
       icsContent += `DTEND;VALUE=DATE:${dtEnd.substring(0, 8)}\n`;
       icsContent += `SUMMARY:${event.title}\n`;
-      
       let desc = `Tipo: ${event.type}\\nStatus: ${event.status}`;
       if (event.amount) desc += `\\nValor: R$ ${event.amount}`;
       if (event.description) desc += `\\nDetalhes: ${event.description}`;
-      
       icsContent += `DESCRIPTION:${desc}\n`;
       icsContent += "END:VEVENT\n";
     });
 
     icsContent += "END:VCALENDAR";
-
     const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -211,24 +248,19 @@ export default function Agenda() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
-    toast.success("Arquivo baixado! Importe-o no seu Google Calendar.");
+    toast.success("Arquivo baixado! Importe-o no seu calendário.");
   };
 
-  // Navegação do Calendário
   const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
   const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
 
-  // Gerar dias do calendário
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(currentDate);
     const monthEnd = endOfMonth(monthStart);
     const startDate = startOfWeek(monthStart);
     const endDate = endOfWeek(monthEnd);
-
     const days = [];
     let day = startDate;
-
     while (day <= endDate) {
       days.push(day);
       day = addDays(day, 1);
@@ -236,11 +268,9 @@ export default function Agenda() {
     return days;
   }, [currentDate]);
 
-  // Próximos Eventos
   const upcomingEventsList = useMemo(() => {
     const today = startOfDay(new Date());
     const endDate = addDays(today, upcomingDays);
-
     return events
       .filter(e => e.date >= today && e.date <= endDate)
       .sort((a, b) => a.date.getTime() - b.date.getTime());
@@ -256,7 +286,6 @@ export default function Agenda() {
     <Layout>
       <div className="max-w-7xl mx-auto flex flex-col h-full space-y-6">
         
-        {/* Cabeçalho */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900 mb-1">Agenda CRM</h1>
@@ -264,7 +293,6 @@ export default function Agenda() {
           </div>
           
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            {/* Legenda */}
             <div className="flex flex-wrap items-center gap-4 bg-white px-4 py-2.5 rounded-xl shadow-sm border border-gray-200 text-sm font-medium text-gray-600">
               <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-orange-500"></div> Tarefas</div>
               <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div> Contratos</div>
@@ -272,21 +300,24 @@ export default function Agenda() {
               <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-red-500"></div> Pgtos Atrasados</div>
             </div>
 
-            <button 
-              onClick={handleExportICS}
-              className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2 shadow-sm whitespace-nowrap"
-            >
-              <Download className="w-4 h-4" /> Exportar Calendário
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="px-4 py-2.5 bg-orange-400 text-white font-semibold rounded-xl hover:bg-orange-500 transition-colors flex items-center gap-2 shadow-sm whitespace-nowrap focus:outline-none">
+                Opções de Sincronização <ChevronDown className="w-4 h-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuItem onClick={handleSyncToGoogle} className="cursor-pointer font-medium text-gray-700 py-2.5">
+                  <RefreshCw className="w-4 h-4 mr-2 text-blue-500" /> Sincronizar Google Calendar
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportICS} className="cursor-pointer font-medium text-gray-700 py-2.5">
+                  <Download className="w-4 h-4 mr-2 text-gray-500" /> Exportar para Apple/Outlook (.ics)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
-        {/* Corpo: Calendário + Sidebar */}
         <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
-          
-          {/* Calendário Principal */}
           <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
-            {/* Controles do Mês */}
             <div className="p-5 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <CalendarIcon className="w-6 h-6 text-orange-500" />
@@ -307,9 +338,7 @@ export default function Agenda() {
               </div>
             </div>
 
-            {/* Grid do Calendário */}
             <div className="flex-1 flex flex-col overflow-auto custom-scrollbar">
-              {/* Dias da Semana */}
               <div className="grid grid-cols-7 bg-gray-50/80 border-b border-gray-100 shrink-0">
                 {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
                   <div key={day} className="py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">
@@ -318,7 +347,6 @@ export default function Agenda() {
                 ))}
               </div>
 
-              {/* Células */}
               <div className="grid grid-cols-7 flex-1 auto-rows-fr">
                 {calendarDays.map((day, idx) => {
                   const isCurrentMonth = isSameMonth(day, currentDate);
@@ -360,7 +388,6 @@ export default function Agenda() {
             </div>
           </div>
 
-          {/* Sidebar Próximos Eventos */}
           <div className="w-full lg:w-[320px] bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col shrink-0 h-[400px] lg:h-auto">
             <div className="p-5 border-b border-gray-100 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
@@ -380,7 +407,13 @@ export default function Agenda() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-gray-50/30">
+            <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar bg-gray-50/30 relative">
+              {syncingGoogle && (
+                <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
+                   <Loader2 className="w-8 h-8 animate-spin text-orange-500 mb-2" />
+                   <span className="font-bold text-gray-700">Sincronizando...</span>
+                </div>
+              )}
               {upcomingEventsList.length > 0 ? (
                 upcomingEventsList.map(event => (
                   <div 
@@ -418,7 +451,6 @@ export default function Agenda() {
         </div>
       </div>
 
-      {/* Modal de Detalhes do Evento */}
       {selectedEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSelectedEvent(null)} />
