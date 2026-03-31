@@ -84,28 +84,32 @@ export default function Contratos() {
     setActivePdfContract(contract);
     toast.info("Preparando documento...");
 
-    // Aguarda o React renderizar o template oculto
+    // Pequeno delay para garantir que o React monte o template oculto no DOM
     setTimeout(async () => {
       if (!pdfTemplateRef.current) return;
       try {
         const canvas = await html2canvas(pdfTemplateRef.current, { 
-          scale: 2,
+          scale: 2, // Aumenta a qualidade
           useCORS: true,
-          backgroundColor: '#ffffff'
+          backgroundColor: '#ffffff',
+          windowWidth: 800 // Força uma largura estável para o cálculo de layout
         });
         
         const imgData = canvas.toDataURL("image/png");
         const pdf = new jsPDF("p", "mm", "a4");
+        
         const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        const pageHeight = pdf.internal.pageSize.getHeight();
         
         let heightLeft = pdfHeight;
         let position = 0;
 
+        // Primeira página
         pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
         heightLeft -= pageHeight;
 
+        // Páginas subsequentes se o contrato for longo
         while (heightLeft > 0) {
           position = position - pageHeight;
           pdf.addPage();
@@ -116,6 +120,7 @@ export default function Contratos() {
         pdf.save(`Contrato_${contract.opportunities?.name || 'Documento'}.pdf`);
         toast.success("PDF baixado com sucesso!");
       } catch (error) {
+        console.error(error);
         toast.error("Erro ao gerar PDF.");
       } finally {
         setDownloadingId(null);
@@ -254,33 +259,39 @@ export default function Contratos() {
           )}
         </div>
 
-        {/* TEMPLATE OCULTO PARA GERAÇÃO DE PDF */}
+        {/* TEMPLATE OCULTO PARA GERAÇÃO DE PDF - Ajustado para evitar cortes */}
         <div className="fixed -left-[9999px] -top-[9999px] pointer-events-none">
           {activePdfContract && (
             <div 
               ref={pdfTemplateRef} 
-              className="bg-white p-12 text-black w-[210mm]"
-              style={{ minHeight: '297mm' }}
+              className="bg-white p-16 text-black"
+              style={{ width: '800px', minHeight: '1131px', boxSizing: 'border-box' }}
             >
               {activePdfContract.contract_image && (
-                <img src={activePdfContract.contract_image} crossOrigin="anonymous" className="w-full h-64 object-cover rounded-xl mb-10" />
+                <img src={activePdfContract.contract_image} crossOrigin="anonymous" className="w-full h-80 object-cover rounded-xl mb-12" />
               )}
-              <div className="prose max-w-none mb-16" dangerouslySetInnerHTML={{ __html: activePdfContract.description }} />
               
-              <div className="mt-20 pt-10 border-t border-gray-200 grid grid-cols-2 gap-12">
+              {/* Reset de estilos básicos para o PDF */}
+              <div 
+                className="prose prose-sm max-w-none mb-20 text-black text-justify" 
+                style={{ wordBreak: 'break-word', color: '#000000' }}
+                dangerouslySetInnerHTML={{ __html: activePdfContract.description }} 
+              />
+              
+              <div className="mt-24 pt-12 border-t border-gray-200 grid grid-cols-2 gap-16">
                 <div className="text-center">
-                  <div className="h-24 flex items-end justify-center border-b border-black mb-2">
-                    {activePdfContract.client_signature && <img src={activePdfContract.client_signature} crossOrigin="anonymous" className="max-h-20" />}
+                  <div className="h-28 flex items-end justify-center border-b-2 border-black mb-3">
+                    {activePdfContract.client_signature && <img src={activePdfContract.client_signature} crossOrigin="anonymous" className="max-h-24" />}
                   </div>
-                  <p className="font-bold">{activePdfContract.opportunities?.name}</p>
-                  <p className="text-sm uppercase">Contratante</p>
+                  <p className="font-bold text-base">{activePdfContract.opportunities?.name}</p>
+                  <p className="text-xs uppercase tracking-widest text-gray-500 mt-1">Contratante</p>
                 </div>
                 <div className="text-center">
-                  <div className="h-24 flex items-end justify-center border-b border-black mb-2">
-                    {activePdfContract.supplier_signature && <img src={activePdfContract.supplier_signature} crossOrigin="anonymous" className="max-h-20" />}
+                  <div className="h-28 flex items-end justify-center border-b-2 border-black mb-3">
+                    {activePdfContract.supplier_signature && <img src={activePdfContract.supplier_signature} crossOrigin="anonymous" className="max-h-24" />}
                   </div>
-                  <p className="font-bold">Fornecedor</p>
-                  <p className="text-sm uppercase">Contratado</p>
+                  <p className="font-bold text-base">Fornecedor</p>
+                  <p className="text-xs uppercase tracking-widest text-gray-500 mt-1">Contratado</p>
                 </div>
               </div>
             </div>
