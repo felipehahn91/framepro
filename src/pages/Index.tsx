@@ -224,7 +224,7 @@ const Index = () => {
           </div>
           
           <div className="flex items-baseline gap-3 mb-6">
-            <span className="text-4xl font-bold text-gray-900 tracking-tight">
+            <span className="text-5xl font-bold text-gray-900 tracking-tight">
               {formatCurrency(goal)}
             </span>
             <span className="text-gray-500 font-semibold text-sm">
