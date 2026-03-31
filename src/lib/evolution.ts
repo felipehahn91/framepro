@@ -1,30 +1,39 @@
-export const getEvolutionConfig = () => {
-  const url = localStorage.getItem('evo_api_url')?.replace(/\/$/, ''); 
-  const key = localStorage.getItem('evo_api_key');
-  return { url, key };
+import { supabase } from "@/integrations/supabase/client";
+
+export const getEvolutionConfig = async () => {
+  const { data } = await supabase.from('platform_settings').select('evo_api_url, evo_api_key').limit(1).maybeSingle();
+  return { 
+    url: data?.evo_api_url?.replace(/\/$/, ''), 
+    key: data?.evo_api_key 
+  };
 };
 
 export const fetchWithEvolution = async (endpoint: string, options: RequestInit = {}) => {
-  const { url, key } = getEvolutionConfig();
-  if (!url || !key) throw new Error("Evolution API não configurada.");
+  const { url, key } = await getEvolutionConfig();
+  
+  if (!url || !key) {
+    throw new Error("Evolution API não configurada. Peça ao administrador para configurar no Painel Admin.");
+  }
 
   const response = await fetch(`${url}${endpoint}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
       'apikey': key,
+      'Authorization': `Bearer ${key}`, // Compatibilidade com Evolution API V2 e JWT
       ...options.headers,
     },
   });
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || errorData.error || `Erro na API: ${response.status}`);
+    throw new Error(errorData.message || errorData.error || `Erro 403 (Acesso Negado): Verifique se a sua Global API Key está correta.`);
   }
+  
   return response.json();
 };
 
-export const createInstance = (instanceName: string) => {
+export const createInstance = async (instanceName: string) => {
   const webhookUrl = "https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/evolution-webhook";
   
   return fetchWithEvolution('/instance/create', {
@@ -33,7 +42,6 @@ export const createInstance = (instanceName: string) => {
       instanceName, 
       qrcode: true, 
       integration: 'WHATSAPP-BAILEYS',
-      syncFullHistory: true,
       webhook: {
         enabled: true,
         url: webhookUrl,
@@ -56,7 +64,7 @@ export const setEvolutionWebhook = async (instanceName: string) => {
           enabled: true,
           url: webhookUrl,
           byEvents: false,
-          base64: true, // Ativado para receber mídias do cliente
+          base64: true,
           events: ["MESSAGES_UPSERT", "MESSAGES_SET", "SEND_MESSAGE"]
         }
       })
@@ -70,7 +78,7 @@ export const setEvolutionWebhook = async (instanceName: string) => {
         url: webhookUrl,
         webhookByEvents: false,
         byEvents: false,
-        base64: true, // Ativado para receber mídias do cliente
+        base64: true,
         events: ["MESSAGES_UPSERT", "MESSAGES_SET", "SEND_MESSAGE"]
       })
     });

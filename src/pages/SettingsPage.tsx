@@ -122,9 +122,11 @@ export default function SettingsPage() {
   const handleConnectWhatsapp = async () => {
     setWaLoading(true);
     try {
-      const config = evolutionApi.getEvolutionConfig();
+      const config = await evolutionApi.getEvolutionConfig();
       if (!config.url || !config.key) {
-        return toast.error("Integração com WhatsApp não está configurada no painel global.");
+        toast.error("Integração com WhatsApp não está configurada no painel global.");
+        setWaLoading(false);
+        return;
       }
 
       const instanceName = `framepro_${user?.id?.replace(/-/g, '').substring(0, 10)}`;
