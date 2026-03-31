@@ -467,63 +467,65 @@ export default function Oportunidades() {
         )}
 
         {/* Header Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Oportunidades</h1>
-          <div className="flex items-center gap-3 ml-auto">
-            <button onClick={() => setIsImportOpen(true)} className="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 sm:mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Oportunidades</h1>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <button onClick={() => setIsImportOpen(true)} className="flex-1 sm:flex-none justify-center px-4 py-2.5 sm:py-2 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl sm:rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 shadow-sm">
               <Upload className="w-4 h-4" /> Importar
             </button>
-            <button onClick={() => setIsModalOpen(true)} className="px-4 py-2 bg-orange-400 text-white font-medium rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-2 shadow-sm">
+            <button onClick={() => setIsModalOpen(true)} className="flex-1 sm:flex-none justify-center px-4 py-2.5 sm:py-2 bg-orange-400 text-white font-semibold rounded-xl sm:rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-2 shadow-sm">
               <Plus className="w-4 h-4" /> Adicionar
             </button>
           </div>
         </div>
 
         {/* Toolbar: Search & Pipelines */}
-        <div className="flex items-center gap-3 mb-6 flex-wrap">
-          <div className="relative">
+        <div className="flex flex-col sm:flex-row items-center gap-3 mb-6 w-full">
+          <div className="relative w-full sm:w-[250px]">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input 
+            <input
               type="text"
               placeholder="Pesquisar leads..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-[250px] pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] text-gray-700 shadow-sm transition-colors outline-none focus:ring-2 focus:ring-orange-400"
+              className="w-full pl-9 pr-4 py-2.5 sm:py-2 bg-white border border-gray-200 rounded-xl sm:rounded-lg text-[13px] sm:text-sm text-gray-700 shadow-sm transition-colors outline-none focus:ring-2 focus:ring-orange-400"
             />
           </div>
           
-          <select 
-            value={activePipelineId} onChange={(e) => setActivePipelineId(e.target.value)}
-            className="w-[200px] px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] text-gray-700 shadow-sm transition-colors outline-none focus:ring-2 focus:ring-orange-400 appearance-none cursor-pointer"
-          >
-            {pipelines.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-          
-          <button 
-            onClick={async () => {
-              const name = prompt("Nome do novo pipeline:");
-              if (name) {
-                const { data } = await supabase.from('pipelines').insert({ name, user_id: user?.id }).select().single();
-                if (data) {
-                  setPipelines([...pipelines, data]);
-                  setActivePipelineId(data.id);
-                  const newCols = await supabase.from('columns').insert([{ name: 'Aberto', order_index: 0, pipeline_id: data.id, user_id: user?.id }]).select();
-                  setColumns([...columns, ...(newCols.data || [])]);
+          <div className="flex w-full sm:w-auto gap-3">
+            <select
+              value={activePipelineId} onChange={(e) => setActivePipelineId(e.target.value)}
+              className="flex-1 sm:w-[200px] px-4 py-2.5 sm:py-2 bg-white border border-gray-200 rounded-xl sm:rounded-lg text-[13px] sm:text-sm text-gray-700 shadow-sm transition-colors outline-none focus:ring-2 focus:ring-orange-400 appearance-none cursor-pointer font-medium"
+            >
+              {pipelines.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            
+            <button
+              onClick={async () => {
+                const name = prompt("Nome do novo pipeline:");
+                if (name) {
+                  const { data } = await supabase.from('pipelines').insert({ name, user_id: user?.id }).select().single();
+                  if (data) {
+                    setPipelines([...pipelines, data]);
+                    setActivePipelineId(data.id);
+                    const newCols = await supabase.from('columns').insert([{ name: 'Aberto', order_index: 0, pipeline_id: data.id, user_id: user?.id }]).select();
+                    setColumns([...columns, ...(newCols.data || [])]);
+                  }
                 }
-              }
-            }}
-            className="px-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] text-gray-700 font-medium hover:bg-gray-50 shadow-sm transition-colors"
-          >
-            Nova Pipeline
-          </button>
+              }}
+              className="px-4 py-2.5 sm:py-2 bg-white border border-gray-200 rounded-xl sm:rounded-lg text-[13px] sm:text-sm text-gray-700 font-semibold hover:bg-gray-50 shadow-sm transition-colors"
+            >
+              Novo
+            </button>
+          </div>
         </div>
 
         {/* Kanban Board */}
-        <div className="flex gap-5 overflow-x-auto pb-4 flex-1 items-start">
+        <div className="flex gap-4 sm:gap-5 overflow-x-auto pb-4 flex-1 items-start snap-x custom-scrollbar">
           <DragDropContext onDragEnd={onDragEnd}>
             <Droppable droppableId="board" direction="horizontal" type="column">
               {(provided) => (
-                <div className="flex gap-5 h-full" {...provided.droppableProps} ref={provided.innerRef}>
+                <div className="flex gap-4 sm:gap-5 h-full" {...provided.droppableProps} ref={provided.innerRef}>
                   {activeColumns.map((col, index) => {
                     const colOpps = filteredOpportunities.filter(o => o.column_id === col.id);
                     const colOppsIds = colOpps.map(o => o.id);
@@ -534,9 +536,9 @@ export default function Oportunidades() {
                     return (
                       <Draggable key={col.id} draggableId={col.id} index={index}>
                         {(provided) => (
-                          <div 
+                          <div
                             ref={provided.innerRef} {...provided.draggableProps}
-                            className="flex-1 min-w-[320px] max-w-[340px] bg-white rounded-xl border border-gray-200 flex flex-col max-h-[calc(100vh-220px)] shadow-sm"
+                            className="flex-1 min-w-[85vw] sm:min-w-[320px] max-w-[85vw] sm:max-w-[340px] snap-center bg-white rounded-2xl sm:rounded-xl border border-gray-200 flex flex-col max-h-[calc(100vh-220px)] shadow-sm"
                           >
                             <div className="p-4 border-b border-gray-100 rounded-t-xl bg-white" {...provided.dragHandleProps}>
                               <div className="flex items-center justify-between mb-1">
@@ -668,9 +670,9 @@ export default function Oportunidades() {
                   {provided.placeholder}
                   
                   {/* Add Column Button */}
-                  <button 
+                  <button
                     onClick={() => setIsNewColOpen(true)}
-                    className="min-w-[320px] max-w-[320px] bg-transparent border-2 border-dashed border-gray-200 rounded-xl flex items-center justify-center text-gray-900 hover:border-gray-300 hover:bg-gray-50 transition-all h-[50px] font-semibold text-sm"
+                    className="min-w-[85vw] sm:min-w-[320px] max-w-[85vw] sm:max-w-[320px] snap-center bg-transparent border-2 border-dashed border-gray-200 rounded-2xl sm:rounded-xl flex items-center justify-center text-gray-600 hover:text-gray-900 hover:border-gray-300 hover:bg-gray-50 transition-all h-[60px] font-bold text-sm"
                   >
                     <Plus className="w-4 h-4 mr-2" /> Adicionar Coluna
                   </button>

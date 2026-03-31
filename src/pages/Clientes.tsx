@@ -192,25 +192,25 @@ export default function Clientes() {
     <Layout>
       <div className="max-w-7xl mx-auto flex flex-col h-full">
         
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-1">Clientes</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Clientes</h1>
             <p className="text-sm text-gray-500">Gerencie sua base de clientes e anotações</p>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="relative">
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+            <div className="relative w-full sm:w-[300px]">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input 
+              <input
                 type="text"
                 placeholder="Buscar clientes..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full sm:w-[300px] pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-[13px] text-gray-700 shadow-sm transition-colors outline-none focus:ring-2 focus:ring-orange-400"
+                className="w-full pl-9 pr-4 py-2.5 sm:py-2 bg-white border border-gray-200 rounded-xl sm:rounded-lg text-sm text-gray-700 shadow-sm transition-colors outline-none focus:ring-2 focus:ring-orange-400"
               />
             </div>
-            <button 
-              onClick={() => handleOpenEditModal()} 
-              className="px-4 py-2 bg-orange-400 text-white font-medium rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-2 shadow-sm whitespace-nowrap"
+            <button
+              onClick={() => handleOpenEditModal()}
+              className="w-full sm:w-auto justify-center px-4 py-2.5 sm:py-2 bg-orange-400 text-white font-semibold rounded-xl sm:rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-2 shadow-sm whitespace-nowrap"
             >
               <Plus className="w-4 h-4" /> Novo cliente
             </button>

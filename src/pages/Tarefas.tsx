@@ -258,31 +258,31 @@ export default function Tarefas() {
       <div className="max-w-5xl mx-auto flex flex-col h-full">
         
         {/* Header Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 sm:mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-1">Tarefas</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Tarefas</h1>
             <p className="text-sm text-gray-500">Organize suas atividades e acompanhamentos</p>
           </div>
-          <button 
-            onClick={() => handleOpenModal()} 
-            className="px-5 py-2.5 bg-orange-400 text-white font-semibold rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-2 shadow-sm whitespace-nowrap"
+          <button
+            onClick={() => handleOpenModal()}
+            className="w-full sm:w-auto justify-center px-5 py-2.5 sm:py-2 bg-orange-400 text-white font-semibold rounded-xl sm:rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-2 shadow-sm whitespace-nowrap"
           >
             <Plus className="w-4 h-4" /> Nova tarefa
           </button>
         </div>
 
         {/* Main Card Container */}
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm flex-1 flex flex-col">
+        <div className="bg-white border border-gray-200 rounded-2xl sm:rounded-xl shadow-sm flex-1 flex flex-col">
           
           {/* Filters & Sorting Bar */}
-          <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row gap-4 items-start sm:items-center bg-gray-50/50 rounded-t-xl justify-between">
-            <div className="flex flex-wrap items-center gap-4">
-              <div className="flex items-center gap-2 text-gray-500">
-                <Filter className="w-4 h-4" />
-                <select 
+          <div className="p-4 border-b border-gray-100 flex flex-col lg:flex-row gap-4 lg:items-center bg-gray-50/50 rounded-t-2xl sm:rounded-t-xl justify-between">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+              <div className="flex items-center gap-2 text-gray-500 w-full sm:w-auto">
+                <Filter className="w-4 h-4 hidden sm:block" />
+                <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="bg-white border border-gray-200 rounded-md text-sm py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-orange-400 cursor-pointer"
+                  className="flex-1 sm:w-auto bg-white border border-gray-200 rounded-xl sm:rounded-md text-sm py-2.5 sm:py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-orange-400 cursor-pointer"
                 >
                   <option value="all">Todos os Status</option>
                   <option value="Pendente">Pendentes</option>
@@ -291,10 +291,10 @@ export default function Tarefas() {
                 </select>
               </div>
 
-              <select 
+              <select
                 value={priorityFilter}
                 onChange={(e) => setPriorityFilter(e.target.value)}
-                className="bg-white border border-gray-200 rounded-md text-sm py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-orange-400 cursor-pointer"
+                className="w-full sm:w-auto bg-white border border-gray-200 rounded-xl sm:rounded-md text-sm py-2.5 sm:py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-orange-400 cursor-pointer"
               >
                 <option value="all">Todas Prioridades</option>
                 <option value="Alta">Alta</option>
@@ -304,12 +304,12 @@ export default function Tarefas() {
             </div>
 
             {/* Ordering */}
-            <div className="flex items-center gap-2 text-gray-500">
-              <ArrowUpDown className="w-4 h-4" />
-              <select 
+            <div className="flex items-center gap-2 text-gray-500 w-full lg:w-auto">
+              <ArrowUpDown className="w-4 h-4 hidden sm:block" />
+              <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="bg-white border border-gray-200 rounded-md text-sm py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-orange-400 cursor-pointer"
+                className="flex-1 sm:w-auto bg-white border border-gray-200 rounded-xl sm:rounded-md text-sm py-2.5 sm:py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-orange-400 cursor-pointer"
               >
                 <option value="created_desc">Mais recentes primeiro</option>
                 <option value="date_asc">Vencimento (Mais próximo)</option>

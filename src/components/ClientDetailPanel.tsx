@@ -100,13 +100,13 @@ export default function ClientDetailPanel({ isOpen, onClose, client, onUpdate, o
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" 
-        onClick={onClose} 
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
       />
 
       {/* Painel Lateral */}
-      <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+      <div className="relative w-full sm:w-[400px] max-w-[100vw] bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 z-50">
         
         {/* Header */}
         <div className="px-6 py-6 border-b border-gray-100 bg-gray-50/50 shrink-0">

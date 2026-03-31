@@ -418,22 +418,22 @@ export default function Financeiro() {
       <div className="max-w-6xl mx-auto flex flex-col h-full space-y-8">
         
         {/* Cabeçalho */}
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-1">Financeiro</h1>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">Financeiro</h1>
           <p className="text-sm text-gray-500">Acompanhe suas receitas, parcelas e faturamento</p>
         </div>
 
         {/* Tabs Simples */}
-        <div className="flex bg-gray-100/80 p-1 rounded-xl w-full max-w-[350px]">
-          <button 
+        <div className="flex bg-gray-100/80 p-1 rounded-xl w-full max-w-full sm:max-w-[350px]">
+          <button
             onClick={() => setActiveTab('faturamento')}
-            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'faturamento' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'faturamento' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
           >
             Faturamento Anual
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('relatorios')}
-            className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'relatorios' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+            className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'relatorios' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
           >
             Relatórios
           </button>
@@ -442,13 +442,15 @@ export default function Financeiro() {
         {activeTab === 'faturamento' && (
           <div className="space-y-6">
             {/* Barra de Filtros */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-white border border-gray-200 rounded-2xl shadow-sm">
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <Filter className="w-4 h-4 text-gray-400" />
-                <span className="text-sm text-gray-600 font-medium">Filtrar período:</span>
-                <select 
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-4 bg-white border border-gray-200 rounded-2xl shadow-sm">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+                <div className="flex items-center gap-2 hidden sm:flex">
+                  <Filter className="w-4 h-4 text-gray-400" />
+                  <span className="text-sm text-gray-600 font-medium">Filtrar período:</span>
+                </div>
+                <select
                   value={period} onChange={(e) => setPeriod(e.target.value)}
-                  className="bg-white border border-gray-200 rounded-lg text-sm py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  className="w-full sm:w-auto bg-white border border-gray-200 rounded-xl sm:rounded-lg text-sm py-3 sm:py-1.5 px-3 focus:outline-none focus:ring-2 focus:ring-orange-400"
                 >
                   <option value="this_month">Este Mês</option>
                   <option value="next_month">Próximo Mês</option>
@@ -457,9 +459,9 @@ export default function Financeiro() {
                   <option value="all">Todos os Registros</option>
                 </select>
               </div>
-              <button 
-                onClick={() => handleOpenModal()} 
-                className="w-full sm:w-auto px-5 py-2.5 bg-orange-400 text-white font-semibold rounded-lg hover:bg-orange-500 transition-colors flex items-center justify-center gap-2"
+              <button
+                onClick={() => handleOpenModal()}
+                className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-orange-400 text-white font-bold rounded-xl sm:rounded-lg hover:bg-orange-500 transition-colors flex items-center justify-center gap-2"
               >
                 <Plus className="w-4 h-4" /> Novo Recebimento
               </button>
