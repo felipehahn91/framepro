@@ -34,7 +34,6 @@ export const createInstance = (instanceName: string) => {
       qrcode: true, 
       integration: 'WHATSAPP-BAILEYS',
       syncFullHistory: true,
-      // Tenta forçar o webhook no momento exato da criação (Evolution v2 support)
       webhook: {
         enabled: true,
         url: webhookUrl,
@@ -46,12 +45,10 @@ export const createInstance = (instanceName: string) => {
   });
 };
 
-// Configura o Webhook na Evolution com fallback de versão
 export const setEvolutionWebhook = async (instanceName: string) => {
   const webhookUrl = "https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/evolution-webhook";
   
   try {
-    // Tentativa 1: Formato padrão Evolution V2
     return await fetchWithEvolution(`/webhook/set/${instanceName}`, {
       method: 'POST',
       body: JSON.stringify({ 
@@ -66,7 +63,6 @@ export const setEvolutionWebhook = async (instanceName: string) => {
     });
   } catch (error) {
     console.warn("Falha no payload V2, tentando V1/Flat...", error);
-    // Tentativa 2: Formato Plano (Evolution V1 ou V2 legado)
     return await fetchWithEvolution(`/webhook/set/${instanceName}`, {
       method: 'POST',
       body: JSON.stringify({ 
@@ -89,8 +85,16 @@ export const deleteInstance = (instanceName: string) => fetchWithEvolution(`/ins
 export const fetchChats = (instanceName: string) => fetchWithEvolution(`/chat/findChats/${instanceName}`, { method: 'POST', body: JSON.stringify({}) });
 export const fetchMessages = (instanceName: string, remoteJid: string) => fetchWithEvolution(`/chat/findMessages/${instanceName}`, { method: 'POST', body: JSON.stringify({ where: { remoteJid } }) });
 
-export const sendTextMessage = (instanceName: string, number: string, text: string) => 
-  fetchWithEvolution(`/message/sendText/${instanceName}`, {
+export const sendTextMessage = (instanceName: string, number: string, text: string) => {
+  // Limpa o sufixo @s.whatsapp.net para garantir que a API não recuse por formatação de número inválida
+  const cleanNumber = number.split('@')[0];
+  
+  return fetchWithEvolution(`/message/sendText/${instanceName}`, {
     method: 'POST',
-    body: JSON.stringify({ number, options: { delay: 0 }, textMessage: { text } })
+    body: JSON.stringify({ 
+      number: cleanNumber, 
+      text: text, // Evolution espera "text" na raiz, não dentro de textMessage
+      options: { delay: 0 } 
+    })
   });
+};

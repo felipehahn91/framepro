@@ -219,6 +219,8 @@ export default function Chat() {
 
     setSending(true);
     try {
+      await sendTextMessage(waInstance.instance_name, selectedChat.remote_jid, messageText);
+      
       // O Webhook retornará a versão oficial disso, mas inserimos pra ser imediato
       await supabase.from('whatsapp_messages').insert({
         ...optimisticMsg,
@@ -226,9 +228,9 @@ export default function Chat() {
         remote_jid: selectedChat.remote_jid
       });
 
-      await sendTextMessage(waInstance.instance_name, selectedChat.remote_jid, messageText);
-    } catch (error) {
-      toast.error("Falha ao enviar mensagem.");
+    } catch (error: any) {
+      console.error("Erro ao enviar:", error);
+      toast.error(`Falha: ${error.message || 'Erro desconhecido'}`);
       setMessages(prev => prev.filter(m => m.id !== tempId));
     } finally {
       setSending(false);
