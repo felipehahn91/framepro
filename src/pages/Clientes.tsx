@@ -74,7 +74,7 @@ export default function Clientes() {
   }, [clients, searchQuery]);
 
   const handleOpenEditModal = (client?: Client, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation(); // Evita abrir o painel lateral ao clicar no botão de editar
+    if (e) e.stopPropagation(); 
     
     if (client) {
       setSelectedClient(client);
@@ -115,7 +115,6 @@ export default function Clientes() {
         const updatedClient = data as Client;
         setClients(prev => prev.map(c => c.id === selectedClient.id ? updatedClient : c));
         
-        // Se o painel lateral do cliente estiver aberto, atualiza ele também
         if (viewingClient?.id === updatedClient.id) {
           setViewingClient(updatedClient);
         }
@@ -158,14 +157,19 @@ export default function Clientes() {
     if (!selectedClient) return;
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.from('opportunities').delete().eq('id', selectedClient.id);
+      // Em vez de deletar o registro, apenas desmarcamos a flag de cliente
+      const { error } = await supabase
+        .from('opportunities')
+        .update({ is_client: false })
+        .eq('id', selectedClient.id);
+        
       if (error) throw error;
       
       setClients(prev => prev.filter(c => c.id !== selectedClient.id));
-      toast.success("Cliente excluído permanentemente.");
+      toast.success("Status de cliente removido. O lead continua no funil.");
       setIsDeleteModalOpen(false);
     } catch (error) {
-      toast.error("Erro ao excluir cliente.");
+      toast.error("Erro ao remover status de cliente.");
     } finally {
       setIsSubmitting(false);
     }
@@ -288,7 +292,7 @@ export default function Clientes() {
                           <button 
                             onClick={(e) => handleDeleteClick(client, e)}
                             className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                            title="Excluir cliente"
+                            title="Remover status de cliente"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
@@ -400,24 +404,24 @@ export default function Clientes() {
         </div>
       )}
 
-      {/* Modal Deletar */}
+      {/* Modal Deletar (Agora com lógica de desmarcar status) */}
       {isDeleteModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsDeleteModalOpen(false)} />
           <div className="relative bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 text-center animate-in zoom-in-95">
-            <div className="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Trash2 className="w-6 h-6" />
+            <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Users className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Excluir Cliente?</h3>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Remover Cliente?</h3>
             <p className="text-sm text-gray-500 mb-6">
-              Tem certeza que deseja excluir <strong>{selectedClient?.name}</strong>? Esta ação removerá o registro permanentemente.
+              Deseja remover o status de cliente de <strong>{selectedClient?.name}</strong>? Ele deixará de aparecer aqui, mas continuará existindo como oportunidade no seu funil de vendas.
             </p>
             <div className="flex gap-3">
               <button onClick={() => setIsDeleteModalOpen(false)} disabled={isSubmitting} className="flex-1 py-2.5 bg-gray-100 text-gray-700 font-semibold rounded-lg hover:bg-gray-200 transition-colors">
                 Cancelar
               </button>
-              <button onClick={confirmDelete} disabled={isSubmitting} className="flex-1 py-2.5 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center">
-                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Excluir'}
+              <button onClick={confirmDelete} disabled={isSubmitting} className="flex-1 py-2.5 bg-orange-400 text-white font-semibold rounded-lg hover:bg-orange-500 transition-colors flex items-center justify-center">
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirmar'}
               </button>
             </div>
           </div>
