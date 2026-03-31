@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import logoImg from "@/assets/logo.png";
 
 const Login = () => {
   const { session } = useAuth();
@@ -58,10 +59,8 @@ const Login = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4">
       <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-        <div className="flex justify-center mb-6">
-          <div className="w-12 h-12 bg-orange-400 rounded-xl flex items-center justify-center shadow-sm">
-            <span className="text-white font-bold text-2xl">F</span>
-          </div>
+        <div className="flex justify-center mb-8">
+          <img src={logoImg} alt="Frame Pro" className="h-12 w-auto object-contain" />
         </div>
         
         <h1 className="text-2xl font-bold text-center mb-2 text-gray-900">
@@ -111,11 +110,11 @@ const Login = () => {
 
           <Button 
             type="submit" 
-            className="w-full bg-orange-400 hover:bg-orange-500 text-white mt-2"
+            className="w-full bg-orange-400 hover:bg-orange-500 text-white mt-2 font-bold py-6 rounded-xl shadow-md"
             disabled={loading}
           >
             {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-            {isLogin ? 'Entrar' : 'Cadastrar'}
+            {isLogin ? 'Entrar na Plataforma' : 'Criar minha Conta'}
           </Button>
         </form>
 
@@ -126,7 +125,7 @@ const Login = () => {
           <button
             type="button"
             onClick={() => setIsLogin(!isLogin)}
-            className="text-orange-500 font-medium hover:underline"
+            className="text-orange-500 font-bold hover:underline"
           >
             {isLogin ? 'Cadastre-se' : 'Faça login'}
           </button>

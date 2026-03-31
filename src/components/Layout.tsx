@@ -16,6 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import logoImg from "@/assets/logo.png";
 
 interface NavItem {
   name: string;
@@ -92,11 +93,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     <div className="flex h-screen bg-[#f8fafc] overflow-hidden font-sans">
       {/* Sidebar Desktop */}
       <aside className="w-64 bg-white border-r border-gray-200 flex-col hidden md:flex z-10">
-        <div className="p-6 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-orange-400 flex items-center justify-center text-white font-bold text-lg">
-            F
-          </div>
-          <span className="font-bold text-xl text-gray-900">Frame Pro</span>
+        <div className="p-6 flex items-center justify-center">
+          <img src={logoImg} alt="Frame Pro Logo" className="h-10 w-auto object-contain" />
         </div>
 
         <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto custom-scrollbar">
@@ -113,12 +111,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           />
           <aside className="relative w-64 max-w-[80vw] bg-white h-full flex flex-col shadow-2xl animate-in slide-in-from-left duration-300">
             <div className="p-6 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-orange-400 flex items-center justify-center text-white font-bold text-lg">
-                  F
-                </div>
-                <span className="font-bold text-xl text-gray-900">Frame Pro</span>
-              </div>
+              <img src={logoImg} alt="Frame Pro Logo" className="h-8 w-auto object-contain" />
               <button 
                 onClick={() => setIsMobileMenuOpen(false)} 
                 className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors"
@@ -145,10 +138,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             >
               <Menu className="w-6 h-6" />
             </button>
-            <div className="w-8 h-8 rounded-full bg-orange-400 flex items-center justify-center text-white font-bold">
-              F
-            </div>
-            <span className="font-bold text-lg text-gray-900">Frame Pro</span>
+            <img src={logoImg} alt="Frame Pro Logo" className="h-8 w-auto object-contain" />
           </div>
           <div className="hidden md:block"></div>
           
