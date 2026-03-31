@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { 
   Plus, Save, Trash2, Mic, Image as ImageIcon, Type, 
-  MessageSquare, Loader2, X, Square, Clock, Play
+  MessageSquare, Loader2, X, Square
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -31,7 +31,9 @@ interface MessageItem {
 
 interface Step {
   id: string;
-  delayDays: number;
+  delayDays?: number; // Legado
+  delayAmount?: number;
+  delayUnit?: 'immediately' | 'minutes' | 'hours' | 'days';
   items: MessageItem[];
 }
 
@@ -183,6 +185,17 @@ export default function FluxoCadencia() {
     if (user) fetchFlows();
   }, [user]);
 
+  const normalizeFlow = (flow: CadenciaFlow) => {
+    return {
+      ...flow,
+      messages: flow.messages.map(step => ({
+        ...step,
+        delayAmount: step.delayAmount !== undefined ? step.delayAmount : (step.delayDays || 0),
+        delayUnit: step.delayUnit || (step.delayDays === 0 ? 'immediately' : 'days')
+      }))
+    };
+  };
+
   const fetchFlows = async () => {
     setLoading(true);
     try {
@@ -200,7 +213,7 @@ export default function FluxoCadencia() {
         }
       }
       
-      const loadedFlows = data || [];
+      const loadedFlows = (data || []).map(normalizeFlow);
       setFlows(loadedFlows);
       
       if (loadedFlows.length > 0 && !activeFlowId) {
@@ -234,9 +247,10 @@ export default function FluxoCadencia() {
 
       if (error) throw error;
 
-      setFlows([...flows, data]);
-      setActiveFlowId(data.id);
-      setEditingFlow(data);
+      const normalizedData = normalizeFlow(data as CadenciaFlow);
+      setFlows([...flows, normalizedData]);
+      setActiveFlowId(normalizedData.id);
+      setEditingFlow(normalizedData);
       setIsNewFlowOpen(false);
       setNewFlowName('');
       toast.success("Fluxo criado!");
@@ -291,7 +305,8 @@ export default function FluxoCadencia() {
     if (!editingFlow) return;
     const newStep: Step = {
       id: crypto.randomUUID(),
-      delayDays: editingFlow.messages.length > 0 ? 1 : 0,
+      delayAmount: editingFlow.messages.length > 0 ? 1 : 0,
+      delayUnit: editingFlow.messages.length > 0 ? 'days' : 'immediately',
       items: [{ id: crypto.randomUUID(), type: 'text', content: '' }]
     };
     setEditingFlow({ ...editingFlow, messages: [...editingFlow.messages, newStep] });
@@ -302,11 +317,19 @@ export default function FluxoCadencia() {
     setEditingFlow({ ...editingFlow, messages: editingFlow.messages.filter(s => s.id !== stepId) });
   };
 
-  const updateStepDelay = (stepId: string, delay: number) => {
+  const updateStepDelayAmount = (stepId: string, amount: number) => {
     if (!editingFlow) return;
     setEditingFlow({
       ...editingFlow,
-      messages: editingFlow.messages.map(s => s.id === stepId ? { ...s, delayDays: delay } : s)
+      messages: editingFlow.messages.map(s => s.id === stepId ? { ...s, delayAmount: amount, delayDays: s.delayUnit === 'days' ? amount : s.delayDays } : s)
+    });
+  };
+
+  const updateStepDelayUnit = (stepId: string, unit: 'immediately' | 'minutes' | 'hours' | 'days') => {
+    if (!editingFlow) return;
+    setEditingFlow({
+      ...editingFlow,
+      messages: editingFlow.messages.map(s => s.id === stepId ? { ...s, delayUnit: unit, delayAmount: unit === 'immediately' ? 0 : (s.delayAmount || 1) } : s)
     });
   };
 
@@ -411,18 +434,36 @@ export default function FluxoCadencia() {
                   {/* Card da Etapa */}
                   <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden transition-all hover:border-orange-200">
                     
-                    <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
-                      <div className="flex items-center gap-3">
-                        <span className="font-bold text-gray-700 text-sm">Enviar após</span>
-                        <input 
-                          type="number" 
-                          min="0"
-                          value={step.delayDays}
-                          onChange={e => updateStepDelay(step.id, Number(e.target.value))}
-                          className="w-16 px-2 py-1.5 text-center border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-400 font-bold text-gray-900"
-                        />
-                        <span className="font-bold text-gray-700 text-sm">dias</span>
+                    <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between bg-gray-50/50 gap-4">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-gray-700 text-sm">Enviar</span>
+                        
+                        {step.delayUnit !== 'immediately' && (
+                          <input 
+                            type="number" 
+                            min="1"
+                            value={step.delayAmount ?? 1}
+                            onChange={e => updateStepDelayAmount(step.id, Number(e.target.value))}
+                            className="w-16 px-2 py-1.5 h-8 text-center border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-400 font-bold text-gray-900"
+                          />
+                        )}
+                        
+                        <Select 
+                          value={step.delayUnit || 'days'} 
+                          onValueChange={(val: any) => updateStepDelayUnit(step.id, val)}
+                        >
+                          <SelectTrigger className="w-[155px] h-8 bg-white border-gray-300 font-semibold text-gray-700 focus:ring-orange-400">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="immediately">Imediatamente</SelectItem>
+                            <SelectItem value="minutes">Minuto(s) após</SelectItem>
+                            <SelectItem value="hours">Hora(s) após</SelectItem>
+                            <SelectItem value="days">Dia(s) após</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
+
                       <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-600 rounded-full text-xs font-bold border border-green-100">
                           <MessageSquare className="w-3.5 h-3.5" /> WhatsApp
