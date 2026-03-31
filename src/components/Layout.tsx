@@ -92,13 +92,13 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="flex h-screen bg-[#f8fafc] overflow-hidden font-sans">
       {/* Sidebar Desktop */}
-      <aside className="w-64 bg-white border-r border-gray-200 flex-col hidden md:flex z-10">
+      <aside className="w-64 bg-white border-r border-border flex-col hidden md:flex z-10">
         <div className="px-6 py-10 flex items-center justify-center">
           <img src={logoImg} alt="Frame Pro Logo" className="w-full max-w-[180px] h-auto object-contain" />
         </div>
 
         <div className="mb-4">
-          <div className="h-px bg-gray-100 w-full"></div>
+          <div className="h-px bg-border w-full"></div>
         </div>
 
         <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto custom-scrollbar">
@@ -113,7 +113,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             className="fixed inset-0 bg-black/50 backdrop-blur-sm" 
             onClick={() => setIsMobileMenuOpen(false)} 
           />
-          <aside className="relative w-64 max-w-[80vw] bg-white h-full flex flex-col shadow-2xl animate-in slide-in-from-left duration-300">
+          <aside className="relative w-64 max-w-[80vw] bg-white h-full flex flex-col shadow-2xl animate-in slide-in-from-left duration-300 border-r border-border">
             <div className="p-6 flex items-center justify-between">
               <img src={logoImg} alt="Frame Pro Logo" className="h-8 w-auto object-contain" />
               <button 
@@ -125,7 +125,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             </div>
 
             <div className="mb-4">
-              <div className="h-px bg-gray-100 w-full"></div>
+              <div className="h-px bg-border w-full"></div>
             </div>
 
             <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto custom-scrollbar">
@@ -138,7 +138,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header */}
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-4 sm:px-8 z-10 shrink-0">
+        <header className="h-16 bg-white border-b border-border flex items-center justify-between px-4 sm:px-8 z-10 shrink-0">
           <div className="flex items-center gap-3 md:hidden">
             <button 
               onClick={() => setIsMobileMenuOpen(true)} 
