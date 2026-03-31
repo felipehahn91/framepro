@@ -1,0 +1,17 @@
+{
+  "name": "Frame Pro CRM",
+  "short_name": "Frame Pro",
+  "description": "O CRM definitivo para fotógrafos e criativos.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#FF8C00",
+  "icons": [
+    {
+      "src": "/pwa-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
