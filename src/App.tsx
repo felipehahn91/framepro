@@ -4,13 +4,13 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import { PWAProvider } from "./contexts/PWAContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { applyTheme, getActiveTheme } from "./lib/theme";
 
 import Index from "./pages/Index";
 import Oportunidades from "./pages/Oportunidades";
 import Clientes from "./pages/Clientes";
-// import Chat from "./pages/Chat"; // Módulo de Chat desativado temporariamente
 import Tarefas from "./pages/Tarefas";
 import Agenda from "./pages/Agenda";
 import Financeiro from "./pages/Financeiro";
@@ -28,7 +28,6 @@ import Login from "./pages/Login";
 import LinkFormPage from "./pages/LinkFormPage";
 import NotFound from "./pages/NotFound";
 
-// Aplica o tema salvo logo na inicialização do app
 applyTheme(getActiveTheme());
 
 const queryClient = new QueryClient();
@@ -36,46 +35,37 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* Rotas Públicas */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/link-form/:id" element={<LinkFormPage />} />
-            <Route path="/contratos/public/:token" element={<ContractPublicView />} />
-            <Route path="/orcamentos/public/:token" element={<OrcamentoPublicView />} />
-            
-            {/* Rotas Privadas */}
-            <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-            <Route path="/oportunidades" element={<ProtectedRoute><Oportunidades /></ProtectedRoute>} />
-            <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
-            {/* <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} /> */}
-            <Route path="/tarefas" element={<ProtectedRoute><Tarefas /></ProtectedRoute>} />
-            <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
-            <Route path="/financeiro" element={<ProtectedRoute><Financeiro /></ProtectedRoute>} />
-            
-            <Route path="/contratos" element={<ProtectedRoute><Contratos /></ProtectedRoute>} />
-            <Route path="/contratos/novo" element={<ProtectedRoute><ContractEditor /></ProtectedRoute>} />
-            <Route path="/contratos/editar/:id" element={<ProtectedRoute><ContractEditor /></ProtectedRoute>} />
-
-            <Route path="/orcamentos" element={<ProtectedRoute><Orcamentos /></ProtectedRoute>} />
-            <Route path="/orcamentos/editar/:id" element={<ProtectedRoute><OrcamentoEditor /></ProtectedRoute>} />
-            <Route path="/orcamentos/analytics/:id" element={<ProtectedRoute><OrcamentoAnalytics /></ProtectedRoute>} />
-            
-            <Route path="/fluxo" element={<ProtectedRoute><FluxoCadencia /></ProtectedRoute>} />
-            
-            <Route path="/configuracoes" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-
-            {/* Super Admin */}
-            <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-
-            {/* Fallback */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
+      <PWAProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/link-form/:id" element={<LinkFormPage />} />
+              <Route path="/contratos/public/:token" element={<ContractPublicView />} />
+              <Route path="/orcamentos/public/:token" element={<OrcamentoPublicView />} />
+              
+              <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
+              <Route path="/oportunidades" element={<ProtectedRoute><Oportunidades /></ProtectedRoute>} />
+              <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
+              <Route path="/tarefas" element={<ProtectedRoute><Tarefas /></ProtectedRoute>} />
+              <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
+              <Route path="/financeiro" element={<ProtectedRoute><Financeiro /></ProtectedRoute>} />
+              <Route path="/contratos" element={<ProtectedRoute><Contratos /></ProtectedRoute>} />
+              <Route path="/contratos/novo" element={<ProtectedRoute><ContractEditor /></ProtectedRoute>} />
+              <Route path="/contratos/editar/:id" element={<ProtectedRoute><ContractEditor /></ProtectedRoute>} />
+              <Route path="/orcamentos" element={<ProtectedRoute><Orcamentos /></ProtectedRoute>} />
+              <Route path="/orcamentos/editar/:id" element={<ProtectedRoute><OrcamentoEditor /></ProtectedRoute>} />
+              <Route path="/orcamentos/analytics/:id" element={<ProtectedRoute><OrcamentoAnalytics /></ProtectedRoute>} />
+              <Route path="/fluxo" element={<ProtectedRoute><FluxoCadencia /></ProtectedRoute>} />
+              <Route path="/configuracoes" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+              <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </TooltipProvider>
+      </PWAProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

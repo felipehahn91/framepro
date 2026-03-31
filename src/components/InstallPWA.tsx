@@ -1,71 +1,38 @@
 import React, { useState, useEffect } from 'react';
+import { usePWA } from '@/contexts/PWAContext';
 import { Download, X, Share, Monitor } from 'lucide-react';
-import { toast } from 'sonner';
 
 export const InstallPWA = () => {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const { canInstall, isStandalone, install } = usePWA();
   const [showPrompt, setShowPrompt] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
-  const [isStandalone, setIsStandalone] = useState(false);
 
   useEffect(() => {
-    // Verifica se já está instalado/rodando como app
-    const checkStandalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true;
-    setIsStandalone(checkStandalone);
-
     // Verifica se é iOS
     const isIPhone = /iPhone|iPad|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     setIsIOS(isIPhone);
 
-    // Captura o evento no Chrome/Android
-    const handler = (e: any) => {
-      console.log('PWA: Evento beforeinstallprompt disparado');
-      e.preventDefault();
-      setDeferredPrompt(e);
-      
-      // Só mostra se não estiver instalado e não tiver sido fechado nesta sessão
-      if (!checkStandalone && !sessionStorage.getItem('pwa_prompt_dismissed')) {
-        setShowPrompt(true);
-      }
-    };
-
-    window.addEventListener('beforeinstallprompt', handler);
-
-    // Fallback para iOS (já que eles não disparam o evento acima)
-    if (isIPhone && !checkStandalone && !sessionStorage.getItem('pwa_prompt_dismissed')) {
+    // Só mostra se puder instalar e não tiver sido fechado nesta sessão
+    if (canInstall && !sessionStorage.getItem('pwa_prompt_dismissed')) {
       setShowPrompt(true);
     }
 
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
-
-  const handleInstallClick = async () => {
-    if (!deferredPrompt) {
-      // Se não houver o prompt (ex: Chrome Desktop onde o botão fica na barra de endereço)
-      toast.info("Clique no ícone de instalação na barra de endereço do seu navegador.");
-      return;
+    // Fallback para iOS (já que eles não disparam o evento beforeinstallprompt)
+    if (isIPhone && !isStandalone && !sessionStorage.getItem('pwa_prompt_dismissed')) {
+      setShowPrompt(true);
     }
-    
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setShowPrompt(false);
-    }
-    setDeferredPrompt(null);
-  };
+  }, [canInstall, isStandalone]);
 
   const dismissPrompt = () => {
     setShowPrompt(false);
     sessionStorage.setItem('pwa_prompt_dismissed', 'true');
   };
 
-  // Se já estiver instalado ou o usuário fechou, não mostra nada
   if (isStandalone || !showPrompt) return null;
 
   return (
     <div className="fixed bottom-6 left-4 right-4 md:left-auto md:right-8 md:w-96 z-[100] animate-in fade-in slide-in-from-bottom-6 duration-700">
       <div className="bg-gray-900 text-white p-6 rounded-3xl shadow-2xl border border-white/10 relative overflow-hidden ring-1 ring-white/20">
-        {/* Efeito visual de luxo */}
         <div className="absolute -top-10 -right-10 w-32 h-32 bg-orange-500 rounded-full blur-3xl opacity-30"></div>
         
         <button 
@@ -102,10 +69,10 @@ export const InstallPWA = () => {
             ) : (
               <>
                 <p className="text-xs text-gray-400 leading-relaxed mb-4 font-medium">
-                  Deseja instalar nosso aplicativo para acesso rápido e gerenciar seu negócio direto da tela inicial?
+                  Deseja instalar nosso aplicativo para gerenciar seu negócio direto da tela inicial?
                 </p>
                 <button 
-                  onClick={handleInstallClick}
+                  onClick={install}
                   className="w-full py-3 bg-white text-gray-900 font-black rounded-xl text-sm hover:bg-orange-50 hover:text-orange-600 transition-all shadow-md active:scale-95"
                 >
                   INSTALAR AGORA

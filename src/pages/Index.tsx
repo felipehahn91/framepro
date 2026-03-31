@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { PWABanner } from "@/components/PWABanner";
 
 const formatCurrency = (value: number) => {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -205,15 +206,16 @@ const Index = () => {
 
   return (
     <Layout>
-      {/* Container principal com a cor de fundo personalizada */}
       <div className="min-h-full -m-4 sm:-m-8 p-4 sm:p-8" style={{ backgroundColor: '#e6e6e64c' }}>
         <div className="max-w-7xl mx-auto space-y-6 pb-10">
+          
+          <PWABanner />
+
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
             <p className="text-gray-500 text-sm">Visão geral do seu negócio</p>
           </div>
 
-          {/* Card de Meta Principal - Sombra Mais Forte */}
           <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-lg relative group">
             <div className="flex justify-between items-start mb-2">
               <h3 className="font-bold text-gray-900 text-base">Meta de Faturamento Mensal</h3>
@@ -247,7 +249,6 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Linha 1: Faturamentos - Sombra Média */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-md hover:shadow-lg transition-all">
               <div className="flex justify-between items-start mb-4">
@@ -274,7 +275,6 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Linha 2: Estatísticas - Sombra Média */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-md flex flex-col justify-between hover:shadow-lg transition-all">
               <div className="flex justify-between items-start mb-2">
@@ -301,7 +301,6 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Linha 3: Gráficos e Listas - Sombra Média */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-md">
               <div className="mb-6">
