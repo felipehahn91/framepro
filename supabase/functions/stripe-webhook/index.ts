@@ -15,9 +15,14 @@ serve(async (req) => {
     const body = await req.text();
     const endpointSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
     
+    // Verificação de segurança
+    if (!endpointSecret) {
+      console.error("[stripe-webhook] Erro: STRIPE_WEBHOOK_SECRET não está configurado nas variáveis de ambiente do Supabase.");
+      return new Response("Configuração do servidor incompleta (Webhook Secret faltando)", { status: 500 });
+    }
+
     let event;
     try {
-      // CORREÇÃO: Utilizando constructEventAsync com await, obrigatório em Deno/Edge
       event = await stripe.webhooks.constructEventAsync(body, signature, endpointSecret);
     } catch (err) {
       console.error(`[stripe-webhook] Erro na assinatura: ${err.message}`);
