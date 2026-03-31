@@ -18,10 +18,20 @@ export default function FounderSignup() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
+  const [phone, setPhone] = useState('');
 
   useEffect(() => {
     if (session) navigate('/');
   }, [session, navigate]);
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length <= 11) {
+      value = value.replace(/^(\d{2})(\d)/g, '($1) $2');
+      value = value.replace(/(\d)(\d{4})$/, '$1-$2');
+    }
+    setPhone(value);
+  };
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,6 +44,7 @@ export default function FounderSignup() {
         options: {
           data: {
             first_name: firstName,
+            phone: phone, // Passando o telefone para a auth que acionará o trigger
           }
         }
       });
@@ -41,7 +52,6 @@ export default function FounderSignup() {
       if (error) throw error;
 
       if (data?.user) {
-        // Imediatamente após criar a conta, marcamos o perfil como 'founder'
         const { error: profileError } = await supabase
           .from('profiles')
           .update({ plan_type: 'founder' })
@@ -49,11 +59,8 @@ export default function FounderSignup() {
           
         if (profileError) throw profileError;
 
-        // Atualiza a sessão
         await refreshProfile();
         toast.success("Conta Founder criada com sucesso!");
-        
-        // Redireciona diretamente e exclusivamente para a página de checkout dos Founders
         navigate('/founders'); 
       }
     } catch (error: any) {
@@ -64,10 +71,9 @@ export default function FounderSignup() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white p-4 font-sans selection:bg-orange-500/30">
+    <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white p-4 font-sans selection:bg-orange-500/30 py-10">
       <div className="w-full max-w-md bg-white text-gray-900 p-8 rounded-3xl shadow-2xl relative overflow-hidden">
         
-        {/* Detalhe visual premium */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500 rounded-full blur-3xl opacity-10 -mr-10 -mt-10 pointer-events-none"></div>
 
         <div className="flex justify-center mb-6">
@@ -92,6 +98,20 @@ export default function FounderSignup() {
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               required
+              className="bg-gray-50 border-gray-200 focus:ring-orange-400 h-12 rounded-xl"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="phone" className="font-bold text-gray-700">WhatsApp</Label>
+            <Input
+              id="phone"
+              type="tel"
+              placeholder="(00) 00000-0000"
+              value={phone}
+              onChange={handlePhoneChange}
+              required
+              maxLength={15}
               className="bg-gray-50 border-gray-200 focus:ring-orange-400 h-12 rounded-xl"
             />
           </div>

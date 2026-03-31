@@ -19,11 +19,20 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
+  const [phone, setPhone] = useState('');
 
-  // Se já estiver logado, redireciona
   useEffect(() => {
     if (session) navigate('/');
   }, [session, navigate]);
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length <= 11) {
+      value = value.replace(/^(\d{2})(\d)/g, '($1) $2');
+      value = value.replace(/(\d)(\d{4})$/, '$1-$2');
+    }
+    setPhone(value);
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +53,7 @@ const Login = () => {
           options: {
             data: {
               first_name: firstName,
+              phone: phone,
             }
           }
         });
@@ -59,7 +69,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4">
-      <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+      <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-sm border border-gray-100 my-8">
         <div className="flex justify-center mb-8">
           <img src={logoImg} alt="Frame Pro" className="h-12 w-auto object-contain" />
         </div>
@@ -73,16 +83,30 @@ const Login = () => {
 
         <form onSubmit={handleAuth} className="space-y-4">
           {!isLogin && (
-            <div className="space-y-2">
-              <Label htmlFor="firstName">Nome</Label>
-              <Input
-                id="firstName"
-                placeholder="Seu nome"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                required={!isLogin}
-              />
-            </div>
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="firstName">Nome</Label>
+                <Input
+                  id="firstName"
+                  placeholder="Seu nome completo"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required={!isLogin}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="phone">WhatsApp</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="(00) 00000-0000"
+                  value={phone}
+                  onChange={handlePhoneChange}
+                  required={!isLogin}
+                  maxLength={15}
+                />
+              </div>
+            </>
           )}
 
           <div className="space-y-2">
@@ -105,7 +129,7 @@ const Login = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              showStrength={!isLogin} // Só exibe força de senha no cadastro
+              showStrength={!isLogin}
             />
           </div>
 

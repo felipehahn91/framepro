@@ -4,7 +4,7 @@ import { Layout } from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
 import {
   ShieldAlert, Users, Activity, Settings, Server,
-  MessageSquare, Database, TrendingUp, Key, Copy, Check, Save, Loader2, Link, ShieldCheck, DollarSign
+  MessageSquare, DollarSign, Loader2, Mail, Phone, Save
 } from "lucide-react";
 import { toast } from "sonner";
 import { 
@@ -32,7 +32,6 @@ export default function AdminDashboard() {
   // Estados para Evolution API
   const [evolutionUrl, setEvolutionUrl] = useState("");
   const [evolutionKey, setEvolutionKey] = useState("");
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -53,15 +52,18 @@ export default function AdminDashboard() {
 
   const fetchUsersAndStats = async () => {
     try {
+      // Ordenando por updated_at por segurança, caso created_at não exista em algum registro antigo
       const { data: users, error } = await supabase
         .from('profiles')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('updated_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error(error);
+        throw error;
+      }
       setUsersList(users || []);
 
-      // Busca total de oportunidades globais
       const { count } = await supabase
         .from('opportunities')
         .select('*', { count: 'exact', head: true });
@@ -69,7 +71,7 @@ export default function AdminDashboard() {
       setTotalOpps(count || 0);
 
     } catch (error) {
-      console.error(error);
+      console.error("Erro ao buscar usuários do admin:", error);
     } finally {
       setLoading(false);
     }
@@ -104,23 +106,14 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleCopyWebhook = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/api/webhooks/evolution`);
-    setCopied(true);
-    toast.success("URL de Webhook copiada!");
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  // Cálculo de MRR Real baseado nas assinaturas
   const calculateMRR = () => {
     let mrr = 0;
     usersList.forEach(u => {
-      // Se a assinatura está ativa ou em trial
       if (u.subscription_status === 'active' || u.subscription_status === 'trialing') {
         if (u.plan_type === 'founder') {
-          mrr += 67; // Mensalidade equivalente do plano founder
+          mrr += 67;
         } else {
-          mrr += 97; // Valor do plano mensal
+          mrr += 97;
         }
       }
     });
@@ -128,7 +121,7 @@ export default function AdminDashboard() {
   };
 
   if (loading) {
-    return <Layout><div className="flex h-full items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-gray-400" /></div></Layout>;
+    return <Layout><div className="flex h-full items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div></Layout>;
   }
 
   if (profile?.role !== 'admin') {
@@ -150,13 +143,12 @@ export default function AdminDashboard() {
       <div className="max-w-7xl mx-auto flex flex-col h-full space-y-6">
         
         <div className="bg-gray-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden shrink-0">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500 rounded-full blur-3xl opacity-20 -mr-20 -mt-20"></div>
-          <div className="absolute bottom-0 right-40 w-64 h-64 bg-purple-500 rounded-full blur-3xl opacity-20 -mb-20"></div>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500 rounded-full blur-3xl opacity-20 -mr-20 -mt-20"></div>
           
           <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
             <div>
-              <div className="flex items-center gap-2 text-blue-400 mb-2">
-                <ShieldCheck className="w-5 h-5" />
+              <div className="flex items-center gap-2 text-orange-400 mb-2">
+                <ShieldAlert className="w-5 h-5" />
                 <span className="font-bold tracking-wider text-sm uppercase">Super Admin</span>
               </div>
               <h1 className="text-3xl sm:text-4xl font-bold mb-2">Painel de Controle</h1>
@@ -215,15 +207,15 @@ export default function AdminDashboard() {
                     <AreaChart data={growthData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                          <stop offset="5%" stopColor="#f97316" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
                       <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                      <Area type="monotone" dataKey="users" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorUsers)" />
+                      <Area type="monotone" dataKey="users" stroke="#f97316" strokeWidth={3} fillOpacity={1} fill="url(#colorUsers)" />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -243,10 +235,10 @@ export default function AdminDashboard() {
                   <thead>
                     <tr className="bg-gray-50/80 border-b border-gray-100">
                       <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Usuário</th>
+                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Contato</th>
                       <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Plano</th>
-                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Status do Pagamento</th>
-                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Cargo</th>
-                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase text-right">Acesso</th>
+                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Status</th>
+                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase text-right">Data Cad.</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -254,10 +246,25 @@ export default function AdminDashboard() {
                       <tr key={usr.id} className="hover:bg-gray-50/50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center font-bold text-xs text-gray-600">
+                            <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center font-bold text-xs text-orange-600">
                               {usr.first_name ? usr.first_name.substring(0,2).toUpperCase() : 'US'}
                             </div>
                             <span className="font-semibold text-gray-900">{usr.first_name || 'Sem Nome'} {usr.last_name || ''}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex flex-col gap-1">
+                            {usr.email && (
+                              <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                                <Mail className="w-3 h-3 text-gray-400" /> {usr.email}
+                              </div>
+                            )}
+                            {usr.phone && (
+                              <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                                <Phone className="w-3 h-3 text-gray-400" /> {usr.phone}
+                              </div>
+                            )}
+                            {!usr.email && !usr.phone && <span className="text-xs text-gray-400">-</span>}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -276,19 +283,16 @@ export default function AdminDashboard() {
                             </span>
                           ) : usr.subscription_status === 'trialing' ? (
                             <span className="px-2.5 py-1 text-[11px] font-bold rounded-full bg-blue-100 text-blue-700 border border-blue-200">
-                              Período de Teste
+                              Teste (Trial)
                             </span>
                           ) : (
                             <span className="px-2.5 py-1 text-[11px] font-bold rounded-full bg-red-100 text-red-700 border border-red-200">
-                              Inativo / Pendente
+                              Inativo
                             </span>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-gray-500 capitalize">{usr.role}</span>
-                        </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
-                          {new Date(usr.created_at || new Date()).toLocaleDateString('pt-BR')}
+                          {usr.created_at ? new Date(usr.created_at).toLocaleDateString('pt-BR') : '-'}
                         </td>
                       </tr>
                     ))}
@@ -322,18 +326,18 @@ export default function AdminDashboard() {
                         type="url"
                         value={evolutionUrl}
                         onChange={e => setEvolutionUrl(e.target.value)}
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
                       />
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                        <Key className="w-4 h-4 text-gray-400" /> Global API Key
+                        <ShieldAlert className="w-4 h-4 text-gray-400" /> Global API Key
                       </label>
                       <input 
                         type="password"
                         value={evolutionKey}
                         onChange={e => setEvolutionKey(e.target.value)}
-                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
                       />
                     </div>
                   </div>
