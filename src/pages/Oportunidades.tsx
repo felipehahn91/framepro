@@ -547,44 +547,50 @@ export default function Oportunidades() {
                                   className={`flex-1 p-3 overflow-y-auto rounded-b-xl space-y-3 transition-colors ${snapshot.isDraggingOver ? 'bg-orange-50/20' : 'bg-gray-50/30'}`}
                                   style={{ minHeight: '150px' }}
                                 >
-                                  {colOpps.map((opp, oppIndex) => (
-                                    <Draggable key={opp.id} draggableId={opp.id} index={oppIndex}>
-                                      {(provided, snapshot) => (
-                                        <div
-                                          ref={provided.innerRef} 
-                                          {...provided.draggableProps} 
-                                          {...provided.dragHandleProps}
-                                          onClick={() => handleCardClick(opp)}
-                                          className={`bg-white p-4 rounded-xl border transition-all relative group cursor-pointer ${snapshot.isDragging ? 'shadow-xl ring-2 ring-orange-400 border-transparent z-50' : 'border-gray-200 shadow-sm hover:shadow-md'}`}
-                                        >
-                                          <div className="flex justify-between items-start mb-3">
-                                            <div className="flex items-center gap-2.5">
-                                              <input type="checkbox" checked={selectedOpps.includes(opp.id)} onChange={() => toggleSelection(opp.id)} onClick={(e) => e.stopPropagation()} className="w-4 h-4 mt-0.5 rounded border-gray-300 accent-orange-500 cursor-pointer shrink-0" />
-                                              <span className="font-semibold text-gray-900 text-sm leading-tight">{opp.name}</span>
+                                  {colOpps.map((opp, oppIndex) => {
+                                    const isFromWhatsApp = opp.observations?.includes("gatilho de WhatsApp");
+                                    return (
+                                      <Draggable key={opp.id} draggableId={opp.id} index={oppIndex}>
+                                        {(provided, snapshot) => (
+                                          <div
+                                            ref={provided.innerRef} 
+                                            {...provided.draggableProps} 
+                                            {...provided.dragHandleProps}
+                                            onClick={() => handleCardClick(opp)}
+                                            className={`bg-white p-4 rounded-xl border transition-all relative group cursor-pointer ${snapshot.isDragging ? 'shadow-xl ring-2 ring-orange-400 border-transparent z-50' : 'border-gray-200 shadow-sm hover:shadow-md'}`}
+                                          >
+                                            <div className="flex justify-between items-start mb-3">
+                                              <div className="flex items-center gap-2.5">
+                                                <input type="checkbox" checked={selectedOpps.includes(opp.id)} onChange={() => toggleSelection(opp.id)} onClick={(e) => e.stopPropagation()} className="w-4 h-4 mt-0.5 rounded border-gray-300 accent-orange-500 cursor-pointer shrink-0" />
+                                                <span className="font-semibold text-gray-900 text-sm leading-tight flex items-center gap-1.5">
+                                                  {isFromWhatsApp && <MessageCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />}
+                                                  {opp.name}
+                                                </span>
+                                              </div>
+                                              <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
+                                                <button onClick={(e) => moveCard(e, opp.id, col.id, 'up')} disabled={oppIndex === 0} className="text-gray-400 hover:text-gray-700 disabled:opacity-30"><ArrowUp className="w-3 h-3" /></button>
+                                                <button onClick={(e) => moveCard(e, opp.id, col.id, 'down')} disabled={oppIndex === colOpps.length - 1} className="text-gray-400 hover:text-gray-700 disabled:opacity-30"><ArrowDown className="w-3 h-3" /></button>
+                                              </div>
                                             </div>
-                                            <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
-                                              <button onClick={(e) => moveCard(e, opp.id, col.id, 'up')} disabled={oppIndex === 0} className="text-gray-400 hover:text-gray-700 disabled:opacity-30"><ArrowUp className="w-3 h-3" /></button>
-                                              <button onClick={(e) => moveCard(e, opp.id, col.id, 'down')} disabled={oppIndex === colOpps.length - 1} className="text-gray-400 hover:text-gray-700 disabled:opacity-30"><ArrowDown className="w-3 h-3" /></button>
+                                            {opp.tag && (
+                                              <div className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-orange-100 text-orange-700 mb-2">
+                                                {opp.tag}
+                                              </div>
+                                            )}
+                                            <div className="text-[12px] text-gray-500 mb-4 truncate">{opp.email || opp.phone}</div>
+                                            <div className="flex gap-2">
+                                              <button onClick={(e) => handleToggleClient(e, opp)} className={`flex-1 py-1.5 rounded-md border text-[11px] font-semibold transition-colors ${opp.is_client ? 'border-red-200 text-red-600 bg-red-50' : 'border-gray-200 text-gray-700 bg-white'}`}>
+                                                {opp.is_client ? '-Cliente' : '+Cliente'}
+                                              </button>
+                                              <button onClick={(e) => handleCadenciaClick(e, opp)} className="flex-1 py-1.5 rounded-md border border-gray-200 text-gray-700 text-[11px] font-semibold bg-white hover:bg-gray-50 transition-colors">
+                                                <MessageCircle className="w-3.5 h-3.5 inline mr-1 text-green-500" /> Cadência
+                                              </button>
                                             </div>
                                           </div>
-                                          {opp.tag && (
-                                            <div className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-orange-100 text-orange-700 mb-2">
-                                              {opp.tag}
-                                            </div>
-                                          )}
-                                          <div className="text-[12px] text-gray-500 mb-4 truncate">{opp.email || opp.phone}</div>
-                                          <div className="flex gap-2">
-                                            <button onClick={(e) => handleToggleClient(e, opp)} className={`flex-1 py-1.5 rounded-md border text-[11px] font-semibold transition-colors ${opp.is_client ? 'border-red-200 text-red-600 bg-red-50' : 'border-gray-200 text-gray-700 bg-white'}`}>
-                                              {opp.is_client ? '-Cliente' : '+Cliente'}
-                                            </button>
-                                            <button onClick={(e) => handleCadenciaClick(e, opp)} className="flex-1 py-1.5 rounded-md border border-gray-200 text-gray-700 text-[11px] font-semibold bg-white hover:bg-gray-50 transition-colors">
-                                              <MessageCircle className="w-3.5 h-3.5 inline mr-1 text-green-500" /> Cadência
-                                            </button>
-                                          </div>
-                                        </div>
-                                      )}
-                                    </Draggable>
-                                  ))}
+                                        )}
+                                      </Draggable>
+                                    );
+                                  })}
                                   {provided.placeholder}
                                 </div>
                               )}
