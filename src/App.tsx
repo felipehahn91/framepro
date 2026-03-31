@@ -20,6 +20,7 @@ import OrcamentoEditor from "./pages/OrcamentoEditor";
 import OrcamentoPublicView from "./pages/OrcamentoPublicView";
 import OrcamentoAnalytics from "./pages/OrcamentoAnalytics";
 import AdminDashboard from "./pages/AdminDashboard";
+import SettingsPage from "./pages/SettingsPage";
 import Login from "./pages/Login";
 import LinkFormPage from "./pages/LinkFormPage";
 import NotFound from "./pages/NotFound";
@@ -56,6 +57,8 @@ const App = () => (
             <Route path="/orcamentos/editar/:id" element={<ProtectedRoute><OrcamentoEditor /></ProtectedRoute>} />
             <Route path="/orcamentos/analytics/:id" element={<ProtectedRoute><OrcamentoAnalytics /></ProtectedRoute>} />
             
+            <Route path="/configuracoes" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+
             {/* Super Admin */}
             <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
 
