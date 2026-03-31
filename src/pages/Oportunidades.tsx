@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Trash2, Plus, UserPlus, MessageSquare, MessageCircle, Link as LinkIcon,
-  Upload, Loader2, Copy, ExternalLink, X, UserMinus, Search, Inbox, ArrowUp, ArrowDown, Clock, Tag as TagIcon, Zap, Filter, ChevronDown, LayoutGrid, MoreVertical, MoveRight, Settings
+  Upload, Loader2, Copy, ExternalLink, X, UserMinus, Search, Inbox, ArrowUp, ArrowDown, Clock, Tag as TagIcon, Zap, Filter, ChevronDown, LayoutGrid, MoreVertical, MoveRight, Settings, Edit2
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -87,6 +87,10 @@ export default function Oportunidades() {
   const [newColName, setNewColName] = useState("");
   const [isNewPipelineOpen, setIsNewPipelineOpen] = useState(false);
   const [newPipelineName, setNewPipelineName] = useState("");
+
+  // Edição de Coluna Inline
+  const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
+  const [editingColumnName, setEditingColumnName] = useState<string>("");
   
   // Modal de Ferramentas (Link Forms e Gatilhos)
   const [isAutomationsOpen, setIsAutomationsOpen] = useState(false);
@@ -439,6 +443,21 @@ export default function Oportunidades() {
     }
   };
 
+  const handleUpdateColumnName = async (colId: string) => {
+    if (!editingColumnName.trim()) {
+      setEditingColumnId(null);
+      return;
+    }
+    try {
+      await supabase.from('columns').update({ name: editingColumnName }).eq('id', colId);
+      setColumns(prev => prev.map(c => c.id === colId ? { ...c, name: editingColumnName } : c));
+      setEditingColumnId(null);
+      toast.success('Coluna renomeada!');
+    } catch (error) {
+      toast.error('Erro ao renomear coluna.');
+    }
+  };
+
   const handleDeleteColumn = async (colId: string) => {
     if (!confirm("Deletar esta coluna?")) return;
     await supabase.from('columns').delete().eq('id', colId);
@@ -750,8 +769,8 @@ export default function Oportunidades() {
                           >
                             <div className="p-3 border-b border-gray-200 rounded-t-xl bg-white" {...provided.dragHandleProps}>
                               <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                  <div className="flex items-center justify-center w-5 h-5">
+                                <div className="flex items-center gap-2 flex-1 min-w-0">
+                                  <div className="flex items-center justify-center w-5 h-5 shrink-0">
                                     <input 
                                       type="checkbox"
                                       checked={allSelectedInCol}
@@ -760,19 +779,43 @@ export default function Oportunidades() {
                                       className="w-4 h-4 rounded border-gray-300 accent-orange-500 cursor-pointer"
                                     />
                                   </div>
-                                  <h3 className="font-bold text-gray-900 text-sm truncate max-w-[150px]">{col.name}</h3>
-                                  <span className="bg-gray-100 text-gray-500 text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
-                                    {colOpps.length}
-                                  </span>
+                                  
+                                  {editingColumnId === col.id ? (
+                                    <input
+                                      type="text"
+                                      value={editingColumnName}
+                                      onChange={(e) => setEditingColumnName(e.target.value)}
+                                      className="w-full h-7 text-sm px-2 border border-orange-300 rounded focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white"
+                                      autoFocus
+                                      onKeyDown={(e) => e.key === 'Enter' && handleUpdateColumnName(col.id)}
+                                      onBlur={() => handleUpdateColumnName(col.id)}
+                                    />
+                                  ) : (
+                                    <>
+                                      <h3 className="font-bold text-gray-900 text-sm truncate max-w-[150px]">{col.name}</h3>
+                                      <span className="bg-gray-100 text-gray-500 text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center shrink-0">
+                                        {colOpps.length}
+                                      </span>
+                                    </>
+                                  )}
                                 </div>
                                 
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
-                                    <button className="text-gray-400 hover:text-gray-700 p-1 rounded-md transition-colors">
+                                    <button className="text-gray-400 hover:text-gray-700 p-1 rounded-md transition-colors shrink-0">
                                       <MoreVertical className="w-4 h-4" />
                                     </button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
+                                    <DropdownMenuItem 
+                                      onClick={() => {
+                                        setEditingColumnId(col.id);
+                                        setEditingColumnName(col.name);
+                                      }} 
+                                      className="font-medium cursor-pointer"
+                                    >
+                                      <Edit2 className="w-4 h-4 mr-2" /> Renomear Coluna
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem onClick={() => handleDeleteColumn(col.id)} className="text-red-500 focus:bg-red-50 focus:text-red-600 font-medium cursor-pointer">
                                       <Trash2 className="w-4 h-4 mr-2" /> Deletar Coluna
                                     </DropdownMenuItem>
