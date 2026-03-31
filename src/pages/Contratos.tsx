@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Layout } from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -8,6 +8,8 @@ import {
   DollarSign, Calendar, Download, Mail
 } from "lucide-react";
 import { toast } from "sonner";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 interface Contract {
   id: string;
@@ -17,6 +19,10 @@ interface Contract {
   status: string;
   signature_status: string;
   share_token: string;
+  description: string;
+  contract_image: string;
+  client_signature: string;
+  supplier_signature: string;
   opportunities?: { name: string };
 }
 
@@ -26,6 +32,11 @@ export default function Contratos() {
   const [loading, setLoading] = useState(true);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+
+  // Ref para renderização oculta do PDF
+  const pdfTemplateRef = useRef<HTMLDivElement>(null);
+  const [activePdfContract, setActivePdfContract] = useState<Contract | null>(null);
 
   useEffect(() => {
     if (user) fetchContracts();
@@ -66,6 +77,51 @@ export default function Contratos() {
     } catch (err) {
       toast.error("Erro ao excluir.");
     }
+  };
+
+  const handleDownloadPDF = async (contract: Contract) => {
+    setDownloadingId(contract.id);
+    setActivePdfContract(contract);
+    toast.info("Preparando documento...");
+
+    // Aguarda o React renderizar o template oculto
+    setTimeout(async () => {
+      if (!pdfTemplateRef.current) return;
+      try {
+        const canvas = await html2canvas(pdfTemplateRef.current, { 
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff'
+        });
+        
+        const imgData = canvas.toDataURL("image/png");
+        const pdf = new jsPDF("p", "mm", "a4");
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        
+        let heightLeft = pdfHeight;
+        let position = 0;
+
+        pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
+        heightLeft -= pageHeight;
+
+        while (heightLeft > 0) {
+          position = position - pageHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, "PNG", 0, position, pdfWidth, pdfHeight);
+          heightLeft -= pageHeight;
+        }
+        
+        pdf.save(`Contrato_${contract.opportunities?.name || 'Documento'}.pdf`);
+        toast.success("PDF baixado com sucesso!");
+      } catch (error) {
+        toast.error("Erro ao gerar PDF.");
+      } finally {
+        setDownloadingId(null);
+        setActivePdfContract(null);
+      }
+    }, 500);
   };
 
   if (loading) {
@@ -110,9 +166,7 @@ export default function Contratos() {
                 key={contract.id} 
                 className="bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col"
               >
-                {/* Card Content Area */}
                 <div className="p-6 space-y-5 flex-1">
-                  {/* Top Line: Label & Status */}
                   <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2 text-gray-400">
                       <FileText className="w-4 h-4" />
@@ -127,12 +181,10 @@ export default function Contratos() {
                     </div>
                   </div>
 
-                  {/* Client Name */}
                   <h3 className="text-xl font-bold text-gray-900 truncate">
                     {contract.opportunities?.name || 'Cliente não definido'}
                   </h3>
 
-                  {/* Info Blocks */}
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
                       <DollarSign className="w-4 h-4 text-orange-400" />
@@ -150,16 +202,16 @@ export default function Contratos() {
 
                   <div className="h-px bg-gray-100 w-full my-4"></div>
 
-                  {/* Central Download Button */}
                   <button 
-                    onClick={() => { /* Lógica de download seria aqui */ toast.info("Iniciando download..."); }}
-                    className="w-full flex items-center justify-center gap-2 py-3 bg-orange-50 border border-orange-100 rounded-xl text-sm font-bold text-gray-700 hover:bg-orange-100 transition-colors"
+                    onClick={() => handleDownloadPDF(contract)}
+                    disabled={downloadingId === contract.id}
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-orange-50 border border-orange-100 rounded-xl text-sm font-bold text-gray-700 hover:bg-orange-100 transition-colors disabled:opacity-50"
                   >
-                    <Download className="w-4 h-4" /> Baixar PDF
+                    {downloadingId === contract.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                    Baixar PDF
                   </button>
                 </div>
 
-                {/* Card Footer Actions */}
                 <div className="px-5 py-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
                   <div className="flex items-center gap-1">
                     <button 
@@ -198,6 +250,39 @@ export default function Contratos() {
               <FileText className="w-12 h-12 text-gray-200 mb-4" />
               <h3 className="text-lg font-bold text-gray-900 mb-1">Nenhum contrato encontrado</h3>
               <p className="text-sm text-gray-500 mb-6">Crie seu primeiro contrato clicando no botão no topo.</p>
+            </div>
+          )}
+        </div>
+
+        {/* TEMPLATE OCULTO PARA GERAÇÃO DE PDF */}
+        <div className="fixed -left-[9999px] -top-[9999px] pointer-events-none">
+          {activePdfContract && (
+            <div 
+              ref={pdfTemplateRef} 
+              className="bg-white p-12 text-black w-[210mm]"
+              style={{ minHeight: '297mm' }}
+            >
+              {activePdfContract.contract_image && (
+                <img src={activePdfContract.contract_image} crossOrigin="anonymous" className="w-full h-64 object-cover rounded-xl mb-10" />
+              )}
+              <div className="prose max-w-none mb-16" dangerouslySetInnerHTML={{ __html: activePdfContract.description }} />
+              
+              <div className="mt-20 pt-10 border-t border-gray-200 grid grid-cols-2 gap-12">
+                <div className="text-center">
+                  <div className="h-24 flex items-end justify-center border-b border-black mb-2">
+                    {activePdfContract.client_signature && <img src={activePdfContract.client_signature} crossOrigin="anonymous" className="max-h-20" />}
+                  </div>
+                  <p className="font-bold">{activePdfContract.opportunities?.name}</p>
+                  <p className="text-sm uppercase">Contratante</p>
+                </div>
+                <div className="text-center">
+                  <div className="h-24 flex items-end justify-center border-b border-black mb-2">
+                    {activePdfContract.supplier_signature && <img src={activePdfContract.supplier_signature} crossOrigin="anonymous" className="max-h-20" />}
+                  </div>
+                  <p className="font-bold">Fornecedor</p>
+                  <p className="text-sm uppercase">Contratado</p>
+                </div>
+              </div>
             </div>
           )}
         </div>
