@@ -1,0 +1,9 @@
+node_modules
+dist
+.git
+.dyad
+Dockerfile
+docker-compose.yml
+.env
+.env.local
+README.md
