@@ -57,7 +57,7 @@ serve(async (req) => {
           .from('whatsapp_instances')
           .select('instance_name')
           .eq('user_id', item.user_id)
-          .eq('status', 'open') // Assume 'open' como conectada (dependendo da sua lógica, pode ser 'connected')
+          .in('status', ['open', 'connected']) // Pode ser 'open' ou 'connected'
           .single();
 
         if (!instanceData) {
