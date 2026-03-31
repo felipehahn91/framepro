@@ -99,8 +99,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     <div className="flex h-screen bg-[#e6e6e64c] overflow-hidden font-sans">
       {/* Sidebar Desktop */}
       <aside className="w-64 bg-white border-r border-border flex-col hidden md:flex z-10">
-        <div className="px-6 py-10 flex items-center justify-center">
-          <img src={logoImg} alt="Frame Pro Logo" className="w-full max-w-[180px] h-auto object-contain" />
+        <div className="px-6 py-6 flex items-center justify-center">
+          <img src={logoImg} alt="Frame Pro Logo" className="w-full max-w-[200px] h-auto object-contain" />
         </div>
 
         <div className="mb-6">
