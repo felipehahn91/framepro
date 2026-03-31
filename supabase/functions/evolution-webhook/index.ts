@@ -21,11 +21,7 @@ serve(async (req) => {
     const event = payload.event || payload.eventType;
     const instanceName = payload.instance;
 
-    console.log(`[evolution-webhook] Evento: ${event} | Instância: ${instanceName}`);
-
-    if (!instanceName) {
-      return new Response('Nenhuma instância informada', { status: 400 });
-    }
+    if (!instanceName) return new Response('Nenhuma instância informada', { status: 400 });
 
     const { data: instanceData } = await supabase
       .from('whatsapp_instances')
@@ -33,131 +29,83 @@ serve(async (req) => {
       .eq('instance_name', instanceName)
       .single();
 
-    if (!instanceData) {
-      return new Response('Instance not mapped', { status: 404 });
-    }
+    if (!instanceData) return new Response('Instance not mapped', { status: 404 });
 
     const userId = instanceData.user_id;
 
     if (event === 'messages.upsert' || event === 'MESSAGES_UPSERT') {
       let messages = [];
-      if (Array.isArray(payload.data)) {
-        messages = payload.data;
-      } else if (payload.data?.messages && Array.isArray(payload.data.messages)) {
-        messages = payload.data.messages;
-      } else if (payload.data) {
-        messages = [payload.data];
-      }
+      if (Array.isArray(payload.data)) messages = payload.data;
+      else if (payload.data?.messages) messages = payload.data.messages;
+      else if (payload.data) messages = [payload.data];
 
       for (const msg of messages) {
         const msgCore = msg.message?.key ? msg.message : msg;
         const remoteJid = msgCore.key?.remoteJid || msg.key?.remoteJid;
-        
-        if (!remoteJid || remoteJid.includes('@g.us') || remoteJid === 'status@broadcast') {
-          continue;
-        }
+        if (!remoteJid || remoteJid.includes('@g.us') || remoteJid === 'status@broadcast') continue;
 
         const fromMe = msgCore.key?.fromMe || msg.key?.fromMe || false;
         const messageId = msgCore.key?.id || msg.key?.id;
         const pushName = msgCore.pushName || msg.pushName || remoteJid.split('@')[0];
         
-        const msgTimestamp = msgCore.messageTimestamp || msg.messageTimestamp;
-        const timestamp = msgTimestamp 
-          ? new Date(msgTimestamp * 1000).toISOString() 
-          : new Date().toISOString();
-
+        const timestamp = new Date().toISOString();
         const content = msgCore.message || msg.message || msgCore;
-        let text = content?.conversation || 
-                   content?.extendedTextMessage?.text || 
-                   content?.imageMessage?.caption || 
-                   content?.videoMessage?.caption || 
-                   "";
+        let text = content?.conversation || content?.extendedTextMessage?.text || "";
 
-        // Tratamento de Mídia
-        let mediaUrl = "";
-        const isImage = !!content?.imageMessage;
-        const isAudio = !!content?.audioMessage || (!!content?.extendedTextMessage?.text === false && !!content?.audioMessage);
-        const isVideo = !!content?.videoMessage;
-        
-        // Base64 enviado pela Evolution caso tenha ativado no webhook
-        const base64String = msgCore.base64 || msg.base64 || content?.imageMessage?.base64 || content?.audioMessage?.base64;
-        
-        if (base64String && (isImage || isAudio || isVideo)) {
-           const ext = isImage ? 'jpg' : isAudio ? 'ogg' : isVideo ? 'mp4' : 'bin';
-           const mime = isImage ? 'image/jpeg' : isAudio ? 'audio/ogg' : isVideo ? 'video/mp4' : 'application/octet-stream';
-           const fileName = `${userId}/chat/${messageId}.${ext}`;
-           
-           try {
-             const binaryString = atob(base64String);
-             const bytes = new Uint8Array(binaryString.length);
-             for (let i = 0; i < binaryString.length; i++) {
-                 bytes[i] = binaryString.charCodeAt(i);
-             }
-             
-             const { error: uploadError } = await supabase.storage.from('contract_images').upload(fileName, bytes.buffer, { contentType: mime, upsert: true });
-             
-             if (!uploadError) {
-                const { data: { publicUrl } } = supabase.storage.from('contract_images').getPublicUrl(fileName);
-                mediaUrl = publicUrl;
-             } else {
-                console.error("Upload error", uploadError);
-             }
-           } catch(err) {
-             console.error("Base64 processing error", err);
-           }
-        }
-        
-        let finalMessageText = text;
-        if (mediaUrl) {
-           if (isImage) finalMessageText = `[IMAGE]${mediaUrl} ${text}`.trim();
-           else if (isAudio) finalMessageText = `[AUDIO]${mediaUrl}`;
-           else if (isVideo) finalMessageText = `[VIDEO]${mediaUrl} ${text}`.trim();
-        } else if (!text) {
-           if (isImage) finalMessageText = "📷 Imagem";
-           else if (isVideo) finalMessageText = "🎥 Vídeo";
-           else if (isAudio) finalMessageText = "🎵 Áudio";
-           else if (content?.documentMessage) finalMessageText = "📄 Documento";
-           else if (content?.stickerMessage) finalMessageText = "✨ Figurinha";
-           else finalMessageText = "📎 Mídia/Anexo";
+        // --- LÓGICA DE GATILHO ---
+        if (!fromMe && text) {
+          const { data: triggers } = await supabase
+            .from('whatsapp_triggers')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('enabled', true);
+
+          if (triggers && triggers.length > 0) {
+            const matchedTrigger = triggers.find(t => 
+              text.toLowerCase().includes(t.trigger_phrase.toLowerCase())
+            );
+
+            if (matchedTrigger) {
+              // Verifica se já existe esse lead para não duplicar no mesmo dia
+              const { data: existing } = await supabase
+                .from('opportunities')
+                .select('id')
+                .eq('user_id', userId)
+                .eq('phone', remoteJid)
+                .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+                .limit(1);
+
+              if (!existing || existing.length === 0) {
+                await supabase.from('opportunities').insert({
+                  user_id: userId,
+                  name: pushName,
+                  phone: remoteJid,
+                  pipeline_id: matchedTrigger.pipeline_id,
+                  column_id: matchedTrigger.column_id,
+                  tag: matchedTrigger.tag,
+                  observations: `Lead criado via gatilho de WhatsApp: "${matchedTrigger.trigger_phrase}"`,
+                  is_client: false
+                });
+                console.log(`[webhook] Lead criado via gatilho: ${pushName}`);
+              }
+            }
+          }
         }
 
-        if (!messageId) continue;
-
-        // Upsert do Chat
+        // Upsert do Chat e Mensagem (Fluxo normal do WebChat)
         const { data: chatData } = await supabase
           .from('whatsapp_chats')
-          .upsert({ 
-            user_id: userId, 
-            instance_name: instanceName, 
-            remote_jid: remoteJid, 
-            name: pushName, 
-            last_message: finalMessageText, 
-            last_message_time: timestamp, 
-            updated_at: new Date().toISOString() 
-          }, { onConflict: 'user_id,remote_jid' })
-          .select()
-          .single();
+          .upsert({ user_id: userId, instance_name: instanceName, remote_jid: remoteJid, name: pushName, last_message: text, last_message_time: timestamp, updated_at: new Date().toISOString() }, { onConflict: 'user_id,remote_jid' })
+          .select().single();
 
-        // Insere a Mensagem
-        if (chatData) {
-          await supabase
-            .from('whatsapp_messages')
-            .upsert({ 
-              user_id: userId, 
-              chat_id: chatData.id, 
-              message_id: messageId, 
-              remote_jid: remoteJid, 
-              text: finalMessageText, 
-              from_me: fromMe, 
-              timestamp: timestamp 
-            }, { onConflict: 'user_id,message_id' });
+        if (chatData && messageId) {
+          await supabase.from('whatsapp_messages').upsert({ user_id: userId, chat_id: chatData.id, message_id: messageId, remote_jid: remoteJid, text, from_me: fromMe, timestamp }, { onConflict: 'user_id,message_id' });
         }
       }
     }
 
     return new Response(JSON.stringify({ success: true }), { headers: corsHeaders });
   } catch (error: any) {
-    console.error("[evolution-webhook] Erro Crítico Global:", error);
     return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders })
   }
 })
