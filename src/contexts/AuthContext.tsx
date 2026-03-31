@@ -6,6 +6,7 @@ export type UserProfile = {
   id: string;
   first_name?: string;
   last_name?: string;
+  company?: string;
   role: string;
   avatar_url?: string;
 };
@@ -16,6 +17,7 @@ type AuthContextType = {
   profile: UserProfile | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -24,6 +26,7 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   loading: true,
   signOut: async () => {},
+  refreshProfile: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -32,30 +35,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) throw error;
+      if (data) setProfile(data);
+    } catch (error) {
+      console.error('Erro ao buscar perfil:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const refreshProfile = async () => {
+    if (user) await fetchProfile(user.id);
+  };
+
   useEffect(() => {
     let mounted = true;
 
-    const fetchProfile = async (userId: string) => {
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single();
-
-        if (error) throw error;
-        
-        if (mounted && data) {
-          setProfile(data);
-        }
-      } catch (error) {
-        console.error('Erro ao buscar perfil:', error);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    // Inicialização
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (mounted) {
         setSession(session);
@@ -68,7 +71,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     });
 
-    // Listener de mudanças (login, logout, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (mounted) {
         setSession(session);
@@ -94,7 +96,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, loading, signOut }}>
+    <AuthContext.Provider value={{ session, user, profile, loading, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

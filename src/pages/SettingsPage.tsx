@@ -14,7 +14,7 @@ import * as evolutionApi from '@/lib/evolution';
 import { THEMES, applyTheme, getActiveTheme } from '@/lib/theme';
 
 export default function SettingsPage() {
-  const { user, profile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -35,14 +35,16 @@ export default function SettingsPage() {
   useEffect(() => {
     document.title = "Configurações - Frame Pro";
     
-    if (user) {
+    if (profile) {
       setProfileData({ 
-        name: profile?.first_name ? `${profile.first_name} ${profile.last_name || ''}` : '', 
-        company: '', 
+        name: profile.first_name || '', 
+        company: profile.company || '', 
         avatar: null 
       });
-      if (profile?.avatar_url) setAvatarPreview(profile.avatar_url);
-      
+      if (profile.avatar_url) setAvatarPreview(profile.avatar_url);
+    }
+
+    if (user) {
       fetchWaInstance();
     }
   }, [user, profile]);
@@ -216,10 +218,47 @@ export default function SettingsPage() {
   };
 
   const saveProfile = async () => {
+    if (!user) return;
     setLoading(true);
     try {
+      let avatarUrl = profile?.avatar_url || null;
+
+      // 1. Upload da Foto se houver nova imagem
+      if (profileData.avatar) {
+        const fileExt = profileData.avatar.name.split('.').pop();
+        const fileName = `user_avatar_${user.id}.${fileExt}`;
+        const filePath = `shared/avatars/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('contract_images')
+          .upload(filePath, profileData.avatar, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from('contract_images')
+          .getPublicUrl(filePath);
+          
+        avatarUrl = publicUrl;
+      }
+
+      // 2. Atualizar Dados no Banco
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          first_name: profileData.name,
+          company: profileData.company,
+          avatar_url: avatarUrl,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      await refreshProfile();
       toast.success('Perfil atualizado com sucesso!');
     } catch (error) {
+      console.error(error);
       toast.error('Erro ao atualizar perfil.');
     } finally {
       setLoading(false);
