@@ -81,6 +81,13 @@ export default function SettingsPage() {
         if (pollingInterval.current) clearInterval(pollingInterval.current);
         setQrCodeBase64(null);
         await updateDbStatus(instanceName, 'connected');
+        
+        // Garante que o Webhook está configurado sempre que estiver open
+        try {
+          await evolutionApi.setEvolutionWebhook(instanceName);
+        } catch (e) {
+          console.error("Falha ao registrar Webhook:", e);
+        }
       } else if (state === 'connecting' || state === 'close') {
         fetchQrCode(instanceName);
       }
