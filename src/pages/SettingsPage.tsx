@@ -226,8 +226,9 @@ export default function SettingsPage() {
       // 1. Upload da Foto se houver nova imagem
       if (profileData.avatar) {
         const fileExt = profileData.avatar.name.split('.').pop();
-        const fileName = `user_avatar_${user.id}.${fileExt}`;
-        const filePath = `shared/avatars/${fileName}`;
+        const fileName = `profile_${Date.now()}.${fileExt}`;
+        // Ajustado para usar uma pasta por usuário, facilitando as políticas de RLS
+        const filePath = `${user.id}/profile/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('contract_images')
@@ -259,7 +260,7 @@ export default function SettingsPage() {
       toast.success('Perfil atualizado com sucesso!');
     } catch (error) {
       console.error(error);
-      toast.error('Erro ao atualizar perfil.');
+      toast.error('Erro ao atualizar perfil. Verifique se executou o SQL de permissão do Storage.');
     } finally {
       setLoading(false);
     }
