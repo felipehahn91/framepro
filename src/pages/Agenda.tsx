@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { 
   ChevronLeft, ChevronRight, Calendar as CalendarIcon, 
   CheckSquare, FileText, DollarSign, AlertCircle, Clock, 
-  Loader2, X, ChevronDown
+  Loader2, X, ChevronDown, Download
 } from "lucide-react";
 import { toast } from "sonner";
 import { 
@@ -120,7 +120,7 @@ export default function Agenda() {
           }
 
           insts.forEach((inst: any) => {
-            if (inst.status === 'Pago') return; // Ignora os pagos na agenda (foco no que está pendente/atrasado)
+            if (inst.status === 'Pago') return; // Ignora os pagos na agenda
             
             const dueDate = startOfDay(parseISO(inst.dueDate));
             const isOverdue = dueDate < todayStart;
@@ -167,6 +167,52 @@ export default function Agenda() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Exportar para ICS (Google Calendar / Apple Calendar)
+  const handleExportICS = () => {
+    if (events.length === 0) {
+      return toast.warning("Não há eventos para exportar.");
+    }
+
+    const formatDateForICS = (date: Date) => {
+      return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    };
+
+    let icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//Frame Pro//Agenda CRM//PT\nCALSCALE:GREGORIAN\n";
+
+    events.forEach(event => {
+      const dtStart = formatDateForICS(event.date);
+      // Evento de dia inteiro (adiciona 1 dia para o DTEEND exclusivo)
+      const dtEnd = formatDateForICS(addDays(event.date, 1)); 
+
+      icsContent += "BEGIN:VEVENT\n";
+      icsContent += `UID:${event.id}@framepro.com\n`;
+      icsContent += `DTSTAMP:${formatDateForICS(new Date())}\n`;
+      icsContent += `DTSTART;VALUE=DATE:${dtStart.substring(0, 8)}\n`;
+      icsContent += `DTEND;VALUE=DATE:${dtEnd.substring(0, 8)}\n`;
+      icsContent += `SUMMARY:${event.title}\n`;
+      
+      let desc = `Tipo: ${event.type}\\nStatus: ${event.status}`;
+      if (event.amount) desc += `\\nValor: R$ ${event.amount}`;
+      if (event.description) desc += `\\nDetalhes: ${event.description}`;
+      
+      icsContent += `DESCRIPTION:${desc}\n`;
+      icsContent += "END:VEVENT\n";
+    });
+
+    icsContent += "END:VCALENDAR";
+
+    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `agenda_framepro_${format(new Date(), 'dd_MM_yyyy')}.ics`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast.success("Arquivo baixado! Importe-o no seu Google Calendar.");
   };
 
   // Navegação do Calendário
@@ -217,12 +263,21 @@ export default function Agenda() {
             <p className="text-sm text-gray-500">Acompanhe tarefas, contratos e transações em um só lugar.</p>
           </div>
           
-          {/* Legenda */}
-          <div className="flex flex-wrap items-center gap-4 bg-white px-4 py-2 rounded-xl shadow-sm border border-gray-200 text-sm font-medium text-gray-600">
-            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-orange-500"></div> Tarefas</div>
-            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div> Contratos</div>
-            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-yellow-500"></div> Pgtos Pendentes</div>
-            <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-red-500"></div> Pgtos Atrasados</div>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+            {/* Legenda */}
+            <div className="flex flex-wrap items-center gap-4 bg-white px-4 py-2.5 rounded-xl shadow-sm border border-gray-200 text-sm font-medium text-gray-600">
+              <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-orange-500"></div> Tarefas</div>
+              <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div> Contratos</div>
+              <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-yellow-500"></div> Pgtos Pendentes</div>
+              <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-red-500"></div> Pgtos Atrasados</div>
+            </div>
+
+            <button 
+              onClick={handleExportICS}
+              className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-2 shadow-sm whitespace-nowrap"
+            >
+              <Download className="w-4 h-4" /> Exportar Calendário
+            </button>
           </div>
         </div>
 
