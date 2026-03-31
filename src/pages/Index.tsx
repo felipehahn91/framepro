@@ -205,173 +205,176 @@ const Index = () => {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto space-y-6 pb-10">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500 text-sm">Visão geral do seu negócio</p>
-        </div>
-
-        {/* Card de Meta Principal */}
-        <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm relative group">
-          <div className="flex justify-between items-start mb-2">
-            <h3 className="font-bold text-gray-900 text-base">Meta de Faturamento Mensal</h3>
-            <button 
-              onClick={() => setIsGoalModalOpen(true)}
-              className="text-gray-400 hover:text-gray-900 transition-colors"
-            >
-              <Edit2 className="w-4 h-4" />
-            </button>
-          </div>
-          
-          <div className="flex items-baseline gap-3 mb-6">
-            <span className="text-5xl font-bold text-gray-900 tracking-tight">
-              {formatCurrency(goal)}
-            </span>
-            <span className="text-gray-500 font-semibold text-sm">
-              {percentage}% alcançado
-            </span>
-          </div>
-          
-          <div className="space-y-3">
-            <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-orange-400 transition-all duration-1000 ease-out"
-                style={{ width: `${percentage}%` }}
-              ></div>
-            </div>
-            <p className="text-xs text-gray-500 font-medium">
-              Realizado: {formatCurrency(realized)}
-            </p>
-          </div>
-        </div>
-
-        {/* Linha 1: Faturamentos */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all">
-            <div className="flex justify-between items-start mb-4">
-              <span className="text-xs font-semibold text-gray-500">Faturamento Total</span>
-              <TrendingUp className="w-4 h-4 text-green-500" />
-            </div>
-            <span className="text-2xl font-bold text-gray-900">{formatCurrency(totalRevenue)}</span>
+      {/* Container principal com a cor de fundo personalizada */}
+      <div className="min-h-full -m-4 sm:-m-8 p-4 sm:p-8" style={{ backgroundColor: '#e6e6e64c' }}>
+        <div className="max-w-7xl mx-auto space-y-6 pb-10">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+            <p className="text-gray-500 text-sm">Visão geral do seu negócio</p>
           </div>
 
-          <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all">
-            <div className="flex justify-between items-start mb-4">
-              <span className="text-xs font-semibold text-gray-500">Faturamento Pendente</span>
-              <Clock className="w-4 h-4 text-orange-400" />
-            </div>
-            <span className="text-2xl font-bold text-gray-900">{formatCurrency(pendingRevenue)}</span>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all">
-            <div className="flex justify-between items-start mb-4">
-              <span className="text-xs font-semibold text-gray-500">Faturamento Atrasado</span>
-              <AlertCircle className="w-4 h-4 text-red-500" />
-            </div>
-            <span className="text-2xl font-bold text-gray-900">{formatCurrency(overdueRevenue)}</span>
-          </div>
-        </div>
-
-        {/* Linha 2: Estatísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-all">
+          {/* Card de Meta Principal - Sombra Mais Forte */}
+          <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-lg relative group">
             <div className="flex justify-between items-start mb-2">
-              <span className="text-xs font-semibold text-gray-500">Total de clientes</span>
-              <Users className="w-4 h-4 text-gray-300" />
+              <h3 className="font-bold text-gray-900 text-base">Meta de Faturamento Mensal</h3>
+              <button 
+                onClick={() => setIsGoalModalOpen(true)}
+                className="text-gray-400 hover:text-gray-900 transition-colors"
+              >
+                <Edit2 className="w-4 h-4" />
+              </button>
             </div>
-            <span className="text-2xl font-bold text-gray-900">{totalClients}</span>
+            
+            <div className="flex items-baseline gap-3 mb-6">
+              <span className="text-5xl font-bold text-gray-900 tracking-tight">
+                {formatCurrency(goal)}
+              </span>
+              <span className="text-gray-500 font-semibold text-sm">
+                {percentage}% alcançado
+              </span>
+            </div>
+            
+            <div className="space-y-3">
+              <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-orange-400 transition-all duration-1000 ease-out"
+                  style={{ width: `${percentage}%` }}
+                ></div>
+              </div>
+              <p className="text-xs text-gray-500 font-medium">
+                Realizado: {formatCurrency(realized)}
+              </p>
+            </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-all">
-            <div className="flex justify-between items-start mb-2">
-              <span className="text-xs font-semibold text-gray-500">Oportunidades abertas</span>
-              <Target className="w-4 h-4 text-gray-300" />
+          {/* Linha 1: Faturamentos - Sombra Média */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-md hover:shadow-lg transition-all">
+              <div className="flex justify-between items-start mb-4">
+                <span className="text-xs font-semibold text-gray-500">Faturamento Total</span>
+                <TrendingUp className="w-4 h-4 text-green-500" />
+              </div>
+              <span className="text-2xl font-bold text-gray-900">{formatCurrency(totalRevenue)}</span>
             </div>
-            <span className="text-2xl font-bold text-gray-900">{openOpportunities}</span>
+
+            <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-md hover:shadow-lg transition-all">
+              <div className="flex justify-between items-start mb-4">
+                <span className="text-xs font-semibold text-gray-500">Faturamento Pendente</span>
+                <Clock className="w-4 h-4 text-orange-400" />
+              </div>
+              <span className="text-2xl font-bold text-gray-900">{formatCurrency(pendingRevenue)}</span>
+            </div>
+
+            <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-md hover:shadow-lg transition-all">
+              <div className="flex justify-between items-start mb-4">
+                <span className="text-xs font-semibold text-gray-500">Faturamento Atrasado</span>
+                <AlertCircle className="w-4 h-4 text-red-500" />
+              </div>
+              <span className="text-2xl font-bold text-gray-900">{formatCurrency(overdueRevenue)}</span>
+            </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-all">
-            <div className="flex justify-between items-start mb-2">
-              <span className="text-xs font-semibold text-gray-500">Contratos ativos</span>
-              <FileText className="w-4 h-4 text-gray-300" />
+          {/* Linha 2: Estatísticas - Sombra Média */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-md flex flex-col justify-between hover:shadow-lg transition-all">
+              <div className="flex justify-between items-start mb-2">
+                <span className="text-xs font-semibold text-gray-500">Total de clientes</span>
+                <Users className="w-4 h-4 text-gray-300" />
+              </div>
+              <span className="text-2xl font-bold text-gray-900">{totalClients}</span>
             </div>
-            <span className="text-2xl font-bold text-gray-900">{activeContracts}</span>
-          </div>
-        </div>
 
-        {/* Linha 3: Gráficos e Listas */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm">
-            <div className="mb-6">
-              <h3 className="text-base font-bold text-gray-900">Pipeline de oportunidades</h3>
-              <p className="text-xs text-gray-500">Distribuição por status</p>
+            <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-md flex flex-col justify-between hover:shadow-lg transition-all">
+              <div className="flex justify-between items-start mb-2">
+                <span className="text-xs font-semibold text-gray-500">Oportunidades abertas</span>
+                <Target className="w-4 h-4 text-gray-300" />
+              </div>
+              <span className="text-2xl font-bold text-gray-900">{openOpportunities}</span>
             </div>
-            <div className="h-[250px] w-full">
-              {pipelineData.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={pipelineData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                    <XAxis
-                      dataKey="name"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: '#9ca3af', fontSize: 11 }}
-                      dy={10}
-                    />
-                    <YAxis
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: '#9ca3af', fontSize: 11 }}
-                    />
-                    <Tooltip
-                      cursor={{ fill: '#f9fafb' }}
-                      contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                    />
-                    <Bar dataKey="quantidade" radius={[4, 4, 0, 0]} barSize={30}>
-                      {pipelineData.map((_entry, index) => (
-                        <Cell key={`cell-${index}`} fill={['#f97316', '#fb923c', '#fdba74', '#fed7aa'][index % 4]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-2">
-                  <Inbox className="w-10 h-10 opacity-20" />
-                  <p className="text-xs font-medium">Sem dados no pipeline</p>
-                </div>
-              )}
+
+            <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-md flex flex-col justify-between hover:shadow-lg transition-all">
+              <div className="flex justify-between items-start mb-2">
+                <span className="text-xs font-semibold text-gray-500">Contratos ativos</span>
+                <FileText className="w-4 h-4 text-gray-300" />
+              </div>
+              <span className="text-2xl font-bold text-gray-900">{activeContracts}</span>
             </div>
           </div>
-          
-          <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-sm flex flex-col">
-            <div className="mb-6">
-              <h3 className="text-base font-bold text-gray-900">Atividades recentes</h3>
-              <p className="text-xs text-gray-500">Últimas tarefas criadas</p>
-            </div>
-            <div className="space-y-3 flex-1">
-              {recentTasks.length > 0 ? (
-                recentTasks.map((task) => (
-                  <div key={task.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
-                        <CheckSquare className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="text-sm font-semibold text-gray-900 truncate">{task.title}</h4>
-                        <p className="text-[10px] text-gray-400 font-medium">
-                          {new Date(task.created_at).toLocaleDateString('pt-BR')}
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-gray-300" />
+
+          {/* Linha 3: Gráficos e Listas - Sombra Média */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-md">
+              <div className="mb-6">
+                <h3 className="text-base font-bold text-gray-900">Pipeline de oportunidades</h3>
+                <p className="text-xs text-gray-500">Distribuição por status</p>
+              </div>
+              <div className="h-[250px] w-full">
+                {pipelineData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={pipelineData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                      <XAxis
+                        dataKey="name"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#9ca3af', fontSize: 11 }}
+                        dy={10}
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#9ca3af', fontSize: 11 }}
+                      />
+                      <Tooltip
+                        cursor={{ fill: '#f9fafb' }}
+                        contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                      />
+                      <Bar dataKey="quantidade" radius={[4, 4, 0, 0]} barSize={30}>
+                        {pipelineData.map((_entry, index) => (
+                          <Cell key={`cell-${index}`} fill={['#f97316', '#fb923c', '#fdba74', '#fed7aa'][index % 4]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-2">
+                    <Inbox className="w-10 h-10 opacity-20" />
+                    <p className="text-xs font-medium">Sem dados no pipeline</p>
                   </div>
-                ))
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-2 py-10">
-                  <CheckSquare className="w-8 h-8 opacity-20" />
-                  <p className="text-xs font-medium">Nenhuma tarefa recente</p>
-                </div>
-              )}
+                )}
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-md flex flex-col">
+              <div className="mb-6">
+                <h3 className="text-base font-bold text-gray-900">Atividades recentes</h3>
+                <p className="text-xs text-gray-500">Últimas tarefas criadas</p>
+              </div>
+              <div className="space-y-3 flex-1">
+                {recentTasks.length > 0 ? (
+                  recentTasks.map((task) => (
+                    <div key={task.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
+                          <CheckSquare className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="text-sm font-semibold text-gray-900 truncate">{task.title}</h4>
+                          <p className="text-[10px] text-gray-400 font-medium">
+                            {new Date(task.created_at).toLocaleDateString('pt-BR')}
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-gray-300" />
+                    </div>
+                  ))
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-gray-400 space-y-2 py-10">
+                    <CheckSquare className="w-8 h-8 opacity-20" />
+                    <p className="text-xs font-medium">Nenhuma tarefa recente</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
