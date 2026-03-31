@@ -21,6 +21,7 @@ import Orcamentos from "./pages/Orcamentos";
 import OrcamentoEditor from "./pages/OrcamentoEditor";
 import OrcamentoPublicView from "./pages/OrcamentoPublicView";
 import OrcamentoAnalytics from "./pages/OrcamentoAnalytics";
+import FluxoCadencia from "./pages/FluxoCadencia";
 import AdminDashboard from "./pages/AdminDashboard";
 import SettingsPage from "./pages/SettingsPage";
 import Login from "./pages/Login";
@@ -62,6 +63,8 @@ const App = () => (
             <Route path="/orcamentos" element={<ProtectedRoute><Orcamentos /></ProtectedRoute>} />
             <Route path="/orcamentos/editar/:id" element={<ProtectedRoute><OrcamentoEditor /></ProtectedRoute>} />
             <Route path="/orcamentos/analytics/:id" element={<ProtectedRoute><OrcamentoAnalytics /></ProtectedRoute>} />
+            
+            <Route path="/fluxo" element={<ProtectedRoute><FluxoCadencia /></ProtectedRoute>} />
             
             <Route path="/configuracoes" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
 
