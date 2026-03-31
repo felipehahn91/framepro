@@ -1,0 +1,50 @@
+// @ts-nocheck
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
+import Stripe from 'https://esm.sh/stripe@14.14.0?target=deno'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders })
+
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!
+    const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', { 
+      apiVersion: '2023-10-16', 
+      httpClient: Stripe.createFetchHttpClient() 
+    })
+    
+    const authHeader = req.headers.get('Authorization')!
+    const supabase = createClient(supabaseUrl, supabaseKey, { global: { headers: { Authorization: authHeader } } })
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) throw new Error('Não autorizado')
+
+    // Busca o ID do cliente no Stripe salvo no perfil
+    const { data: profile } = await supabase.from('profiles').select('stripe_customer_id').eq('id', user.id).single()
+    
+    if (!profile || !profile.stripe_customer_id) {
+      throw new Error('Cliente Stripe não encontrado')
+    }
+
+    const returnUrl = `${req.headers.get('origin')}/configuracoes`
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: profile.stripe_customer_id,
+      return_url: returnUrl,
+    })
+
+    return new Response(JSON.stringify({ url: session.url }), { 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    })
+  } catch (err) {
+    return new Response(JSON.stringify({ error: err.message }), { 
+      status: 400, headers: corsHeaders 
+    })
+  }
+})

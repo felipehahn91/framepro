@@ -9,13 +9,20 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { Camera, Save, Loader2, Palette, Check, MessageSquare, QrCode, Smartphone, LogOut, RefreshCw, Webhook } from 'lucide-react';
+import { 
+  Camera, Save, Loader2, Palette, Check, MessageSquare, QrCode, 
+  Smartphone, LogOut, RefreshCw, Webhook, CreditCard, ShieldCheck, FileText, ExternalLink
+} from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import * as evolutionApi from '@/lib/evolution';
 import { THEMES, applyTheme, getActiveTheme } from '@/lib/theme';
 
 export default function SettingsPage() {
   const { user, profile, refreshProfile } = useAuth();
+  const navigate = useNavigate();
+  
   const [loading, setLoading] = useState(false);
+  const [loadingPortal, setLoadingPortal] = useState(false);
   const [saveStatus, setSaveStatus] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -225,11 +232,9 @@ export default function SettingsPage() {
     try {
       let avatarUrl = profile?.avatar_url || null;
 
-      // 1. Upload da Foto se houver nova imagem
       if (profileData.avatar) {
         const fileExt = profileData.avatar.name.split('.').pop();
         const fileName = `profile_${Date.now()}.${fileExt}`;
-        // Ajustado para usar uma pasta por usuário, facilitando as políticas de RLS
         const filePath = `${user.id}/profile/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
@@ -245,7 +250,6 @@ export default function SettingsPage() {
         avatarUrl = publicUrl;
       }
 
-      // 2. Atualizar Dados no Banco
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
@@ -262,9 +266,30 @@ export default function SettingsPage() {
       toast.success('Perfil atualizado com sucesso!');
     } catch (error) {
       console.error(error);
-      toast.error('Erro ao atualizar perfil. Verifique se executou o SQL de permissão do Storage.');
+      toast.error('Erro ao atualizar perfil.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    setLoadingPortal(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/create-portal-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        }
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+      else throw new Error(data.error);
+    } catch (error) {
+      toast.error("Erro ao acessar o portal de faturamento. Tente novamente.");
+    } finally {
+      setLoadingPortal(false);
     }
   };
 
@@ -279,6 +304,25 @@ export default function SettingsPage() {
     applyTheme(themeId); 
     showAutoSave();
   };
+
+  const getPlanName = () => {
+    if (profile?.role === 'admin') return "Vitalício (Admin)";
+    if (profile?.plan_type === 'founder') return "Plano Founder (Anual)";
+    return "Plano Mensal";
+  };
+
+  const getStatusInfo = () => {
+    switch (profile?.subscription_status) {
+      case 'active': return { label: 'Ativa', color: 'bg-green-100 text-green-700 border-green-200' };
+      case 'trialing': return { label: 'Em Período de Teste', color: 'bg-blue-100 text-blue-700 border-blue-200' };
+      case 'canceled': return { label: 'Cancelada', color: 'bg-gray-100 text-gray-700 border-gray-200' };
+      case 'past_due': return { label: 'Pagamento Atrasado', color: 'bg-red-100 text-red-700 border-red-200' };
+      case 'unpaid': return { label: 'Inadimplente', color: 'bg-red-100 text-red-700 border-red-200' };
+      default: return { label: 'Inativa', color: 'bg-gray-100 text-gray-500 border-gray-200' };
+    }
+  };
+
+  const subStatus = getStatusInfo();
 
   return (
     <Layout>
@@ -296,13 +340,15 @@ export default function SettingsPage() {
         </div>
 
         <Tabs defaultValue="profile" className="w-full flex-1 flex flex-col">
-          <TabsList className="grid w-full max-w-[600px] grid-cols-3 mb-4 bg-gray-100 p-1">
-            <TabsTrigger value="profile">Perfil</TabsTrigger>
-            <TabsTrigger value="appearance">Aparência</TabsTrigger>
-            <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
+          <TabsList className="grid w-full max-w-[800px] grid-cols-2 sm:grid-cols-4 mb-4 bg-gray-100 p-1 h-auto sm:h-12">
+            <TabsTrigger value="profile" className="py-2 sm:py-1.5">Perfil</TabsTrigger>
+            <TabsTrigger value="appearance" className="py-2 sm:py-1.5">Aparência</TabsTrigger>
+            <TabsTrigger value="subscription" className="py-2 sm:py-1.5">Assinatura</TabsTrigger>
+            <TabsTrigger value="whatsapp" className="py-2 sm:py-1.5">WhatsApp</TabsTrigger>
           </TabsList>
 
           <div className="flex-1 overflow-y-auto pb-6">
+            
             {/* ABA PERFIL */}
             <TabsContent value="profile" className="mt-0">
               <Card className="border-gray-200 shadow-sm">
@@ -347,6 +393,81 @@ export default function SettingsPage() {
                       Salvar Perfil
                     </Button>
                   </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* ABA ASSINATURA */}
+            <TabsContent value="subscription" className="mt-0">
+              <Card className="border-gray-200 shadow-sm overflow-hidden">
+                <div className="bg-gray-900 p-6 sm:p-8 text-white relative">
+                  <div className="absolute top-0 right-0 w-48 h-48 bg-orange-500 rounded-full blur-3xl opacity-20 -mr-10 -mt-10"></div>
+                  <div className="relative z-10 flex items-center gap-4 mb-2">
+                    <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/10">
+                      <CreditCard className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold">Meu Plano</h2>
+                      <p className="text-gray-400 text-sm mt-0.5">Acompanhe seu status, histórico de faturas e pagamentos.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <CardContent className="p-6 sm:p-8">
+                  {profile?.stripe_customer_id || profile?.role === 'admin' ? (
+                    <div className="flex flex-col md:flex-row items-start justify-between gap-8">
+                      <div className="space-y-6 flex-1 w-full">
+                        <div>
+                          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Plano Atual</p>
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl font-black text-gray-900">{getPlanName()}</span>
+                            {profile?.role !== 'admin' && (
+                              <span className={`px-3 py-1 rounded-full text-xs font-bold border ${subStatus.color}`}>
+                                {subStatus.label}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5 space-y-4">
+                          <div className="flex items-start gap-4">
+                            <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                              <ShieldCheck className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <h4 className="font-bold text-gray-900">Gerenciar no Stripe</h4>
+                              <p className="text-sm text-gray-500 mt-1 leading-relaxed">
+                                Você será redirecionado para o portal seguro do Stripe. Lá, você pode atualizar seu cartão de crédito, baixar notas fiscais, ver seu histórico de cobranças ou cancelar a sua assinatura.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <Button 
+                          onClick={handleManageSubscription}
+                          disabled={loadingPortal}
+                          className="bg-gray-900 hover:bg-black text-white font-bold py-6 px-8 rounded-xl shadow-lg w-full sm:w-auto"
+                        >
+                          {loadingPortal ? <Loader2 className="w-5 h-5 mr-2 animate-spin" /> : <ExternalLink className="w-5 h-5 mr-2" />}
+                          Acessar Portal de Faturamento
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-10">
+                      <FileText className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-xl font-bold text-gray-900 mb-2">Sem assinatura ativa</h3>
+                      <p className="text-gray-500 max-w-md mx-auto mb-8">
+                        Identificamos que você ainda não configurou seu plano e pagamento conosco.
+                      </p>
+                      <Button 
+                        onClick={() => navigate('/precos')}
+                        className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-6 px-8 rounded-xl shadow-lg"
+                      >
+                        Ver Planos Disponíveis
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -424,7 +545,6 @@ export default function SettingsPage() {
                       <p className="font-medium">Sincronizando com a Evolution API...</p>
                     </div>
                   ) : !waInstance ? (
-                    // ESTADO 1: Desconectado / Nenhuma instância
                     <div className="flex flex-col items-center justify-center py-10 text-center">
                       <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-6 border border-green-100">
                         <Smartphone className="w-10 h-10 text-green-500" />
@@ -441,7 +561,6 @@ export default function SettingsPage() {
                       </Button>
                     </div>
                   ) : connectionStatus !== 'open' ? (
-                    // ESTADO 2: Aguardando Escanear QR Code
                     <div className="flex flex-col md:flex-row items-center gap-10 py-6">
                       <div className="flex-1 text-center md:text-left">
                         <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold uppercase tracking-wider mb-4 border border-blue-200">
@@ -484,7 +603,6 @@ export default function SettingsPage() {
                       </div>
                     </div>
                   ) : (
-                    // ESTADO 3: Conectado e Pronto
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-6 py-6 px-4 bg-gray-50 rounded-2xl border border-gray-200">
                       <div className="flex items-center gap-5">
                         <div className="relative">
