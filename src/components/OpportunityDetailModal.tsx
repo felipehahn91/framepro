@@ -47,9 +47,26 @@ export default function OpportunityDetailModal({ isOpen, onClose, opportunity, o
   const [pendingCadences, setPendingCadences] = useState<any[]>([]);
   const [loadingCadences, setLoadingCadences] = useState(false);
 
+  // Estados de Anotações (JSON)
+  const [notes, setNotes] = useState<any[]>([]);
+  const [newNote, setNewNote] = useState('');
+
+  const parseNotes = (obs: string | null | undefined) => {
+    if (!obs) return [];
+    try {
+      const parsed = JSON.parse(obs);
+      if (Array.isArray(parsed)) return parsed;
+      return [{ id: 'legacy', content: obs, created_at: new Date().toISOString() }];
+    } catch (e) {
+      return [{ id: 'legacy', content: obs, created_at: new Date().toISOString() }];
+    }
+  };
+
   useEffect(() => {
     if (opportunity && isOpen) {
       setFormData(opportunity);
+      setNotes(parseNotes(opportunity.observations));
+      setNewNote('');
       fetchCadences();
     }
   }, [opportunity, isOpen]);
@@ -104,6 +121,16 @@ export default function OpportunityDetailModal({ isOpen, onClose, opportunity, o
   const handleSave = async () => {
     setLoading(true);
     try {
+      let finalObservations = JSON.stringify(notes);
+      if (newNote.trim()) {
+        const newNoteObj = {
+          id: crypto.randomUUID(),
+          content: newNote.trim(),
+          created_at: new Date().toISOString(),
+        };
+        finalObservations = JSON.stringify([newNoteObj, ...notes]);
+      }
+
       const { data, error } = await supabase
         .from('opportunities')
         .update({
@@ -114,7 +141,7 @@ export default function OpportunityDetailModal({ isOpen, onClose, opportunity, o
           value: formData.value,
           address: formData.address,
           event_date: formData.event_date,
-          observations: formData.observations,
+          observations: finalObservations,
           tag: formData.tag
         })
         .eq('id', opportunity.id)
@@ -302,15 +329,31 @@ export default function OpportunityDetailModal({ isOpen, onClose, opportunity, o
             </div>
           </div>
 
-          {/* Observações (Ocupa linha toda) */}
-          <div>
-            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-1.5">
-              <FileText className="w-4 h-4 text-gray-400" /> Detalhes / Observações
+          {/* Observações e Histórico */}
+          <div className="col-span-1 sm:col-span-2 bg-gray-50 p-5 rounded-xl border border-gray-100">
+            <label className="flex items-center gap-2 text-sm font-bold text-gray-800 mb-4">
+              <FileText className="w-4 h-4 text-orange-500" /> Histórico e Observações
             </label>
-            <textarea 
-              name="observations" value={formData.observations || ''} onChange={handleChange} rows={5}
-              className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-shadow resize-none"
-              placeholder="Anotações sobre a negociação..."
+            
+            <div className="space-y-3 mb-4 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+              {notes.length > 0 ? (
+                notes.map((note: any) => (
+                   <div key={note.id} className="bg-white p-3.5 rounded-lg border border-gray-200 shadow-sm">
+                     <p className="text-[11px] font-bold text-gray-400 mb-1.5 uppercase tracking-wider">
+                       {new Date(note.created_at).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                     </p>
+                     <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{note.content}</p>
+                   </div>
+                ))
+              ) : (
+                <p className="text-sm text-gray-500 italic">Nenhuma observação registrada.</p>
+              )}
+            </div>
+
+            <textarea
+              value={newNote} onChange={e => setNewNote(e.target.value)} rows={2}
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-shadow resize-none"
+              placeholder="Adicione uma nova anotação ou atualização..."
             />
           </div>
         </div>
