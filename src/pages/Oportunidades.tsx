@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Trash2, Plus, UserPlus, MessageSquare, MessageCircle, Link as LinkIcon,
-  Upload, Loader2, Copy, ExternalLink, X, UserMinus, Search, Inbox, ArrowUp, ArrowDown, Clock, Tag as TagIcon, Zap, Filter, ChevronDown, LayoutGrid
+  Upload, Loader2, Copy, ExternalLink, X, UserMinus, Search, Inbox, ArrowUp, ArrowDown, Clock, Tag as TagIcon, Zap, Filter, ChevronDown, LayoutGrid, MoreVertical, MoveRight
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -16,9 +16,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
   DropdownMenuCheckboxItem,
   DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 // --- Tipos ---
@@ -91,6 +91,18 @@ export default function Oportunidades() {
   // Modal de Detalhes da Oportunidade
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedOppToView, setSelectedOppToView] = useState<Opportunity | null>(null);
+
+  // Mover Oportunidade Individual (Mobile UX)
+  const [moveSingleModalOpen, setMoveSingleModalOpen] = useState(false);
+  const [oppToMoveSingle, setOppToMoveSingle] = useState<Opportunity | null>(null);
+  const [moveSingleTargetCol, setMoveSingleTargetCol] = useState<string>("");
+
+  // Modal de Ações em Massa
+  const [moveModalOpen, setMoveModalOpen] = useState(false);
+  const [moveTargetPipeline, setMoveTargetPipeline] = useState('');
+  const [moveTargetColumn, setMoveTargetColumn] = useState('');
+  const [massDeleteModalOpen, setMassDeleteModalOpen] = useState(false);
+  const [isMassDeleting, setIsMassDeleting] = useState(false);
 
   // Formulário Modal
   const [formData, setFormData] = useState({
@@ -166,7 +178,6 @@ export default function Oportunidades() {
       setLinkForms(formsRes.data || []);
       setWhatsappTriggers(triggersRes.data || []);
       
-      // Mapear contagem de cadências ativas por lead
       const cadenceMap: Record<string, number> = {};
       queueRes.data?.forEach(q => {
         if (q.opportunity_id) {
@@ -187,14 +198,12 @@ export default function Oportunidades() {
   };
 
   const activeColumns = columns.filter(c => c.pipeline_id === activePipelineId).sort((a, b) => a.order_index - b.order_index);
+  const targetColumnsForMove = columns.filter(c => c.pipeline_id === (moveTargetPipeline || activePipelineId)).sort((a, b) => a.order_index - b.order_index);
 
-  // Lógica de Filtragem e Pesquisa combinada
   const filteredOpportunities = useMemo(() => {
     return opportunities.filter(opp => {
-      // 1. Filtrar pela pipeline ativa obrigatoriamente
       if (opp.pipeline_id !== activePipelineId) return false;
 
-      // 2. Filtro de pesquisa (nome, email ou telefone)
       const query = searchQuery.toLowerCase();
       const matchesSearch = !searchQuery || (
         opp.name.toLowerCase().includes(query) ||
@@ -203,7 +212,6 @@ export default function Oportunidades() {
       );
       if (!matchesSearch) return false;
 
-      // 3. Filtro de Tags
       if (selectedTags.length > 0) {
         if (!opp.tag || !selectedTags.includes(opp.tag)) return false;
       }
@@ -234,13 +242,10 @@ export default function Oportunidades() {
 
     const destColId = destination.droppableId;
     
-    // Atualização otimista com reordenação local
     setOpportunities(prev => {
       const updatedOpps = Array.from(prev);
       const oppToMove = updatedOpps.find(o => o.id === draggableId);
-      if (oppToMove) {
-        oppToMove.column_id = destColId;
-      }
+      if (oppToMove) oppToMove.column_id = destColId;
       return updatedOpps;
     });
 
@@ -263,7 +268,7 @@ export default function Oportunidades() {
   };
 
   const handleBulkDelete = async () => {
-    if (!confirm(`Deletar ${selectedOpps.length} oportunidades?`)) return;
+    setIsMassDeleting(true);
     try {
       for (const id of selectedOpps) {
         await supabase.from('opportunities').delete().eq('id', id);
@@ -271,8 +276,37 @@ export default function Oportunidades() {
       setOpportunities(prev => prev.filter(o => !selectedOpps.includes(o.id)));
       setSelectedOpps([]);
       toast.success("Oportunidades deletadas.");
+      setMassDeleteModalOpen(false);
     } catch (e) {
       toast.error("Erro ao deletar.");
+    } finally {
+      setIsMassDeleting(false);
+    }
+  };
+
+  const handleMoveSelected = async () => {
+    if (!moveTargetColumn) return toast.error('Selecione uma coluna de destino');
+
+    const targetPipeId = moveTargetPipeline || activePipelineId;
+
+    try {
+      await Promise.all(
+        selectedOpps.map(oppId =>
+          supabase.from('opportunities').update({ column_id: moveTargetColumn, pipeline_id: targetPipeId }).eq('id', oppId)
+        )
+      );
+
+      if (targetPipeId === activePipelineId) {
+        setOpportunities(prev => prev.map(opp => selectedOpps.includes(opp.id) ? { ...opp, column_id: moveTargetColumn } : opp));
+      } else {
+        setOpportunities(prev => prev.filter(opp => !selectedOpps.includes(opp.id)));
+      }
+
+      setSelectedOpps([]);
+      setMoveModalOpen(false);
+      toast.success('Oportunidades movidas com sucesso');
+    } catch (error) {
+      toast.error('Erro ao mover oportunidades');
     }
   };
 
@@ -296,6 +330,21 @@ export default function Oportunidades() {
       
       return [...otherOpps, ...oppsInCol];
     });
+  };
+
+  // Mover Card Individual (Mobile UX)
+  const handleMoveSingleCard = async () => {
+    if (!oppToMoveSingle || !moveSingleTargetCol) return;
+
+    try {
+      await supabase.from('opportunities').update({ column_id: moveSingleTargetCol }).eq('id', oppToMoveSingle.id);
+      setOpportunities(prev => prev.map(o => o.id === oppToMoveSingle.id ? { ...o, column_id: moveSingleTargetCol } : o));
+      toast.success("Card movido com sucesso!");
+      setMoveSingleModalOpen(false);
+      setOppToMoveSingle(null);
+    } catch (e) {
+      toast.error("Erro ao mover o card.");
+    }
   };
 
   // Ações nos Cards
@@ -528,124 +577,148 @@ export default function Oportunidades() {
     setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
   };
 
+  const deleteSingleOpp = async (id: string) => {
+    if (!confirm("Deletar esta oportunidade?")) return;
+    await supabase.from('opportunities').delete().eq('id', id);
+    setOpportunities(prev => prev.filter(o => o.id !== id));
+    toast.success("Oportunidade deletada.");
+  };
+
   if (loading) return <Layout><div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div></Layout>;
 
   return (
     <Layout>
       <div className="max-w-full mx-auto flex flex-col h-full bg-[#FAFAFA]">
         
+        {/* FAB para Mobile (Botão Flutuante) */}
+        <button 
+          onClick={() => setIsModalOpen(true)} 
+          className="md:hidden fixed bottom-6 right-6 w-14 h-14 bg-orange-500 text-white rounded-full shadow-[0_4px_20px_rgba(249,115,22,0.4)] flex items-center justify-center z-50 hover:bg-orange-600 transition-transform active:scale-95"
+        >
+          <Plus className="w-6 h-6" />
+        </button>
+
         {/* Bulk Action Bar */}
         {selectedOpps.length > 0 && (
-          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-3 mb-4 flex items-center justify-between animate-in slide-in-from-top-2">
-            <span className="font-semibold text-orange-500">{selectedOpps.length} oportunidade(s) selecionada(s)</span>
+          <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-3 mb-4 flex items-center justify-between animate-in slide-in-from-top-2 z-20 sticky top-0">
+            <span className="font-semibold text-orange-500 text-sm">{selectedOpps.length} selecionada(s)</span>
             <div className="flex gap-2">
-              <button onClick={() => setSelectedOpps([])} className="px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100 rounded-md transition-colors">Cancelar</button>
-              <button onClick={handleBulkDelete} className="px-3 py-1.5 text-sm bg-red-50 text-red-600 hover:bg-red-100 rounded-md flex items-center gap-1.5 transition-colors">
+              <button onClick={() => setSelectedOpps([])} className="px-3 py-1.5 text-xs sm:text-sm text-gray-500 hover:bg-gray-100 rounded-md transition-colors">Cancelar</button>
+              
+              <button onClick={() => setMoveModalOpen(true)} className="hidden sm:flex px-3 py-1.5 text-xs sm:text-sm bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md items-center gap-1.5 transition-colors">
+                <MoveRight className="w-4 h-4" /> Mover
+              </button>
+
+              <button onClick={() => setMassDeleteModalOpen(true)} className="px-3 py-1.5 text-xs sm:text-sm bg-red-50 text-red-600 hover:bg-red-100 rounded-md flex items-center gap-1.5 transition-colors">
                 <Trash2 className="w-4 h-4" /> Deletar
               </button>
             </div>
           </div>
         )}
 
-        {/* Toolbar Superior: Pipelines, Pesquisa e Filtros */}
-        <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-6 shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 flex-1">
+        {/* Toolbar Superior Responsiva */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-6 shadow-sm flex flex-col gap-4">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
             
-            {/* Seletor de Pipeline */}
-            <div className="flex items-center gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center justify-between gap-3 px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors min-w-[180px]">
-                    <div className="flex items-center gap-2">
-                      <LayoutGrid className="w-4 h-4 text-orange-500" />
-                      <span className="font-bold text-gray-900 text-sm">
-                        {pipelines.find(p => p.id === activePipelineId)?.name || 'Funis'}
-                      </span>
-                    </div>
-                    <ChevronDown className="w-4 h-4 text-gray-400" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-[220px]">
-                  {pipelines.map(p => (
-                    <DropdownMenuItem 
-                      key={p.id} 
-                      onClick={() => setActivePipelineId(p.id)}
-                      className={`font-semibold cursor-pointer ${activePipelineId === p.id ? 'text-orange-500' : ''}`}
-                    >
-                      {p.name}
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setIsNewPipelineOpen(true)} className="font-bold text-orange-500 cursor-pointer flex items-center gap-2">
-                    <Plus className="w-4 h-4" /> Criar Novo Funil
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            {/* Barra de Pesquisa */}
-            <div className="relative flex-1 max-w-md">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input 
-                type="text"
-                placeholder="Pesquisar por nome, email ou telefone..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 focus:ring-2 focus:ring-orange-400 outline-none transition-all"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                  <X className="w-3 h-3" />
-                </button>
-              )}
-            </div>
-            
-            {/* Filtro por Tags */}
+            {/* Seletor de Pipeline - Ocupa a linha toda no mobile */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className={`flex items-center gap-2 px-4 py-2 border rounded-xl text-sm font-semibold transition-all ${selectedTags.length > 0 ? 'bg-orange-50 border-orange-200 text-orange-600' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
-                  <Filter className="w-4 h-4" />
-                  {selectedTags.length === 0 ? 'Filtrar por Tags' : `${selectedTags.length} Tag(s) ativa(s)`}
+                <button className="flex items-center justify-between gap-3 px-4 py-3 md:py-2 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors w-full md:w-auto md:min-w-[220px]">
+                  <div className="flex items-center gap-2">
+                    <LayoutGrid className="w-4 h-4 text-orange-500" />
+                    <span className="font-bold text-gray-900 text-sm truncate max-w-[200px]">
+                      {pipelines.find(p => p.id === activePipelineId)?.name || 'Funis'}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-[200px]">
-                {PHOTO_TYPES.map(tag => (
-                  <DropdownMenuCheckboxItem
-                    key={tag.value}
-                    checked={selectedTags.includes(tag.value)}
-                    onCheckedChange={() => toggleTagFilter(tag.value)}
+              <DropdownMenuContent align="start" className="w-[calc(100vw-2rem)] md:w-[250px]">
+                {pipelines.map(p => (
+                  <DropdownMenuItem 
+                    key={p.id} 
+                    onClick={() => setActivePipelineId(p.id)}
+                    className={`font-semibold cursor-pointer py-3 md:py-2 ${activePipelineId === p.id ? 'text-orange-500 bg-orange-50' : ''}`}
                   >
-                    {tag.label}
-                  </DropdownMenuCheckboxItem>
+                    {p.name}
+                  </DropdownMenuItem>
                 ))}
-                {selectedTags.length > 0 && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setSelectedTags([])} className="justify-center font-bold text-red-500">
-                      Limpar Filtros
-                    </DropdownMenuItem>
-                  </>
-                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setIsNewPipelineOpen(true)} className="font-bold text-orange-500 cursor-pointer flex items-center gap-2 py-3 md:py-2">
+                  <Plus className="w-4 h-4" /> Criar Novo Funil
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <button onClick={() => setIsImportOpen(true)} className="p-2 bg-white border border-gray-200 text-gray-500 rounded-xl hover:bg-gray-50 transition-colors shadow-sm" title="Importar Leads">
-              <Upload className="w-5 h-5" />
-            </button>
-            <button onClick={() => setIsModalOpen(true)} className="px-5 py-2.5 bg-orange-400 text-white font-bold rounded-xl hover:bg-orange-500 transition-colors flex items-center gap-2 shadow-sm">
-              <Plus className="w-5 h-5" /> Adicionar
-            </button>
+            {/* Ações e Pesquisa */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto flex-1 md:justify-end">
+              
+              {/* Barra de Pesquisa */}
+              <div className="relative flex-1 md:max-w-xs">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input 
+                  type="text"
+                  placeholder="Pesquisar..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 md:py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 focus:ring-2 focus:ring-orange-400 outline-none transition-all"
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1">
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+              
+              <div className="flex gap-2">
+                {/* Filtro por Tags */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 md:py-2 border rounded-xl text-sm font-semibold transition-all ${selectedTags.length > 0 ? 'bg-orange-50 border-orange-200 text-orange-600' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                      <Filter className="w-4 h-4" />
+                      <span className="hidden sm:inline">{selectedTags.length === 0 ? 'Filtros' : `${selectedTags.length} Tag(s)`}</span>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-[200px]">
+                    {PHOTO_TYPES.map(tag => (
+                      <DropdownMenuCheckboxItem
+                        key={tag.value}
+                        checked={selectedTags.includes(tag.value)}
+                        onCheckedChange={() => toggleTagFilter(tag.value)}
+                      >
+                        {tag.label}
+                      </DropdownMenuCheckboxItem>
+                    ))}
+                    {selectedTags.length > 0 && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setSelectedTags([])} className="justify-center font-bold text-red-500 py-2">
+                          Limpar Filtros
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <button onClick={() => setIsImportOpen(true)} className="flex-1 sm:flex-none flex items-center justify-center p-2.5 md:py-2 bg-white border border-gray-200 text-gray-500 rounded-xl hover:bg-gray-50 transition-colors shadow-sm" title="Importar Leads">
+                  <Upload className="w-5 h-5" />
+                </button>
+                
+                <button onClick={() => setIsModalOpen(true)} className="hidden md:flex px-5 py-2 bg-orange-400 text-white font-bold rounded-xl hover:bg-orange-500 transition-colors items-center gap-2 shadow-sm">
+                  <Plus className="w-5 h-5" /> Adicionar
+                </button>
+              </div>
+
+            </div>
           </div>
         </div>
 
         {/* Kanban Board */}
-        <div className="flex gap-4 sm:gap-5 overflow-x-auto pb-4 flex-1 items-start snap-x custom-scrollbar">
+        <div className="flex gap-4 sm:gap-5 overflow-x-auto pb-6 flex-1 items-start snap-x snap-mandatory custom-scrollbar relative">
           <DragDropContext onDragEnd={onDragEnd}>
             <Droppable droppableId="board" direction="horizontal" type="column">
               {(provided) => (
-                <div className="flex gap-4 sm:gap-5 h-full" {...provided.droppableProps} ref={provided.innerRef}>
+                <div className="flex gap-4 sm:gap-5 h-full min-h-[60vh]" {...provided.droppableProps} ref={provided.innerRef}>
                   {activeColumns.map((col, index) => {
                     const colOpps = filteredOpportunities.filter(o => o.column_id === col.id);
                     const colOppsIds = colOpps.map(o => o.id);
@@ -657,26 +730,38 @@ export default function Oportunidades() {
                         {(provided) => (
                           <div
                             ref={provided.innerRef} {...provided.draggableProps}
-                            className="flex-1 min-w-[85vw] sm:min-w-[320px] max-w-[85vw] sm:max-w-[340px] snap-center bg-white rounded-2xl sm:rounded-xl border border-gray-200 flex flex-col max-h-[calc(100vh-220px)] shadow-sm"
+                            className="flex-1 min-w-[90vw] sm:min-w-[320px] max-w-[90vw] sm:max-w-[340px] snap-center bg-gray-100/50 rounded-2xl sm:rounded-xl border border-gray-200 flex flex-col max-h-[calc(100vh-250px)] shadow-sm"
                           >
-                            <div className="p-4 border-b border-gray-100 rounded-t-xl bg-white" {...provided.dragHandleProps}>
+                            <div className="p-4 border-b border-gray-200 rounded-t-xl bg-white" {...provided.dragHandleProps}>
                               <div className="flex items-center justify-between mb-1">
-                                <div className="flex items-center gap-2">
-                                  <input 
-                                    type="checkbox"
-                                    checked={allSelectedInCol}
-                                    ref={input => { if (input) input.indeterminate = someSelectedInCol && !allSelectedInCol; }}
-                                    onChange={() => toggleColumnSelection(col.id, colOppsIds)}
-                                    className="w-4 h-4 rounded border-gray-300 accent-orange-500 cursor-pointer"
-                                  />
-                                  <h3 className="font-bold text-gray-900 text-[15px]">{col.name}</h3>
-                                  <span className="bg-gray-100 text-gray-500 text-xs font-bold px-2 py-0.5 rounded-full min-w-[24px] text-center">
+                                <div className="flex items-center gap-3">
+                                  <div className="flex items-center justify-center w-6 h-6">
+                                    <input 
+                                      type="checkbox"
+                                      checked={allSelectedInCol}
+                                      ref={input => { if (input) input.indeterminate = someSelectedInCol && !allSelectedInCol; }}
+                                      onChange={() => toggleColumnSelection(col.id, colOppsIds)}
+                                      className="w-4 h-4 rounded border-gray-300 accent-orange-500 cursor-pointer"
+                                    />
+                                  </div>
+                                  <h3 className="font-bold text-gray-900 text-base">{col.name}</h3>
+                                  <span className="bg-gray-100 text-gray-500 text-xs font-bold px-2.5 py-0.5 rounded-full min-w-[24px] text-center">
                                     {colOpps.length}
                                   </span>
                                 </div>
-                                <button onClick={() => handleDeleteColumn(col.id)} className="text-gray-400 hover:text-red-500 transition-colors">
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <button className="text-gray-400 hover:text-gray-700 p-1 rounded-md transition-colors">
+                                      <MoreVertical className="w-5 h-5" />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleDeleteColumn(col.id)} className="text-red-500 focus:bg-red-50 focus:text-red-600 font-medium cursor-pointer">
+                                      <Trash2 className="w-4 h-4 mr-2" /> Deletar Coluna
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </div>
                             </div>
                             
@@ -684,7 +769,7 @@ export default function Oportunidades() {
                               {(provided, snapshot) => (
                                 <div 
                                   ref={provided.innerRef} {...provided.droppableProps}
-                                  className={`flex-1 p-3 overflow-y-auto rounded-b-xl space-y-3 transition-colors ${snapshot.isDraggingOver ? 'bg-orange-50/20' : 'bg-gray-50/30'}`}
+                                  className={`flex-1 p-3 overflow-y-auto rounded-b-xl space-y-3 transition-colors custom-scrollbar ${snapshot.isDraggingOver ? 'bg-orange-50/50' : 'bg-transparent'}`}
                                   style={{ minHeight: '150px' }}
                                 >
                                   {colOpps.map((opp, oppIndex) => {
@@ -697,33 +782,74 @@ export default function Oportunidades() {
                                             {...provided.draggableProps} 
                                             {...provided.dragHandleProps}
                                             onClick={() => handleCardClick(opp)}
-                                            className={`bg-white p-4 rounded-xl border transition-all relative group cursor-pointer ${snapshot.isDragging ? 'shadow-xl ring-2 ring-orange-400 border-transparent z-50' : 'border-gray-200 shadow-sm hover:shadow-md'}`}
+                                            className={`bg-white p-4 rounded-xl border transition-all relative group cursor-pointer ${snapshot.isDragging ? 'shadow-2xl ring-2 ring-orange-400 border-transparent z-50 scale-105' : 'border-gray-200 shadow-sm hover:shadow-md hover:border-orange-200'}`}
                                           >
                                             <div className="flex justify-between items-start mb-3">
-                                              <div className="flex items-center gap-2.5">
-                                                <input type="checkbox" checked={selectedOpps.includes(opp.id)} onChange={() => toggleSelection(opp.id)} onClick={(e) => e.stopPropagation()} className="w-4 h-4 mt-0.5 rounded border-gray-300 accent-orange-500 cursor-pointer shrink-0" />
-                                                <span className="font-semibold text-gray-900 text-sm leading-tight flex items-center gap-1.5">
-                                                  {isFromWhatsApp && <MessageCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />}
+                                              <div className="flex items-start gap-3">
+                                                <input 
+                                                  type="checkbox" 
+                                                  checked={selectedOpps.includes(opp.id)} 
+                                                  onChange={() => toggleSelection(opp.id)} 
+                                                  onClick={(e) => e.stopPropagation()} 
+                                                  className="w-4 h-4 mt-0.5 rounded border-gray-300 accent-orange-500 cursor-pointer shrink-0" 
+                                                />
+                                                <span className="font-semibold text-gray-900 text-[15px] leading-tight flex items-center gap-1.5 pr-2">
+                                                  {isFromWhatsApp && <MessageCircle className="w-4 h-4 text-green-500 shrink-0" />}
                                                   {opp.name}
                                                 </span>
                                               </div>
-                                              <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity ml-1">
-                                                <button onClick={(e) => moveCard(e, opp.id, col.id, 'up')} disabled={oppIndex === 0} className="text-gray-400 hover:text-gray-700 disabled:opacity-30"><ArrowUp className="w-3 h-3" /></button>
-                                                <button onClick={(e) => moveCard(e, opp.id, col.id, 'down')} disabled={oppIndex === colOpps.length - 1} className="text-gray-400 hover:text-gray-700 disabled:opacity-30"><ArrowDown className="w-3 h-3" /></button>
+                                              
+                                              {/* Menu Mobile / Desktop unificado para o card */}
+                                              <div onClick={e => e.stopPropagation()}>
+                                                <DropdownMenu>
+                                                  <DropdownMenuTrigger asChild>
+                                                    <button className="text-gray-400 hover:text-gray-700 p-1.5 -mr-2 rounded-md hover:bg-gray-50 transition-colors">
+                                                      <MoreVertical className="w-4 h-4" />
+                                                    </button>
+                                                  </DropdownMenuTrigger>
+                                                  <DropdownMenuContent align="end" className="w-48">
+                                                    <DropdownMenuItem onClick={() => { setOppToMoveSingle(opp); setMoveSingleModalOpen(true); }} className="cursor-pointer font-medium">
+                                                      <MoveRight className="w-4 h-4 mr-2 text-blue-500" /> Mover de Etapa
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); moveCard(e as any, opp.id, col.id, 'up'); }} disabled={oppIndex === 0} className="cursor-pointer font-medium">
+                                                      <ArrowUp className="w-4 h-4 mr-2" /> Subir na lista
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); moveCard(e as any, opp.id, col.id, 'down'); }} disabled={oppIndex === colOpps.length - 1} className="cursor-pointer font-medium">
+                                                      <ArrowDown className="w-4 h-4 mr-2" /> Descer na lista
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem onClick={() => deleteSingleOpp(opp.id)} className="text-red-500 focus:bg-red-50 focus:text-red-600 font-medium cursor-pointer">
+                                                      <Trash2 className="w-4 h-4 mr-2" /> Excluir
+                                                    </DropdownMenuItem>
+                                                  </DropdownMenuContent>
+                                                </DropdownMenu>
                                               </div>
                                             </div>
+                                            
                                             {opp.tag && (
-                                              <div className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-orange-100 text-orange-700 mb-2">
+                                              <div className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-orange-100 text-orange-700 mb-2.5">
                                                 {opp.tag}
                                               </div>
                                             )}
-                                            <div className="text-[12px] text-gray-500 mb-4 truncate">{opp.email || opp.phone}</div>
+                                            
+                                            <div className="text-[13px] font-medium text-gray-500 mb-4 truncate">
+                                              {opp.email || opp.phone || 'Sem contato'}
+                                            </div>
+                                            
+                                            {/* Botões de Ação */}
                                             <div className="flex gap-2">
-                                              <button onClick={(e) => handleToggleClient(e, opp)} className={`flex-1 py-1.5 rounded-md border text-[11px] font-semibold transition-colors ${opp.is_client ? 'border-red-200 text-red-600 bg-red-50' : 'border-gray-200 text-gray-700 bg-white'}`}>
+                                              <button 
+                                                onClick={(e) => handleToggleClient(e, opp)} 
+                                                className={`flex-1 py-2 rounded-lg border text-xs font-bold transition-colors ${opp.is_client ? 'border-red-200 text-red-600 bg-red-50 hover:bg-red-100' : 'border-gray-200 text-gray-700 bg-white hover:bg-gray-50'}`}
+                                              >
                                                 {opp.is_client ? '-Cliente' : '+Cliente'}
                                               </button>
-                                              <button onClick={(e) => handleCadenciaClick(e, opp)} className="flex-1 py-1.5 rounded-md border border-gray-200 text-gray-700 text-[11px] font-semibold bg-white hover:bg-gray-50 transition-colors">
-                                                <MessageCircle className="w-3.5 h-3.5 inline mr-1 text-green-500" /> Cadência
+                                              <button 
+                                                onClick={(e) => handleCadenciaClick(e, opp)} 
+                                                className="flex-1 py-2 rounded-lg border border-gray-200 text-gray-700 text-xs font-bold bg-white hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5"
+                                              >
+                                                <MessageCircle className="w-4 h-4 text-green-500" /> Cadência
                                               </button>
                                             </div>
                                           </div>
@@ -746,8 +872,13 @@ export default function Oportunidades() {
                     );
                   })}
                   {provided.placeholder}
-                  <button onClick={() => setIsNewColOpen(true)} className="min-w-[85vw] sm:min-w-[320px] max-w-[85vw] sm:max-w-[320px] snap-center bg-transparent border-2 border-dashed border-gray-200 rounded-2xl sm:rounded-xl flex items-center justify-center text-gray-600 hover:text-gray-900 h-[60px] font-bold text-sm">
-                    <Plus className="w-4 h-4 mr-2" /> Adicionar Coluna
+                  
+                  {/* Botão de Adicionar Coluna */}
+                  <button 
+                    onClick={() => setIsNewColOpen(true)} 
+                    className="min-w-[90vw] sm:min-w-[320px] max-w-[90vw] sm:max-w-[320px] snap-center bg-white/50 border-2 border-dashed border-gray-300 rounded-2xl sm:rounded-xl flex items-center justify-center text-gray-500 hover:text-orange-500 hover:border-orange-300 hover:bg-orange-50/50 h-[60px] font-bold text-sm transition-all"
+                  >
+                    <Plus className="w-5 h-5 mr-2" /> Adicionar Coluna
                   </button>
                 </div>
               )}
@@ -756,32 +887,43 @@ export default function Oportunidades() {
         </div>
 
         {/* Footer: Link Forms & Triggers */}
-        <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div>
-            <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2"><LinkIcon className="w-4 h-4 text-orange-400"/> Link Forms Ativos</h3>
-            <div className="flex flex-col gap-2">
+        <div className="mt-8 pt-6 border-t border-gray-200 grid grid-cols-1 lg:grid-cols-2 gap-8 pb-20 md:pb-6">
+          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+            <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <LinkIcon className="w-5 h-5 text-orange-400"/> Link Forms Ativos
+            </h3>
+            <div className="flex flex-col gap-3">
               {linkForms.map(form => (
-                <div key={form.id} className="bg-white border border-gray-200 rounded-lg p-3 flex justify-between items-center shadow-sm">
-                  <div><p className="font-semibold text-sm truncate max-w-[180px]">{form.name}</p><p className="text-xs text-gray-500">{form.tag || 'Geral'}</p></div>
-                  <div className="flex gap-1">
-                    <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/link-form/${form.id}`); toast.success("Copiado!"); }} className="p-1.5 text-gray-400 bg-gray-50 rounded"><Copy className="w-4 h-4"/></button>
-                    <button onClick={() => handleDeleteLinkForm(form.id)} className="p-1.5 text-red-400 bg-red-50 rounded"><Trash2 className="w-4 h-4"/></button>
+                <div key={form.id} className="bg-gray-50 border border-gray-100 rounded-xl p-4 flex justify-between items-center">
+                  <div className="min-w-0 pr-4">
+                    <p className="font-bold text-sm text-gray-900 truncate">{form.name}</p>
+                    <p className="text-xs font-medium text-gray-500 mt-0.5">{form.tag || 'Geral'}</p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/link-form/${form.id}`); toast.success("Copiado!"); }} className="p-2 text-gray-500 bg-white border border-gray-200 hover:text-orange-500 rounded-lg shadow-sm transition-colors"><Copy className="w-4 h-4"/></button>
+                    <button onClick={() => handleDeleteLinkForm(form.id)} className="p-2 text-red-500 bg-white border border-gray-200 hover:bg-red-50 rounded-lg shadow-sm transition-colors"><Trash2 className="w-4 h-4"/></button>
                   </div>
                 </div>
               ))}
+              {linkForms.length === 0 && <p className="text-sm text-gray-400 italic py-2">Nenhum formulário criado.</p>}
             </div>
           </div>
 
-          <div>
-            <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2"><Zap className="w-4 h-4 text-orange-400"/> Gatilhos WhatsApp</h3>
-            <div className="flex flex-col gap-2">
+          <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm">
+            <h3 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <Zap className="w-5 h-5 text-orange-400"/> Gatilhos WhatsApp
+            </h3>
+            <div className="flex flex-col gap-3">
               {whatsappTriggers.map(trig => (
-                <div key={trig.id} className="bg-white border border-gray-200 rounded-lg p-3 flex justify-between items-center shadow-sm">
-                  <div><p className="font-semibold text-sm truncate max-w-[180px]">Gatilho: "{trig.trigger_phrase}"</p><p className="text-xs text-gray-500">Destino: {columns.find(c => c.id === trig.column_id)?.name || '...'}</p></div>
-                  <button onClick={() => handleDeleteTrigger(trig.id)} className="p-1.5 text-red-400 bg-red-50 rounded"><Trash2 className="w-4 h-4"/></button>
+                <div key={trig.id} className="bg-gray-50 border border-gray-100 rounded-xl p-4 flex justify-between items-center">
+                  <div className="min-w-0 pr-4">
+                    <p className="font-bold text-sm text-gray-900 truncate">"{trig.trigger_phrase}"</p>
+                    <p className="text-xs font-medium text-gray-500 mt-0.5">Destino: {columns.find(c => c.id === trig.column_id)?.name || '...'}</p>
+                  </div>
+                  <button onClick={() => handleDeleteTrigger(trig.id)} className="p-2 text-red-500 bg-white border border-gray-200 hover:bg-red-50 rounded-lg shadow-sm transition-colors shrink-0"><Trash2 className="w-4 h-4"/></button>
                 </div>
               ))}
-              {whatsappTriggers.length === 0 && <p className="text-xs text-gray-400 italic">Nenhum gatilho configurado.</p>}
+              {whatsappTriggers.length === 0 && <p className="text-sm text-gray-400 italic py-2">Nenhum gatilho configurado.</p>}
             </div>
           </div>
         </div>
@@ -790,6 +932,96 @@ export default function Oportunidades() {
       <LeadImportModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} pipelines={pipelines} columns={columns} userId={user?.id} onImportSuccess={fetchData} />
       <OpportunityDetailModal isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} opportunity={selectedOppToView} onSave={handleSaveDetailModal} onDelete={handleDeleteDetailModal} />
 
+      {/* MODAL: Mover Oportunidade Única (UX Mobile) */}
+      <Dialog open={moveSingleModalOpen} onOpenChange={setMoveSingleModalOpen}>
+        <DialogContent className="sm:max-w-sm bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Mover Etapa</DialogTitle>
+            <DialogDescription>
+              Para qual etapa você deseja mover <strong>{oppToMoveSingle?.name}</strong>?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <label className="block text-sm font-bold text-gray-700 mb-2">Selecione a Coluna</label>
+            <select 
+              value={moveSingleTargetCol} 
+              onChange={e => setMoveSingleTargetCol(e.target.value)}
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none"
+            >
+              <option value="">Selecione...</option>
+              {activeColumns.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <DialogFooter>
+            <button onClick={() => setMoveSingleModalOpen(false)} className="px-5 py-2.5 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition-colors">Cancelar</button>
+            <button onClick={handleMoveSingleCard} disabled={!moveSingleTargetCol} className="px-6 py-2.5 bg-orange-400 text-white font-bold rounded-xl hover:bg-orange-500 shadow-sm disabled:opacity-50">Mover Card</button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL: Ações em Massa (Mover Vários) */}
+      <Dialog open={moveModalOpen} onOpenChange={setMoveModalOpen}>
+        <DialogContent className="sm:max-w-md bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Mover Múltiplas Oportunidades</DialogTitle>
+            <DialogDescription>Selecione o destino para os {selectedOpps.length} leads selecionados.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-gray-700">Funil de Destino</label>
+              <select 
+                value={moveTargetPipeline || activePipelineId} 
+                onChange={(e) => {
+                  setMoveTargetPipeline(e.target.value);
+                  setMoveTargetColumn('');
+                }}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none"
+              >
+                {pipelines.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-gray-700">Coluna de Destino</label>
+              <select 
+                value={moveTargetColumn} 
+                onChange={e => setMoveTargetColumn(e.target.value)}
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none"
+              >
+                <option value="">Selecione...</option>
+                {targetColumnsForMove.map(col => <option key={col.id} value={col.id}>{col.name}</option>)}
+              </select>
+            </div>
+          </div>
+          <DialogFooter>
+            <button onClick={() => setMoveModalOpen(false)} className="px-5 py-2.5 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition-colors">Cancelar</button>
+            <button onClick={handleMoveSelected} disabled={!moveTargetColumn} className="px-6 py-2.5 bg-orange-400 text-white font-bold rounded-xl hover:bg-orange-500 shadow-sm disabled:opacity-50">Mover Oportunidades</button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL: Excluir em Massa */}
+      <Dialog open={massDeleteModalOpen} onOpenChange={setMassDeleteModalOpen}>
+        <DialogContent className="sm:max-w-sm bg-white text-center p-8">
+          <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100">
+            <Trash2 className="w-8 h-8" />
+          </div>
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-gray-900 mb-2">Excluir {selectedOpps.length} leads?</DialogTitle>
+            <DialogDescription className="text-gray-500 mb-6">
+              Esta ação não pode ser desfeita. Todos os dados vinculados serão apagados permanentemente.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-3">
+            <button onClick={() => setMassDeleteModalOpen(false)} disabled={isMassDeleting} className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-colors">Cancelar</button>
+            <button onClick={handleBulkDelete} disabled={isMassDeleting} className="flex-1 py-3 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 transition-colors flex justify-center items-center">
+              {isMassDeleting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Excluir'}
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* MODAL: Adicionar ao Pipeline */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-2xl p-0 overflow-hidden bg-white max-h-[90vh] overflow-y-auto">
@@ -797,31 +1029,31 @@ export default function Oportunidades() {
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Adicionar ao Pipeline</h2>
             <p className="text-sm text-gray-500 mb-6">Crie uma nova oportunidade ou gere um link de formulário.</p>
 
-            <div className="flex bg-gray-100 p-1 rounded-xl mb-6">
-              <button onClick={() => setActiveTab('opp')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'opp' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>Nova Oportunidade</button>
-              <button onClick={() => setActiveTab('link')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'link' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>Link Form</button>
-              <button onClick={() => setActiveTab('trigger')} className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${activeTab === 'trigger' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>Gatilho WhatsApp</button>
+            <div className="flex bg-gray-100 p-1 rounded-xl mb-6 overflow-x-auto">
+              <button onClick={() => setActiveTab('opp')} className={`flex-1 py-2 px-4 text-sm font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'opp' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>Nova Oportunidade</button>
+              <button onClick={() => setActiveTab('link')} className={`flex-1 py-2 px-4 text-sm font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'link' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>Link Form</button>
+              <button onClick={() => setActiveTab('trigger')} className={`flex-1 py-2 px-4 text-sm font-bold rounded-lg transition-all whitespace-nowrap ${activeTab === 'trigger' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>Gatilho WhatsApp</button>
             </div>
 
             <div className="space-y-6">
               {/* Campos Comuns: Pipeline e Tipo de Foto */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold text-gray-700">Qual pipeline este lead cairá?</label>
                   <select 
                     value={formData.pipeline_id} 
                     onChange={e => setFormData({...formData, pipeline_id: e.target.value})}
-                    className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm"
+                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm"
                   >
                     {pipelines.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-gray-700">Tipo de Foto</label>
+                  <label className="text-sm font-bold text-gray-700">Tipo / Tag</label>
                   <select 
                     value={formData.tag} 
                     onChange={e => setFormData({...formData, tag: e.target.value})}
-                    className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm"
+                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm"
                   >
                     <option value="">Selecione o tipo</option>
                     {PHOTO_TYPES.map(pt => <option key={pt.value} value={pt.value}>{pt.label}</option>)}
@@ -833,40 +1065,26 @@ export default function Oportunidades() {
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
                   <div className="space-y-1.5">
                     <label className="text-sm font-bold text-gray-700">Nome do Lead *</label>
-                    <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" placeholder="Nome do cliente" />
+                    <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" placeholder="Ex: João da Silva" />
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-gray-700">Valor</label>
-                    <input type="number" value={formData.value} onChange={e => setFormData({...formData, value: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" placeholder="0.00" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-sm font-bold text-gray-700">Email</label>
-                      <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" />
+                      <label className="text-sm font-bold text-gray-700">Valor Estimado</label>
+                      <input type="number" value={formData.value} onChange={e => setFormData({...formData, value: e.target.value})} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" placeholder="0.00" />
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-sm font-bold text-gray-700">Telefone/WhatsApp</label>
-                      <input type="text" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" />
+                      <input type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" placeholder="Ex: 11999999999" />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-bold text-gray-700">Email</label>
+                      <input type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" />
+                    </div>
                     <div className="space-y-1.5">
                       <label className="text-sm font-bold text-gray-700">Instagram</label>
-                      <input type="text" value={formData.instagram} onChange={e => setFormData({...formData, instagram: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-bold text-gray-700">Data</label>
-                      <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-bold text-gray-700">Local do evento</label>
-                      <input type="text" value={formData.local} onChange={e => setFormData({...formData, local: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-bold text-gray-700">Descrição</label>
-                      <input type="text" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" />
+                      <input type="text" value={formData.instagram} onChange={e => setFormData({...formData, instagram: e.target.value})} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" placeholder="@usuario" />
                     </div>
                   </div>
                 </div>
@@ -876,20 +1094,20 @@ export default function Oportunidades() {
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
                   <div className="space-y-1.5">
                     <label className="text-sm font-bold text-gray-700">Nome do Formulário *</label>
-                    <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" placeholder="Ex: Orçamento Casamento" />
+                    <input type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" placeholder="Ex: Orçamento Casamento" />
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-y-3 gap-x-8">
+                  <div className="grid grid-cols-2 gap-y-4 gap-x-8">
                     {[
                       { key: 'email', label: 'Email' },
-                      { key: 'phone', label: 'Telefone/WhatsApp' },
+                      { key: 'phone', label: 'WhatsApp' },
                       { key: 'instagram', label: 'Instagram' },
-                      { key: 'date', label: 'Data' },
-                      { key: 'local', label: 'Local do evento' },
-                      { key: 'description', label: 'Descrição' }
+                      { key: 'date', label: 'Data Evento' },
+                      { key: 'local', label: 'Local' },
+                      { key: 'description', label: 'Observações' }
                     ].map(field => (
-                      <div key={field.key} className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-gray-700">{field.label}</span>
+                      <div key={field.key} className="flex items-center justify-between bg-gray-50 px-4 py-3 rounded-xl border border-gray-100">
+                        <span className="text-sm font-bold text-gray-700">{field.label}</span>
                         <input 
                           type="checkbox" 
                           checked={formFields[field.key as keyof typeof formFields]} 
@@ -900,16 +1118,14 @@ export default function Oportunidades() {
                     ))}
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-gray-100">
                     <div className="space-y-1.5">
-                      <label className="text-sm font-bold text-gray-700">Número de WhatsApp</label>
-                      <input type="text" value={formData.whatsapp_number} onChange={e => setFormData({...formData, whatsapp_number: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" placeholder="Ex: 5511999999999" />
-                      <p className="text-[10px] text-gray-400">Número que receberá a mensagem do cliente</p>
+                      <label className="text-sm font-bold text-gray-700">Número que receberá WhatsApp</label>
+                      <input type="text" value={formData.whatsapp_number} onChange={e => setFormData({...formData, whatsapp_number: e.target.value})} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" placeholder="Ex: 5511999999999" />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-sm font-bold text-gray-700">Texto da Mensagem</label>
-                      <input type="text" value={formData.whatsapp_text} onChange={e => setFormData({...formData, whatsapp_text: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" placeholder="Ex: Olá, gostaria de um orçamento" />
-                      <p className="text-[10px] text-gray-400">Texto pré-definido para o WhatsApp</p>
+                      <label className="text-sm font-bold text-gray-700">Mensagem Inicial</label>
+                      <input type="text" value={formData.whatsapp_text} onChange={e => setFormData({...formData, whatsapp_text: e.target.value})} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none" placeholder="Ex: Olá, acabei de preencher..." />
                     </div>
                   </div>
                 </div>
@@ -918,17 +1134,17 @@ export default function Oportunidades() {
               {activeTab === 'trigger' && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
                   <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Mensagem Gatilho (Exata ou Contém)</label>
-                    <input type="text" value={formData.trigger_phrase} onChange={e => setFormData({...formData, trigger_phrase: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none shadow-sm" placeholder="Ex: orçamento casamento" />
-                    <p className="text-[11px] text-gray-500 mt-2">Quando alguém enviar exatamente isso (ou uma frase contendo isso) no WhatsApp, o lead será criado automaticamente.</p>
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Frase Gatilho (Exata ou Contém)</label>
+                    <input type="text" value={formData.trigger_phrase} onChange={e => setFormData({...formData, trigger_phrase: e.target.value})} className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none shadow-sm" placeholder="Ex: orçamento casamento" />
+                    <p className="text-[11px] text-gray-500 mt-2 font-medium">Quando alguém enviar essa frase no seu WhatsApp conectado, o lead cairá automaticamente neste funil.</p>
                   </div>
                 </div>
               )}
             </div>
           </div>
-          <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
-            <button onClick={() => setIsModalOpen(false)} className="px-6 py-2.5 text-gray-700 font-bold border border-gray-200 hover:bg-gray-100 rounded-xl transition-colors">Cancelar</button>
-            <button onClick={handleCreateNew} className="px-8 py-2.5 bg-orange-400 text-white font-bold rounded-xl shadow-md transition-all">
+          <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3 rounded-b-2xl">
+            <button onClick={() => setIsModalOpen(false)} className="px-6 py-3 text-gray-600 font-bold hover:bg-gray-200 rounded-xl transition-colors">Cancelar</button>
+            <button onClick={handleCreateNew} className="px-8 py-3 bg-orange-400 text-white font-bold rounded-xl shadow-md hover:bg-orange-500 transition-all active:scale-95">
               {activeTab === 'opp' ? 'Criar Oportunidade' : activeTab === 'link' ? 'Gerar Link Form' : 'Salvar Gatilho'}
             </button>
           </div>
@@ -937,10 +1153,9 @@ export default function Oportunidades() {
 
       {/* Modal Nova Pipeline */}
       <Dialog open={isNewPipelineOpen} onOpenChange={setIsNewPipelineOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm bg-white p-6">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">Criar Novo Funil</DialogTitle>
-            <DialogDescription>Dê um nome para sua nova pipeline de vendas.</DialogDescription>
+            <DialogTitle className="text-xl font-bold text-gray-900">Criar Novo Funil</DialogTitle>
           </DialogHeader>
           <div className="py-4">
             <input 
@@ -952,45 +1167,50 @@ export default function Oportunidades() {
               autoFocus
             />
           </div>
-          <DialogFooter>
-            <button onClick={() => setIsNewPipelineOpen(false)} className="px-4 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded-lg">Cancelar</button>
-            <button onClick={handleCreatePipeline} className="px-6 py-2 bg-orange-400 text-white font-bold rounded-lg hover:bg-orange-500">Criar Funil</button>
+          <DialogFooter className="gap-2">
+            <button onClick={() => setIsNewPipelineOpen(false)} className="flex-1 py-2.5 text-gray-600 font-bold hover:bg-gray-100 rounded-xl">Cancelar</button>
+            <button onClick={handleCreatePipeline} className="flex-1 py-2.5 bg-orange-400 text-white font-bold rounded-xl hover:bg-orange-500 shadow-sm">Criar Funil</button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Modal Nova Coluna */}
       <Dialog open={isNewColOpen} onOpenChange={setIsNewColOpen}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Nova Coluna</DialogTitle></DialogHeader>
-          <input type="text" value={newColName} onChange={e => setNewColName(e.target.value)} className="w-full px-3 py-2 border rounded-lg focus:ring-orange-400" placeholder="Nome da etapa" />
-          <DialogFooter><Button onClick={handleCreateColumn} className="bg-orange-400 hover:bg-orange-500">Salvar</Button></DialogFooter>
+        <DialogContent className="max-w-sm bg-white p-6">
+          <DialogHeader><DialogTitle className="text-xl font-bold text-gray-900">Nova Etapa</DialogTitle></DialogHeader>
+          <div className="py-4">
+            <input type="text" value={newColName} onChange={e => setNewColName(e.target.value)} className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none font-semibold" placeholder="Ex: Negociação" autoFocus />
+          </div>
+          <DialogFooter className="gap-2">
+            <button onClick={() => setIsNewColOpen(false)} className="flex-1 py-2.5 text-gray-600 font-bold hover:bg-gray-100 rounded-xl">Cancelar</button>
+            <button onClick={handleCreateColumn} className="flex-1 py-2.5 bg-orange-400 text-white font-bold rounded-xl hover:bg-orange-500 shadow-sm">Salvar Etapa</button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Modal Cadência */}
       <Dialog open={isCadenciaModalOpen} onOpenChange={setIsCadenciaModalOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-sm bg-white p-6">
           <DialogHeader>
-            <DialogTitle>Iniciar Fluxo de Cadência</DialogTitle>
+            <DialogTitle className="text-xl font-bold text-gray-900">Iniciar Automação</DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-4">
-            <p className="text-sm text-gray-500">Selecione um fluxo para agendar as mensagens automáticas para <strong>{selectedOppForCadencia?.name}</strong>.</p>
+            <p className="text-sm text-gray-500">Agendar mensagens automáticas para <strong>{selectedOppForCadencia?.name}</strong>.</p>
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-1.5">Fluxo</label>
+              <label className="block text-sm font-bold text-gray-700 mb-1.5">Escolha o fluxo:</label>
               <select 
                 value={selectedFlowId} 
                 onChange={e => setSelectedFlowId(e.target.value)}
-                className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none font-semibold"
               >
                 <option value="">Selecione um fluxo...</option>
                 {cadenciaFlows.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
               </select>
             </div>
           </div>
-          <DialogFooter>
-            <button onClick={() => setIsCadenciaModalOpen(false)} className="px-5 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded-lg transition-colors">Cancelar</button>
-            <button onClick={handleStartCadencia} className="px-6 py-2 bg-orange-400 text-white font-bold rounded-lg hover:bg-orange-500 shadow-sm">Agendar Cadência</button>
+          <DialogFooter className="gap-2">
+            <button onClick={() => setIsCadenciaModalOpen(false)} className="flex-1 py-2.5 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition-colors">Cancelar</button>
+            <button onClick={handleStartCadencia} className="flex-1 py-2.5 bg-green-500 text-white font-bold rounded-xl hover:bg-green-600 shadow-sm">Ativar Fluxo</button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
