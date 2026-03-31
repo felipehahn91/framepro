@@ -10,18 +10,16 @@ export const initTracking = (orcamentoId: string, sessionId: string, device: str
   const sessionEvents: any[] = [];
   const startTime = Date.now();
 
-  // Cria a sessão base imediatamente. Removemos o .select().single() pois usuários anônimos 
-  // não têm permissão de leitura (SELECT), o que causava erro e impedia as atualizações futuras.
+  // Cria a sessão base (apenas INSERE, sem tentar ler de volta para não dar erro de permissão)
   supabase.from('orcamento_analytics').insert({
     orcamento_id: orcamentoId,
     session_id: sessionId,
     device: device,
     replay_data: { device, events: [] }
   }).then(({ error }) => {
-    if (error) console.error("Erro ao iniciar sessão de analytics:", error);
+    if (error) console.error("Erro ao iniciar sessão:", error);
   });
 
-  // Pega as coordenadas exatas relativas ao container central da proposta
   const getRelativeCoords = (clientX: number, clientY: number) => {
     const container = document.getElementById('proposal-container');
     if (container) {
@@ -38,7 +36,7 @@ export const initTracking = (orcamentoId: string, sessionId: string, device: str
     const timeOffset = Date.now() - startTime;
     sessionEvents.push({ type, timeOffset, ...data });
 
-    // Salva o clique individualmente para o mapa de calor
+    // Salva o clique para o mapa de calor
     if (type === 'click') {
       supabase.from('orcamento_tracking').insert({
         orcamento_id: orcamentoId,
@@ -56,26 +54,21 @@ export const initTracking = (orcamentoId: string, sessionId: string, device: str
   const onMouseMove = (e: MouseEvent) => {
     const now = Date.now();
     if (now - lastMouseMove > 100) {
-      const coords = getRelativeCoords(e.clientX, e.clientY);
-      recordEvent('mousemove', coords);
+      recordEvent('mousemove', getRelativeCoords(e.clientX, e.clientY));
       lastMouseMove = now;
     }
   };
 
-  // Captura o arrastar do dedo no celular para exibir no Replay
   const onTouchMove = (e: TouchEvent) => {
     const now = Date.now();
     if (now - lastMouseMove > 100 && e.touches.length > 0) {
-      const touch = e.touches[0];
-      const coords = getRelativeCoords(touch.clientX, touch.clientY);
-      recordEvent('mousemove', coords); 
+      recordEvent('mousemove', getRelativeCoords(e.touches[0].clientX, e.touches[0].clientY));
       lastMouseMove = now;
     }
   };
 
   const onClick = (e: MouseEvent) => {
-    const coords = getRelativeCoords(e.clientX, e.clientY);
-    recordEvent('click', coords);
+    recordEvent('click', getRelativeCoords(e.clientX, e.clientY));
   };
 
   let lastScroll = 0;
@@ -94,14 +87,16 @@ export const initTracking = (orcamentoId: string, sessionId: string, device: str
 
   const syncData = () => {
     if (sessionEvents.length > 0) {
-      // Atualiza pelo session_id gerado pelo cliente, evitando precisar ler dados protegidos
+      // Atualiza os dados da gravação continuamente localizando pelo session_id (não esbarra no bloqueio RLS)
       supabase.from('orcamento_analytics').update({
         replay_data: { device, events: [...sessionEvents] }
-      }).eq('session_id', sessionId).then();
+      }).eq('session_id', sessionId).then(({ error }) => {
+        if (error) console.error("Erro ao sincronizar dados:", error);
+      });
     }
   };
 
-  // Sincroniza periodicamente com o banco de dados
+  // Sincroniza periodicamente com o banco de dados a cada 5 segundos
   trackingInterval = setInterval(syncData, 5000);
 
   return () => {
@@ -112,7 +107,7 @@ export const initTracking = (orcamentoId: string, sessionId: string, device: str
     window.removeEventListener('scroll', onScroll);
     clearInterval(trackingInterval);
     
-    // Dispara uma última vez quando a página for fechada
+    // Dispara uma última vez quando o cliente sai da página
     syncData();
   };
 };
