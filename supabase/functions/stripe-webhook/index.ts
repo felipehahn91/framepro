@@ -8,6 +8,9 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   httpClient: Stripe.createFetchHttpClient(),
 });
 
+// Cria o provedor de criptografia compatível com o Deno / Edge Runtime
+const cryptoProvider = Stripe.createSubtleCryptoProvider();
+
 serve(async (req) => {
   const signature = req.headers.get('stripe-signature');
 
@@ -23,7 +26,14 @@ serve(async (req) => {
 
     let event;
     try {
-      event = await stripe.webhooks.constructEventAsync(body, signature, endpointSecret);
+      // Passamos o cryptoProvider como o quinto argumento!
+      event = await stripe.webhooks.constructEventAsync(
+        body, 
+        signature, 
+        endpointSecret,
+        undefined,
+        cryptoProvider
+      );
     } catch (err) {
       console.error(`[stripe-webhook] Erro na assinatura: ${err.message}`);
       return new Response(`Webhook Error: ${err.message}`, { status: 400 });
