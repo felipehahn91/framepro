@@ -1,17 +1,25 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Layout } from "@/components/Layout";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Trash2, Plus, UserPlus, MessageSquare, MessageCircle, Link as LinkIcon,
-  Upload, Loader2, Copy, ExternalLink, X, UserMinus, Search, Inbox, ArrowUp, ArrowDown, Clock, Tag as TagIcon, Zap
+  Upload, Loader2, Copy, ExternalLink, X, UserMinus, Search, Inbox, ArrowUp, ArrowDown, Clock, Tag as TagIcon, Zap, Filter, ChevronDown, LayoutGrid
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import LeadImportModal from "@/components/LeadImportModal";
 import OpportunityDetailModal from "@/components/OpportunityDetailModal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 // --- Tipos ---
 interface Pipeline { id: string; name: string; }
@@ -66,7 +74,10 @@ export default function Oportunidades() {
   
   const [activePipelineId, setActivePipelineId] = useState<string>("");
   const [selectedOpps, setSelectedOpps] = useState<string[]>([]);
+  
+  // Filtros e Pesquisa
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
   // Modais
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -74,6 +85,8 @@ export default function Oportunidades() {
   const [activeTab, setActiveTab] = useState<'opp' | 'link' | 'trigger'>('opp');
   const [isNewColOpen, setIsNewColOpen] = useState(false);
   const [newColName, setNewColName] = useState("");
+  const [isNewPipelineOpen, setIsNewPipelineOpen] = useState(false);
+  const [newPipelineName, setNewPipelineName] = useState("");
 
   // Modal de Detalhes da Oportunidade
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -175,15 +188,29 @@ export default function Oportunidades() {
 
   const activeColumns = columns.filter(c => c.pipeline_id === activePipelineId).sort((a, b) => a.order_index - b.order_index);
 
-  const filteredOpportunities = opportunities.filter(opp => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      opp.name.toLowerCase().includes(query) ||
-      (opp.email && opp.email.toLowerCase().includes(query)) ||
-      (opp.phone && opp.phone.toLowerCase().includes(query))
-    );
-  });
+  // Lógica de Filtragem e Pesquisa combinada
+  const filteredOpportunities = useMemo(() => {
+    return opportunities.filter(opp => {
+      // 1. Filtrar pela pipeline ativa obrigatoriamente
+      if (opp.pipeline_id !== activePipelineId) return false;
+
+      // 2. Filtro de pesquisa (nome, email ou telefone)
+      const query = searchQuery.toLowerCase();
+      const matchesSearch = !searchQuery || (
+        opp.name.toLowerCase().includes(query) ||
+        (opp.email && opp.email.toLowerCase().includes(query)) ||
+        (opp.phone && opp.phone.toLowerCase().includes(query))
+      );
+      if (!matchesSearch) return false;
+
+      // 3. Filtro de Tags
+      if (selectedTags.length > 0) {
+        if (!opp.tag || !selectedTags.includes(opp.tag)) return false;
+      }
+
+      return true;
+    });
+  }, [opportunities, activePipelineId, searchQuery, selectedTags]);
 
   // Drag and Drop
   const onDragEnd = async (result: any) => {
@@ -222,8 +249,8 @@ export default function Oportunidades() {
 
   // Seleções
   const toggleColumnSelection = (colId: string, colOppsIds: string[]) => {
-    const allSelected = colOppsIds.length > 0 && colOppsIds.every(id => selectedOpps.includes(id));
-    if (allSelected) {
+    const allSelectedInCol = colOppsIds.length > 0 && colOppsIds.every(id => selectedOpps.includes(id));
+    if (allSelectedInCol) {
       setSelectedOpps(prev => prev.filter(id => !colOppsIds.includes(id)));
     } else {
       const newIds = colOppsIds.filter(id => !selectedOpps.includes(id));
@@ -397,17 +424,15 @@ export default function Oportunidades() {
     if (activeTab === 'link' && !formData.name) return toast.error("Nome é obrigatório.");
     if (activeTab === 'trigger' && !formData.trigger_phrase) return toast.error("Mensagem gatilho é obrigatória.");
     
-    const targetPipeline = formData.pipeline_id || activePipelineId;
-    const activeCols = columns.filter(c => c.pipeline_id === targetPipeline).sort((a, b) => a.order_index - b.order_index);
-    if (activeCols.length === 0) return toast.error("Crie uma coluna primeiro.");
+    if (activeColumns.length === 0) return toast.error("Crie uma coluna primeiro.");
 
-    const targetCol = activeCols[0].id;
+    const targetCol = activeColumns[0].id;
 
     try {
       if (activeTab === 'opp') {
         const { data, error } = await supabase.from('opportunities').insert({
           user_id: user?.id,
-          pipeline_id: targetPipeline,
+          pipeline_id: formData.pipeline_id || activePipelineId,
           column_id: targetCol,
           name: formData.name,
           value: formData.value,
@@ -421,12 +446,12 @@ export default function Oportunidades() {
           is_client: false
         }).select().single();
         if (error) throw error;
-        if (data && targetPipeline === activePipelineId) setOpportunities(prev => [...prev, data as Opportunity]);
+        if (data && (formData.pipeline_id || activePipelineId) === activePipelineId) setOpportunities(prev => [...prev, data as Opportunity]);
         toast.success("Oportunidade criada!");
       } else if (activeTab === 'link') {
         const { data } = await supabase.from('link_forms').insert({
           user_id: user?.id,
-          pipeline_id: targetPipeline,
+          pipeline_id: formData.pipeline_id || activePipelineId,
           column_id: targetCol,
           name: formData.name,
           tag: formData.tag,
@@ -440,7 +465,7 @@ export default function Oportunidades() {
         const { data } = await supabase.from('whatsapp_triggers').insert({
           user_id: user?.id,
           trigger_phrase: formData.trigger_phrase,
-          pipeline_id: targetPipeline,
+          pipeline_id: formData.pipeline_id || activePipelineId,
           column_id: targetCol,
           tag: formData.tag,
           enabled: true
@@ -465,10 +490,42 @@ export default function Oportunidades() {
     toast.success("Coluna criada!");
   };
 
+  const handleCreatePipeline = async () => {
+    if (!newPipelineName) return;
+    try {
+      const { data: pipe, error: pipeErr } = await supabase.from('pipelines').insert({
+        name: newPipelineName, user_id: user?.id
+      }).select().single();
+
+      if (pipeErr) throw pipeErr;
+
+      const defCols = [
+        { name: 'Aberto', order_index: 0, pipeline_id: pipe.id, user_id: user?.id },
+        { name: 'Ganho', order_index: 1, pipeline_id: pipe.id, user_id: user?.id },
+        { name: 'Perdido', order_index: 2, pipeline_id: pipe.id, user_id: user?.id }
+      ];
+      const { data: newCols } = await supabase.from('columns').insert(defCols).select();
+
+      setPipelines([...pipelines, pipe]);
+      if (newCols) setColumns([...columns, ...newCols]);
+      
+      setActivePipelineId(pipe.id);
+      setNewPipelineName("");
+      setIsNewPipelineOpen(false);
+      toast.success("Novo funil criado!");
+    } catch (e) {
+      toast.error("Erro ao criar pipeline.");
+    }
+  };
+
   const handleDeleteTrigger = async (id: string) => {
     if (!confirm("Deletar gatilho?")) return;
     setWhatsappTriggers(prev => prev.filter(t => t.id !== id));
     await supabase.from('whatsapp_triggers').delete().eq('id', id);
+  };
+
+  const toggleTagFilter = (tag: string) => {
+    setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
   };
 
   if (loading) return <Layout><div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div></Layout>;
@@ -476,6 +533,7 @@ export default function Oportunidades() {
   return (
     <Layout>
       <div className="max-w-full mx-auto flex flex-col h-full bg-[#FAFAFA]">
+        
         {/* Bulk Action Bar */}
         {selectedOpps.length > 0 && (
           <div className="bg-white border border-gray-200 shadow-sm rounded-xl p-3 mb-4 flex items-center justify-between animate-in slide-in-from-top-2">
@@ -489,15 +547,95 @@ export default function Oportunidades() {
           </div>
         )}
 
-        {/* Header Actions */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 sm:mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Oportunidades</h1>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <button onClick={() => setIsImportOpen(true)} className="flex-1 sm:flex-none justify-center px-4 py-2.5 sm:py-2 bg-white border border-gray-200 text-gray-700 font-semibold rounded-xl sm:rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2 shadow-sm">
-              <Upload className="w-4 h-4" /> Importar
+        {/* Toolbar Superior: Pipelines, Pesquisa e Filtros */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-6 shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 flex-1">
+            
+            {/* Seletor de Pipeline */}
+            <div className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center justify-between gap-3 px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-100 transition-colors min-w-[180px]">
+                    <div className="flex items-center gap-2">
+                      <LayoutGrid className="w-4 h-4 text-orange-500" />
+                      <span className="font-bold text-gray-900 text-sm">
+                        {pipelines.find(p => p.id === activePipelineId)?.name || 'Funis'}
+                      </span>
+                    </div>
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-[220px]">
+                  {pipelines.map(p => (
+                    <DropdownMenuItem 
+                      key={p.id} 
+                      onClick={() => setActivePipelineId(p.id)}
+                      className={`font-semibold cursor-pointer ${activePipelineId === p.id ? 'text-orange-500' : ''}`}
+                    >
+                      {p.name}
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setIsNewPipelineOpen(true)} className="font-bold text-orange-500 cursor-pointer flex items-center gap-2">
+                    <Plus className="w-4 h-4" /> Criar Novo Funil
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+
+            {/* Barra de Pesquisa */}
+            <div className="relative flex-1 max-w-md">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input 
+                type="text"
+                placeholder="Pesquisar por nome, email ou telefone..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700 focus:ring-2 focus:ring-orange-400 outline-none transition-all"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+            
+            {/* Filtro por Tags */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className={`flex items-center gap-2 px-4 py-2 border rounded-xl text-sm font-semibold transition-all ${selectedTags.length > 0 ? 'bg-orange-50 border-orange-200 text-orange-600' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+                  <Filter className="w-4 h-4" />
+                  {selectedTags.length === 0 ? 'Filtrar por Tags' : `${selectedTags.length} Tag(s) ativa(s)`}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[200px]">
+                {PHOTO_TYPES.map(tag => (
+                  <DropdownMenuCheckboxItem
+                    key={tag.value}
+                    checked={selectedTags.includes(tag.value)}
+                    onCheckedChange={() => toggleTagFilter(tag.value)}
+                  >
+                    {tag.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+                {selectedTags.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setSelectedTags([])} className="justify-center font-bold text-red-500">
+                      Limpar Filtros
+                    </DropdownMenuItem>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={() => setIsImportOpen(true)} className="p-2 bg-white border border-gray-200 text-gray-500 rounded-xl hover:bg-gray-50 transition-colors shadow-sm" title="Importar Leads">
+              <Upload className="w-5 h-5" />
             </button>
-            <button onClick={() => setIsModalOpen(true)} className="flex-1 sm:flex-none justify-center px-4 py-2.5 sm:py-2 bg-orange-400 text-white font-semibold rounded-xl sm:rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-2 shadow-sm">
-              <Plus className="w-4 h-4" /> Adicionar
+            <button onClick={() => setIsModalOpen(true)} className="px-5 py-2.5 bg-orange-400 text-white font-bold rounded-xl hover:bg-orange-500 transition-colors flex items-center gap-2 shadow-sm">
+              <Plus className="w-5 h-5" /> Adicionar
             </button>
           </div>
         </div>
@@ -511,8 +649,8 @@ export default function Oportunidades() {
                   {activeColumns.map((col, index) => {
                     const colOpps = filteredOpportunities.filter(o => o.column_id === col.id);
                     const colOppsIds = colOpps.map(o => o.id);
-                    const allSelected = colOppsIds.length > 0 && colOppsIds.every(id => selectedOpps.includes(id));
-                    const someSelected = colOpps.some(o => selectedOpps.includes(o.id));
+                    const allSelectedInCol = colOppsIds.length > 0 && colOppsIds.every(id => selectedOpps.includes(id));
+                    const someSelectedInCol = colOppsIds.some(id => selectedOpps.includes(id));
 
                     return (
                       <Draggable key={col.id} draggableId={col.id} index={index}>
@@ -526,8 +664,8 @@ export default function Oportunidades() {
                                 <div className="flex items-center gap-2">
                                   <input 
                                     type="checkbox"
-                                    checked={allSelected}
-                                    ref={input => { if (input) input.indeterminate = someSelected && !allSelected; }}
+                                    checked={allSelectedInCol}
+                                    ref={input => { if (input) input.indeterminate = someSelectedInCol && !allSelectedInCol; }}
                                     onChange={() => toggleColumnSelection(col.id, colOppsIds)}
                                     className="w-4 h-4 rounded border-gray-300 accent-orange-500 cursor-pointer"
                                   />
@@ -594,6 +732,11 @@ export default function Oportunidades() {
                                     );
                                   })}
                                   {provided.placeholder}
+                                  {filteredOpportunities.length === 0 && searchQuery && (
+                                    <div className="text-center py-10 opacity-40">
+                                      <p className="text-sm font-bold">Nenhum lead encontrado.</p>
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </Droppable>
@@ -785,10 +928,34 @@ export default function Oportunidades() {
           </div>
           <div className="p-6 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
             <button onClick={() => setIsModalOpen(false)} className="px-6 py-2.5 text-gray-700 font-bold border border-gray-200 hover:bg-gray-100 rounded-xl transition-colors">Cancelar</button>
-            <button onClick={handleCreateNew} className="px-8 py-2.5 bg-orange-400 hover:bg-orange-500 text-white font-bold rounded-xl shadow-md transition-all">
+            <button onClick={handleCreateNew} className="px-8 py-2.5 bg-orange-400 text-white font-bold rounded-xl shadow-md transition-all">
               {activeTab === 'opp' ? 'Criar Oportunidade' : activeTab === 'link' ? 'Gerar Link Form' : 'Salvar Gatilho'}
             </button>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Nova Pipeline */}
+      <Dialog open={isNewPipelineOpen} onOpenChange={setIsNewPipelineOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">Criar Novo Funil</DialogTitle>
+            <DialogDescription>Dê um nome para sua nova pipeline de vendas.</DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <input 
+              type="text" 
+              value={newPipelineName} 
+              onChange={e => setNewPipelineName(e.target.value)} 
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none font-semibold" 
+              placeholder="Ex: Pós-Venda, Corporativo..." 
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <button onClick={() => setIsNewPipelineOpen(false)} className="px-4 py-2 text-gray-500 font-bold hover:bg-gray-100 rounded-lg">Cancelar</button>
+            <button onClick={handleCreatePipeline} className="px-6 py-2 bg-orange-400 text-white font-bold rounded-lg hover:bg-orange-500">Criar Funil</button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
