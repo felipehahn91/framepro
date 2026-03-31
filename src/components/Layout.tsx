@@ -12,7 +12,8 @@ import {
   Bell,
   Sun,
   GitBranch,
-  LogOut
+  LogOut,
+  ShieldCheck
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -24,34 +25,38 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const navItems = [
-  { name: "Dashboard", path: "/", icon: LayoutDashboard },
-  { name: "Oportunidades", path: "/oportunidades", icon: Target },
-  { name: "Clientes", path: "/clientes", icon: Users },
-  { name: "Tarefas", path: "/tarefas", icon: CheckSquare },
-  { name: "Financeiro", path: "/financeiro", icon: DollarSign },
-  { name: "Contratos", path: "/contratos", icon: FileText },
-  { name: "Orçamentos", path: "/orcamentos", icon: Calculator },
-  { name: "Agenda", path: "/agenda", icon: Calendar },
-  { name: "Fluxo de Cadência", path: "/fluxo", icon: GitBranch },
-  { name: "Configurações", path: "/configuracoes", icon: Settings },
-];
-
 export const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut } = useAuth();
 
   const handleSignOut = async () => {
     await signOut();
   };
 
-  // Get user initials (fallback to User if no email/name)
   const getInitials = () => {
     if (user?.email) {
       return user.email.substring(0, 2).toUpperCase();
     }
     return "US";
   };
+
+  const navItems = [
+    { name: "Dashboard", path: "/", icon: LayoutDashboard },
+    { name: "Oportunidades", path: "/oportunidades", icon: Target },
+    { name: "Clientes", path: "/clientes", icon: Users },
+    { name: "Tarefas", path: "/tarefas", icon: CheckSquare },
+    { name: "Financeiro", path: "/financeiro", icon: DollarSign },
+    { name: "Contratos", path: "/contratos", icon: FileText },
+    { name: "Orçamentos", path: "/orcamentos", icon: Calculator },
+    { name: "Agenda", path: "/agenda", icon: Calendar },
+    { name: "Fluxo de Cadência", path: "/fluxo", icon: GitBranch },
+    { name: "Configurações", path: "/configuracoes", icon: Settings },
+  ];
+
+  // Adiciona o menu de Admin apenas se o usuário for administrador
+  if (profile?.role === 'admin') {
+    navItems.push({ name: "Administração", path: "/admin", icon: ShieldCheck });
+  }
 
   return (
     <div className="flex h-screen bg-[#f8fafc] overflow-hidden font-sans">
@@ -64,16 +69,20 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           <span className="font-bold text-xl text-gray-900">Frame Pro</span>
         </div>
 
-        <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-4 py-2 space-y-1 overflow-y-auto custom-scrollbar">
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
+            const isAdminItem = item.path === "/admin";
+            
             return (
               <Link
                 key={item.name}
                 to={item.path}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm font-medium ${
                   isActive
-                    ? "bg-orange-400 text-white"
+                    ? isAdminItem 
+                      ? "bg-gray-900 text-white" // Destaque escuro para o painel admin
+                      : "bg-orange-400 text-white"
                     : "text-gray-600 hover:bg-gray-100"
                 }`}
               >
@@ -82,7 +91,10 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                     isActive ? "text-white" : "text-gray-400"
                   }`}
                 />
-                {item.name}
+                <span className="flex-1">{item.name}</span>
+                {isAdminItem && !isActive && (
+                  <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                )}
               </Link>
             );
           })}
@@ -92,7 +104,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header */}
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 z-10">
+        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 z-10 shrink-0">
           <div className="flex items-center gap-3 md:hidden">
             <div className="w-8 h-8 rounded-full bg-orange-400 flex items-center justify-center text-white font-bold">
               F
@@ -105,10 +117,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
             <button className="text-gray-500 hover:text-gray-700">
               <Bell className="w-5 h-5" />
             </button>
-            <button className="text-gray-500 hover:text-gray-700">
-              <Sun className="w-5 h-5" />
-            </button>
-
+            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-medium text-sm ml-2 outline-none ring-offset-2 focus:ring-2 focus:ring-orange-400">
@@ -132,10 +141,23 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-y-auto p-8">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 bg-[#f8fafc]">
           {children}
         </div>
       </main>
+
+      <style dangerouslySetInnerHTML={{__html: `
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background-color: #cbd5e1;
+          border-radius: 20px;
+        }
+      `}} />
     </div>
   );
 };
