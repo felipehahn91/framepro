@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Trash2, Plus, UserPlus, MessageCircle, Link as LinkIcon,
-  Upload, Loader2, Copy, ExternalLink, X, UserMinus, Search, Inbox, ArrowUp, ArrowDown, Clock
+  Upload, Loader2, Copy, ExternalLink, X, UserMinus, Search, Inbox, ArrowUp, ArrowDown, Clock, Tag as TagIcon
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -567,7 +567,7 @@ export default function Oportunidades() {
                                     checked={allSelected}
                                     ref={input => { if (input) input.indeterminate = someSelected && !allSelected; }}
                                     onChange={() => toggleColumnSelection(col.id, colOppsIds)}
-                                    className="w-4 h-4 rounded border-gray-300 text-orange-400 focus:ring-orange-400 cursor-pointer"
+                                    className="w-4 h-4 rounded border-gray-300 accent-orange-500 cursor-pointer"
                                   />
                                   <h3 className="font-bold text-gray-900 text-[15px]">{col.name}</h3>
                                   <span className="bg-gray-100 text-gray-500 text-xs font-bold px-2 py-0.5 rounded-full min-w-[24px] text-center">
@@ -624,7 +624,7 @@ export default function Oportunidades() {
                                                   checked={selectedOpps.includes(opp.id)}
                                                   onChange={() => toggleSelection(opp.id)}
                                                   onClick={(e) => e.stopPropagation()}
-                                                  className="w-4 h-4 mt-0.5 rounded border-gray-300 text-orange-400 focus:ring-orange-400 cursor-pointer shrink-0"
+                                                  className="w-4 h-4 mt-0.5 rounded border-gray-300 accent-orange-500 cursor-pointer shrink-0"
                                                 />
                                                 <span className="font-semibold text-gray-900 text-sm leading-tight">{opp.name}</span>
                                               </div>
