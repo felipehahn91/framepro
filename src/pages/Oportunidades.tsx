@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 // --- Tipos ---
-interface Pipeline { id: string; name: string; }
+interface Pipeline { id: string; name: string; order_index?: number; }
 interface Column { id: string; pipeline_id: string; name: string; order_index: number; }
 interface Opportunity {
   id: string; 
@@ -40,6 +40,7 @@ interface Opportunity {
   is_client: boolean;
   company: string; 
   avatar_url: string;
+  order_index?: number;
 }
 interface LinkForm {
   id: string; name: string; tag: string; whatsapp_number: string; whatsapp_text: string;
@@ -87,6 +88,11 @@ export default function Oportunidades() {
   const [newColName, setNewColName] = useState("");
   const [isNewPipelineOpen, setIsNewPipelineOpen] = useState(false);
   const [newPipelineName, setNewPipelineName] = useState("");
+
+  // Gerenciamento de Pipelines
+  const [isManagePipelinesOpen, setIsManagePipelinesOpen] = useState(false);
+  const [editingPipelineId, setEditingPipelineId] = useState<string | null>(null);
+  const [editingPipelineName, setEditingPipelineName] = useState("");
 
   // Edição de Coluna Inline
   const [editingColumnId, setEditingColumnId] = useState<string | null>(null);
@@ -153,9 +159,9 @@ export default function Oportunidades() {
     setLoading(true);
     try {
       const [pipesRes, colsRes, oppsRes, formsRes, queueRes, triggersRes] = await Promise.all([
-        supabase.from('pipelines').select('*').order('created_at', { ascending: true }),
+        supabase.from('pipelines').select('*').order('order_index', { ascending: true, nullsFirst: false }).order('created_at', { ascending: true }),
         supabase.from('columns').select('*').order('order_index', { ascending: true }),
-        supabase.from('opportunities').select('*'),
+        supabase.from('opportunities').select('*').order('order_index', { ascending: true, nullsFirst: false }).order('created_at', { ascending: false }),
         supabase.from('link_forms').select('*'),
         supabase.from('cadencia_queue').select('opportunity_id').eq('user_id', user?.id).eq('status', 'pending'),
         supabase.from('whatsapp_triggers').select('*')
@@ -166,7 +172,7 @@ export default function Oportunidades() {
 
       // Criar pipeline padrão se não existir
       if (pipes.length === 0) {
-        const newPipe = await supabase.from('pipelines').insert({ name: 'Vendas Principais', user_id: user?.id }).select().single();
+        const newPipe = await supabase.from('pipelines').insert({ name: 'Vendas Principais', user_id: user?.id, order_index: 0 }).select().single();
         if (newPipe.data) {
           pipes = [newPipe.data];
           const defCols = [
@@ -228,12 +234,13 @@ export default function Oportunidades() {
     });
   }, [opportunities, activePipelineId, searchQuery, selectedTags]);
 
-  // Drag and Drop
+  // Drag and Drop (Colunas e Cards)
   const onDragEnd = async (result: any) => {
     const { destination, source, draggableId, type } = result;
     if (!destination) return;
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
 
+    // Movimentação de Colunas
     if (type === "column") {
       const newCols = Array.from(activeColumns);
       const [removed] = newCols.splice(source.index, 1);
@@ -248,17 +255,113 @@ export default function Oportunidades() {
       return;
     }
 
+    // Movimentação de Cards
+    const sourceColId = source.droppableId;
     const destColId = destination.droppableId;
-    
-    setOpportunities(prev => {
-      const updatedOpps = Array.from(prev);
-      const oppToMove = updatedOpps.find(o => o.id === draggableId);
-      if (oppToMove) oppToMove.column_id = destColId;
-      return updatedOpps;
-    });
 
-    await supabase.from('opportunities').update({ column_id: destColId }).eq('id', draggableId);
+    if (sourceColId === destColId) {
+      // Reordenar dentro da mesma coluna
+      const colOpps = opportunities.filter(o => o.column_id === sourceColId).sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+      const otherOpps = opportunities.filter(o => o.column_id !== sourceColId);
+
+      const reorderedOpps = Array.from(colOpps);
+      const [movedOpp] = reorderedOpps.splice(source.index, 1);
+      reorderedOpps.splice(destination.index, 0, movedOpp);
+
+      const updatedColOpps = reorderedOpps.map((o, idx) => ({ ...o, order_index: idx }));
+      setOpportunities([...otherOpps, ...updatedColOpps]);
+
+      try {
+        for (const opp of updatedColOpps) {
+          const { error } = await supabase.from('opportunities').update({ order_index: opp.order_index }).eq('id', opp.id);
+          if (error && !error.message?.includes('order_index') && error.code !== 'PGRST204') throw error;
+        }
+      } catch (e) {
+        console.warn("A coluna order_index pode não existir em opportunities.");
+      }
+      return;
+    }
+
+    // Mover entre colunas diferentes
+    const sourceColOpps = opportunities.filter(o => o.column_id === sourceColId).sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+    const destColOpps = opportunities.filter(o => o.column_id === destColId).sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+    const otherOpps = opportunities.filter(o => o.column_id !== sourceColId && o.column_id !== destColId);
+
+    const [movedOpp] = sourceColOpps.splice(source.index, 1);
+    movedOpp.column_id = destColId;
+    destColOpps.splice(destination.index, 0, movedOpp);
+
+    const updatedSourceOpps = sourceColOpps.map((o, idx) => ({ ...o, order_index: idx }));
+    const updatedDestOpps = destColOpps.map((o, idx) => ({ ...o, order_index: idx }));
+
+    setOpportunities([...otherOpps, ...updatedSourceOpps, ...updatedDestOpps]);
+
+    try {
+      await supabase.from('opportunities').update({ column_id: destColId, order_index: destination.index }).eq('id', draggableId);
+      
+      for (const opp of updatedDestOpps) {
+        const { error } = await supabase.from('opportunities').update({ order_index: opp.order_index }).eq('id', opp.id);
+        if (error && !error.message?.includes('order_index') && error.code !== 'PGRST204') throw error;
+      }
+    } catch (e) {
+      console.warn("A coluna order_index pode não existir.");
+    }
   };
+
+  // Gerenciamento de Pipelines (Renomear, Deletar, Reordenar)
+  const handleUpdatePipelineName = async (id: string) => {
+    if (!editingPipelineName.trim()) {
+      setEditingPipelineId(null);
+      return;
+    }
+    try {
+      await supabase.from('pipelines').update({ name: editingPipelineName }).eq('id', id);
+      setPipelines(prev => prev.map(p => p.id === id ? { ...p, name: editingPipelineName } : p));
+      setEditingPipelineId(null);
+      toast.success('Funil renomeado!');
+    } catch (error) {
+      toast.error('Erro ao renomear funil.');
+    }
+  };
+
+  const handleDeletePipeline = async (id: string) => {
+    if (!confirm("Atenção: Deletar este funil excluirá TODAS as etapas e oportunidades dentro dele. Deseja continuar?")) return;
+    try {
+      await supabase.from('pipelines').delete().eq('id', id);
+      const remaining = pipelines.filter(p => p.id !== id);
+      setPipelines(remaining);
+      if (activePipelineId === id) {
+        setActivePipelineId(remaining.length > 0 ? remaining[0].id : '');
+      }
+      toast.success("Funil deletado.");
+    } catch (error) {
+      toast.error("Erro ao deletar funil.");
+    }
+  };
+
+  const handleMovePipeline = async (index: number, direction: 'up' | 'down') => {
+    const newPipes = [...pipelines];
+    if (direction === 'up' && index > 0) {
+      [newPipes[index - 1], newPipes[index]] = [newPipes[index], newPipes[index - 1]];
+    } else if (direction === 'down' && index < newPipes.length - 1) {
+      [newPipes[index + 1], newPipes[index]] = [newPipes[index], newPipes[index + 1]];
+    } else {
+      return;
+    }
+
+    const updatedPipes = newPipes.map((p, idx) => ({ ...p, order_index: idx }));
+    setPipelines(updatedPipes);
+
+    try {
+      for (const pipe of updatedPipes) {
+        const { error } = await supabase.from('pipelines').update({ order_index: pipe.order_index }).eq('id', pipe.id);
+        if (error && !error.message?.includes('order_index') && error.code !== 'PGRST204') throw error;
+      }
+    } catch (error) {
+      console.warn("A coluna order_index pode não existir na tabela pipelines.");
+    }
+  };
+
 
   // Seleções
   const toggleColumnSelection = (colId: string, colOppsIds: string[]) => {
@@ -316,28 +419,6 @@ export default function Oportunidades() {
     } catch (error) {
       toast.error('Erro ao mover oportunidades');
     }
-  };
-
-  // Reordenar Setas Cima/Baixo
-  const moveCard = (e: React.MouseEvent, oppId: string, colId: string, direction: 'up' | 'down') => {
-    e.stopPropagation();
-    setOpportunities(prev => {
-      const oppsInCol = prev.filter(o => o.column_id === colId);
-      const otherOpps = prev.filter(o => o.column_id !== colId);
-      const index = oppsInCol.findIndex(o => o.id === oppId);
-      
-      if (direction === 'up' && index > 0) {
-        const temp = oppsInCol[index];
-        oppsInCol[index] = oppsInCol[index - 1];
-        oppsInCol[index - 1] = temp;
-      } else if (direction === 'down' && index < oppsInCol.length - 1) {
-        const temp = oppsInCol[index];
-        oppsInCol[index] = oppsInCol[index + 1];
-        oppsInCol[index + 1] = temp;
-      }
-      
-      return [...otherOpps, ...oppsInCol];
-    });
   };
 
   // Mover Card Individual (Mobile UX)
@@ -576,7 +657,7 @@ export default function Oportunidades() {
     if (!newPipelineName) return;
     try {
       const { data: pipe, error: pipeErr } = await supabase.from('pipelines').insert({
-        name: newPipelineName, user_id: user?.id
+        name: newPipelineName, user_id: user?.id, order_index: pipelines.length
       }).select().single();
 
       if (pipeErr) throw pipeErr;
@@ -677,6 +758,9 @@ export default function Oportunidades() {
                     </DropdownMenuItem>
                   ))}
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setIsManagePipelinesOpen(true)} className="font-bold text-gray-700 cursor-pointer flex items-center gap-2 py-3 md:py-2 hover:text-orange-500">
+                    <Settings className="w-4 h-4" /> Gerenciar Funis
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setIsNewPipelineOpen(true)} className="font-bold text-orange-500 cursor-pointer flex items-center gap-2 py-3 md:py-2">
                     <Plus className="w-4 h-4" /> Criar Novo Funil
                   </DropdownMenuItem>
@@ -748,14 +832,17 @@ export default function Oportunidades() {
           </div>
         </div>
 
-        {/* Kanban Board (Ganha mais altura sem os painéis inferiores) */}
+        {/* Kanban Board */}
         <div className="flex gap-3 sm:gap-4 overflow-x-auto flex-1 items-start snap-x snap-mandatory custom-scrollbar relative pb-4 min-h-0">
           <DragDropContext onDragEnd={onDragEnd}>
             <Droppable droppableId="board" direction="horizontal" type="column">
               {(provided) => (
                 <div className="flex gap-3 sm:gap-4 h-full" {...provided.droppableProps} ref={provided.innerRef}>
                   {activeColumns.map((col, index) => {
-                    const colOpps = filteredOpportunities.filter(o => o.column_id === col.id);
+                    const colOpps = filteredOpportunities
+                      .filter(o => o.column_id === col.id)
+                      .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+                    
                     const colOppsIds = colOpps.map(o => o.id);
                     const allSelectedInCol = colOppsIds.length > 0 && colOppsIds.every(id => selectedOpps.includes(id));
                     const someSelectedInCol = colOppsIds.some(id => selectedOpps.includes(id));
@@ -858,7 +945,6 @@ export default function Oportunidades() {
                                                 </span>
                                               </div>
                                               
-                                              {/* Menu Mobile / Desktop unificado para o card */}
                                               <div onClick={e => e.stopPropagation()}>
                                                 <DropdownMenu>
                                                   <DropdownMenuTrigger asChild>
@@ -870,13 +956,7 @@ export default function Oportunidades() {
                                                     <DropdownMenuItem onClick={() => { setOppToMoveSingle(opp); setMoveSingleModalOpen(true); }} className="cursor-pointer font-medium">
                                                       <MoveRight className="w-4 h-4 mr-2 text-blue-500" /> Mover de Etapa
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); moveCard(e as any, opp.id, col.id, 'up'); }} disabled={oppIndex === 0} className="cursor-pointer font-medium">
-                                                      <ArrowUp className="w-4 h-4 mr-2" /> Subir na lista
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); moveCard(e as any, opp.id, col.id, 'down'); }} disabled={oppIndex === colOpps.length - 1} className="cursor-pointer font-medium">
-                                                      <ArrowDown className="w-4 h-4 mr-2" /> Descer na lista
-                                                    </DropdownMenuItem>
+                                                    {/* Opções removidas pois o DND com drag já está ativado. Mantido apenas para fallback caso queiram usar clique */}
                                                     <DropdownMenuSeparator />
                                                     <DropdownMenuItem onClick={() => deleteSingleOpp(opp.id)} className="text-red-500 focus:bg-red-50 focus:text-red-600 font-medium cursor-pointer">
                                                       <Trash2 className="w-4 h-4 mr-2" /> Excluir
@@ -896,7 +976,6 @@ export default function Oportunidades() {
                                               {opp.email || opp.phone || 'Sem contato'}
                                             </div>
                                             
-                                            {/* Botões de Ação */}
                                             <div className="flex gap-1.5">
                                               <button 
                                                 onClick={(e) => handleToggleClient(e, opp)} 
@@ -948,6 +1027,46 @@ export default function Oportunidades() {
 
       <LeadImportModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} pipelines={pipelines} columns={columns} userId={user?.id} onImportSuccess={fetchData} />
       <OpportunityDetailModal isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} opportunity={selectedOppToView} onSave={handleSaveDetailModal} onDelete={handleDeleteDetailModal} />
+
+      {/* MODAL: Gerenciar Pipelines */}
+      <Dialog open={isManagePipelinesOpen} onOpenChange={setIsManagePipelinesOpen}>
+        <DialogContent className="sm:max-w-md bg-white rounded-2xl">
+          <DialogHeader>
+            <DialogTitle>Gerenciar Funis</DialogTitle>
+            <DialogDescription>Mude a ordem, renomeie ou exclua seus funis de venda.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+            {pipelines.map((pipe, idx) => (
+              <div key={pipe.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-100 group">
+                {editingPipelineId === pipe.id ? (
+                  <input
+                    type="text"
+                    value={editingPipelineName}
+                    onChange={e => setEditingPipelineName(e.target.value)}
+                    onBlur={() => handleUpdatePipelineName(pipe.id)}
+                    onKeyDown={e => e.key === 'Enter' && handleUpdatePipelineName(pipe.id)}
+                    className="flex-1 bg-white border border-orange-300 px-2 py-1 rounded text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                    autoFocus
+                  />
+                ) : (
+                  <span className="font-bold text-gray-800 text-sm flex-1 truncate">{pipe.name}</span>
+                )}
+
+                <div className="flex items-center gap-1 ml-2">
+                  <button onClick={() => handleMovePipeline(idx, 'up')} disabled={idx === 0} className="p-1.5 text-gray-400 hover:text-gray-800 hover:bg-gray-200 rounded disabled:opacity-30"><ArrowUp className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => handleMovePipeline(idx, 'down')} disabled={idx === pipelines.length - 1} className="p-1.5 text-gray-400 hover:text-gray-800 hover:bg-gray-200 rounded disabled:opacity-30"><ArrowDown className="w-3.5 h-3.5" /></button>
+                  <div className="w-px h-4 bg-gray-200 mx-1"></div>
+                  <button onClick={() => { setEditingPipelineId(pipe.id); setEditingPipelineName(pipe.name); }} className="p-1.5 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded"><Edit2 className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => handleDeletePipeline(pipe.id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"><Trash2 className="w-3.5 h-3.5" /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setIsManagePipelinesOpen(false)} className="w-full bg-gray-900 text-white font-bold hover:bg-black rounded-xl">Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* MODAL: Ferramentas de Automação (Link Forms e Gatilhos) */}
       <Dialog open={isAutomationsOpen} onOpenChange={setIsAutomationsOpen}>
