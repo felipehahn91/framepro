@@ -10,6 +10,7 @@ import { applyTheme, getActiveTheme } from "./lib/theme";
 import Index from "./pages/Index";
 import Oportunidades from "./pages/Oportunidades";
 import Clientes from "./pages/Clientes";
+import Chat from "./pages/Chat";
 import Tarefas from "./pages/Tarefas";
 import Agenda from "./pages/Agenda";
 import Financeiro from "./pages/Financeiro";
@@ -49,6 +50,7 @@ const App = () => (
             <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="/oportunidades" element={<ProtectedRoute><Oportunidades /></ProtectedRoute>} />
             <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
+            <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
             <Route path="/tarefas" element={<ProtectedRoute><Tarefas /></ProtectedRoute>} />
             <Route path="/agenda" element={<ProtectedRoute><Agenda /></ProtectedRoute>} />
             <Route path="/financeiro" element={<ProtectedRoute><Financeiro /></ProtectedRoute>} />

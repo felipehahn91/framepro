@@ -50,3 +50,29 @@ export const logoutInstance = (instanceName: string) =>
 
 export const deleteInstance = (instanceName: string) => 
   fetchWithEvolution(`/instance/delete/${instanceName}`, { method: 'DELETE' });
+
+// ==========================================
+// CHAT & MENSAGENS
+// ==========================================
+
+export const fetchChats = (instanceName: string) => 
+  fetchWithEvolution(`/chat/findChats/${instanceName}`, {
+    method: 'POST',
+    body: JSON.stringify({}) // Dependendo da versão, aceita corpo vazio para trazer todos
+  });
+
+export const fetchMessages = (instanceName: string, remoteJid: string) => 
+  fetchWithEvolution(`/chat/findMessages/${instanceName}`, {
+    method: 'POST',
+    body: JSON.stringify({ where: { remoteJid } })
+  });
+
+export const sendTextMessage = (instanceName: string, number: string, text: string) => 
+  fetchWithEvolution(`/message/sendText/${instanceName}`, {
+    method: 'POST',
+    body: JSON.stringify({ 
+      number, 
+      options: { delay: 0 }, 
+      textMessage: { text } 
+    })
+  });

@@ -10,7 +10,7 @@ import {
   Calendar,
   Settings,
   Bell,
-  Sun,
+  MessageSquare,
   GitBranch,
   LogOut,
   ShieldCheck
@@ -44,6 +44,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     { name: "Dashboard", path: "/", icon: LayoutDashboard },
     { name: "Oportunidades", path: "/oportunidades", icon: Target },
     { name: "Clientes", path: "/clientes", icon: Users },
+    { name: "WhatsApp", path: "/chat", icon: MessageSquare },
     { name: "Tarefas", path: "/tarefas", icon: CheckSquare },
     { name: "Financeiro", path: "/financeiro", icon: DollarSign },
     { name: "Contratos", path: "/contratos", icon: FileText },
