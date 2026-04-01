@@ -170,7 +170,10 @@ export default function OpportunityDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[850px] p-0 bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+      <DialogContent 
+        className="sm:max-w-[850px] p-0 bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         
         {/* Container Principal: 2 Colunas */}
         <div className="flex flex-col md:flex-row flex-1 overflow-hidden h-full">
