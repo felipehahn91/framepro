@@ -20,12 +20,9 @@ interface Task {
   due_date: string | null;
   created_at: string;
   user_id: string;
-  project: string | null;
 }
 
 type FilterType = 'inbox' | 'today' | 'next_7' | 'completed' | string;
-
-const PROJECTS = ["Sessão de Fotos", "Edição", "Administrativo"];
 
 export default function Tarefas() {
   const { user } = useAuth();
@@ -48,8 +45,7 @@ export default function Tarefas() {
     description: "",
     status: "Pendente",
     priority: "Média",
-    due_date: "",
-    project: ""
+    due_date: ""
   });
 
   useEffect(() => {
@@ -99,10 +95,6 @@ export default function Tarefas() {
         return isWithinInterval(d, { start: today, end: next7 });
       }
 
-      if (PROJECTS.includes(activeFilter)) {
-        return task.project === activeFilter;
-      }
-
       return true;
     });
 
@@ -126,11 +118,7 @@ export default function Tarefas() {
       inbox: tasks.filter(t => t.status !== 'Concluída').length,
       today: tasks.filter(t => t.status !== 'Concluída' && t.due_date && isToday(new Date(t.due_date))).length,
       next_7: tasks.filter(t => t.status !== 'Concluída' && t.due_date && isWithinInterval(new Date(t.due_date), { start: today, end: next7 })).length,
-      completed: tasks.filter(t => t.status === 'Concluída').length,
-      projects: PROJECTS.reduce((acc, p) => {
-        acc[p] = tasks.filter(t => t.status !== 'Concluída' && t.project === p).length;
-        return acc;
-      }, {} as Record<string, number>)
+      completed: tasks.filter(t => t.status === 'Concluída').length
     };
   }, [tasks]);
 
@@ -142,8 +130,7 @@ export default function Tarefas() {
         description: task.description || "",
         status: task.status || "Pendente",
         priority: task.priority || "Média",
-        due_date: task.due_date ? task.due_date.split('T')[0] : "",
-        project: task.project || ""
+        due_date: task.due_date ? task.due_date.split('T')[0] : ""
       });
     } else {
       setSelectedTask(null);
@@ -152,8 +139,7 @@ export default function Tarefas() {
         description: "",
         status: "Pendente",
         priority: "Média",
-        due_date: "",
-        project: PROJECTS.includes(activeFilter) ? activeFilter : ""
+        due_date: ""
       });
     }
     setIsModalOpen(true);
@@ -171,8 +157,7 @@ export default function Tarefas() {
         description: formData.description,
         status: formData.status,
         priority: formData.priority,
-        due_date: formData.due_date || null,
-        project: formData.project || null
+        due_date: formData.due_date || null
       };
 
       if (selectedTask) {
@@ -231,8 +216,7 @@ export default function Tarefas() {
     { id: 'inbox', label: 'Entrada', count: counts.inbox, icon: Inbox },
     { id: 'today', label: 'Hoje', count: counts.today, icon: Calendar },
     { id: 'next_7', label: 'Próx. 7 dias', count: counts.next_7, icon: Clock },
-    { id: 'completed', label: 'Concluídas', count: counts.completed, icon: CheckCircle2 },
-    ...PROJECTS.map(p => ({ id: p, label: p, count: counts.projects[p], icon: Hash }))
+    { id: 'completed', label: 'Concluídas', count: counts.completed, icon: CheckCircle2 }
   ];
 
   if (loading) return <Layout><div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div></Layout>;
@@ -292,16 +276,6 @@ export default function Tarefas() {
               <div className="flex items-center gap-3"><CheckCircle2 className={`w-5 h-5 ${activeFilter === 'completed' ? 'text-orange-500' : 'text-gray-400'}`} /><span className="text-sm">Concluídas</span></div>
               <span className="text-xs opacity-60">{counts.completed}</span>
             </button>
-          </div>
-
-          <div className="space-y-2">
-            <h4 className="px-3 text-[11px] font-bold uppercase text-gray-400 tracking-wider mb-2">Projetos</h4>
-            {PROJECTS.map(project => (
-              <button key={project} onClick={() => setActiveFilter(project)} className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${activeFilter === project ? 'bg-orange-50 text-orange-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}>
-                <div className="flex items-center gap-3"><Hash className="w-4 h-4 text-gray-400" /><span className="text-sm">{project}</span></div>
-                <span className="text-xs opacity-60">{counts.projects[project]}</span>
-              </button>
-            ))}
           </div>
         </div>
 
@@ -371,12 +345,6 @@ export default function Tarefas() {
                               {format(new Date(task.due_date), "dd 'de' MMM", { locale: ptBR })}
                             </div>
                           )}
-                          {task.project && (
-                            <div className="flex items-center gap-1 text-[11px] font-bold text-orange-600 bg-orange-50 border border-orange-100 px-2 py-0.5 rounded-md">
-                              <Hash className="w-3 h-3" />
-                              {task.project}
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -422,17 +390,6 @@ export default function Tarefas() {
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none transition-all font-semibold"
                   placeholder="Ex: Enviar fotos do casamento"
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">Projeto / Categoria</label>
-                <select 
-                  value={formData.project} onChange={e => setFormData({...formData, project: e.target.value})}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none"
-                >
-                  <option value="">Sem Projeto (Entrada)</option>
-                  {PROJECTS.map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
