@@ -2,10 +2,11 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Layout } from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { sendTextMessage } from "@/lib/evolution";
 import { 
   Wallet, TrendingDown, TrendingUp, Plus, Filter, 
   Edit2, Trash2, CheckCircle2, Loader2, X, DollarSign,
-  AlertCircle, Calendar as CalendarIcon, ChevronDown, ChevronUp, Link as LinkIcon, Copy
+  AlertCircle, Calendar as CalendarIcon, ChevronDown, ChevronUp, Link as LinkIcon, Copy, MessageCircle
 } from "lucide-react";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
@@ -26,8 +27,8 @@ interface Installment {
   amount: number;
   status: string;
   paidDate: string | null;
-  paghiper_url?: string;
-  paghiper_linha?: string;
+  pix_url?: string;
+  pix_code?: string;
 }
 
 interface Transaction {
@@ -42,8 +43,8 @@ interface Transaction {
   installment_count: number;
   installments: Installment[] | null | any; 
   clients?: { name: string };
-  paghiper_url?: string;
-  paghiper_linha?: string;
+  pix_url?: string;
+  pix_code?: string;
 }
 
 const getInstallments = (t: Transaction): Installment[] => {
@@ -83,7 +84,7 @@ export default function Financeiro() {
   // PagHiper States
   const [paghiperModalOpen, setPaghiperModalOpen] = useState(false);
   const [paghiperLoading, setPaghiperLoading] = useState(false);
-  const [paghiperData, setPaghiperData] = useState<any>(null); // { tx, inst }
+  const [paghiperData, setPaghiperData] = useState<any>(null);
 
   useEffect(() => {
     if (user) fetchData();
@@ -102,7 +103,6 @@ export default function Financeiro() {
       setTransactions(txRes.data || []);
       setClients(clientsRes.data || []);
     } catch (error) {
-      console.error(error);
       toast.error("Erro ao carregar dados financeiros.");
     } finally {
       setLoading(false);
@@ -388,7 +388,6 @@ export default function Financeiro() {
 
   // --- PAGHIPER HANDLERS ---
   const handleOpenPaghiperModal = async (tx: Transaction, inst?: Installment) => {
-    // Buscar o CPF se houver oportunidade vinculada
     let cpf = "";
     let email = "";
     let name = tx.clients?.name || "Cliente";
@@ -416,7 +415,7 @@ export default function Financeiro() {
 
   const handleGeneratePaghiper = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!paghiperData.payer_cpf) return toast.error("O CPF/CNPJ é obrigatório para emissão de boleto.");
+    if (!paghiperData.payer_cpf) return toast.error("O CPF/CNPJ é obrigatório para emissão de Pix.");
     setPaghiperLoading(true);
 
     try {
@@ -441,33 +440,64 @@ export default function Financeiro() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Erro desconhecido na API.");
 
-      const { url_slip, linha_digitavel } = result;
+      const { pix_url, pix_code } = result;
 
       // Update Supabase and Local State
       if (paghiperData.inst) {
-        // Atualiza a parcela específica
         const insts = getInstallments(paghiperData.tx);
-        const updatedInsts = insts.map(i => i.id === paghiperData.inst.id ? { ...i, paghiper_url: url_slip, paghiper_linha: linha_digitavel } : i);
+        const updatedInsts = insts.map(i => i.id === paghiperData.inst.id ? { ...i, pix_url, pix_code } : i);
         await supabase.from('transactions').update({ installments: updatedInsts }).eq('id', paghiperData.tx.id);
-        
         setTransactions(prev => prev.map(t => t.id === paghiperData.tx.id ? { ...t, installments: updatedInsts } : t));
       } else {
-        // Atualiza a transação inteira
-        await supabase.from('transactions').update({ paghiper_url: url_slip, paghiper_linha: linha_digitavel }).eq('id', paghiperData.tx.id);
-        
-        setTransactions(prev => prev.map(t => t.id === paghiperData.tx.id ? { ...t, paghiper_url: url_slip, paghiper_linha: linha_digitavel } : t));
+        await supabase.from('transactions').update({ pix_url, pix_code }).eq('id', paghiperData.tx.id);
+        setTransactions(prev => prev.map(t => t.id === paghiperData.tx.id ? { ...t, pix_url, pix_code } : t));
       }
 
-      toast.success("Boleto gerado com sucesso!");
+      toast.success("Pix gerado com sucesso!");
       setPaghiperModalOpen(false);
 
     } catch (error: any) {
-      toast.error(error.message || "Erro ao gerar boleto.");
+      toast.error(error.message || "Erro ao gerar Pix.");
     } finally {
       setPaghiperLoading(false);
     }
   };
 
+  const handleSendWhatsApp = async (e: React.MouseEvent, tx: Transaction, inst?: Installment) => {
+    e.stopPropagation();
+    
+    try {
+      let phone = "";
+      let clientName = tx.clients?.name || "Cliente";
+      
+      if (tx.client_id) {
+        const { data } = await supabase.from('opportunities').select('phone').eq('id', tx.client_id).single();
+        if (data?.phone) phone = data.phone;
+      }
+
+      if (!phone) return toast.error("Este cliente não possui telefone cadastrado.");
+
+      const { data: instanceData } = await supabase
+        .from('whatsapp_instances')
+        .select('instance_name')
+        .eq('user_id', user?.id)
+        .eq('status', 'connected')
+        .single();
+        
+      if (!instanceData) return toast.error("WhatsApp não está conectado. Vá em Configurações para conectar.");
+
+      const amount = inst ? inst.amount : tx.amount;
+      const pixCode = inst ? inst.pix_code : tx.pix_code;
+      const description = inst ? `${tx.description} (Parcela ${inst.number})` : tx.description;
+
+      const message = `Olá ${clientName.split(' ')[0]}!\n\nAqui está a chave Pix (Copia e Cola) referente a:\n*${description}*\nValor: *${formatCurrency(amount)}*\n\n\`\`\`${pixCode}\`\`\`\n\nQualquer dúvida, estou à disposição!`;
+
+      await sendTextMessage(instanceData.instance_name, phone, message);
+      toast.success("Cobrança enviada por WhatsApp!");
+    } catch(e) {
+      toast.error("Erro ao enviar mensagem via WhatsApp.");
+    }
+  };
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   
@@ -691,21 +721,19 @@ export default function Financeiro() {
                                   <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto">
                                     {getStatusBadge(inst.status, inst.dueDate)}
                                     
-                                    {inst.paghiper_url ? (
+                                    {inst.pix_code ? (
                                       <div className="flex items-center gap-1">
-                                        <a href={inst.paghiper_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 rounded-md text-[11px] font-semibold transition-colors">
-                                          <LinkIcon className="w-3 h-3" /> Ver Boleto
-                                        </a>
-                                        {inst.paghiper_linha && (
-                                          <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(inst.paghiper_linha!); toast.success("Linha copiada!"); }} className="p-1.5 text-blue-500 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-md" title="Copiar código">
-                                            <Copy className="w-3.5 h-3.5" />
-                                          </button>
-                                        )}
+                                        <button onClick={(e) => handleSendWhatsApp(e, tx, inst)} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-50 border border-green-200 text-green-700 hover:bg-green-100 rounded-md text-[11px] font-semibold transition-colors">
+                                          <MessageCircle className="w-3 h-3" /> WhatsApp
+                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(inst.pix_code!); toast.success("Pix copiado!"); }} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 rounded-md text-[11px] font-semibold transition-colors">
+                                          <Copy className="w-3 h-3" /> Copiar Pix
+                                        </button>
                                       </div>
                                     ) : (
                                       inst.status !== 'Pago' && (
                                         <button onClick={(e) => { e.stopPropagation(); handleOpenPaghiperModal(tx, inst); }} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-md text-[11px] font-semibold transition-colors">
-                                          <DollarSign className="w-3 h-3 text-blue-500" /> Gerar Boleto/Pix
+                                          <DollarSign className="w-3 h-3 text-blue-500" /> Gerar Pix
                                         </button>
                                       )
                                     )}
@@ -735,21 +763,19 @@ export default function Financeiro() {
                             {getStatusBadge(tx.status, tx.date)}
                             
                             <div className="flex items-center gap-1.5 ml-2">
-                              {tx.paghiper_url ? (
+                              {tx.pix_code ? (
                                 <div className="flex items-center gap-1">
-                                  <a href={tx.paghiper_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 rounded-md text-[11px] font-semibold transition-colors">
-                                    <LinkIcon className="w-3 h-3" /> Ver Boleto
-                                  </a>
-                                  {tx.paghiper_linha && (
-                                    <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(tx.paghiper_linha!); toast.success("Linha copiada!"); }} className="p-1.5 text-blue-500 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-md" title="Copiar código">
-                                      <Copy className="w-3.5 h-3.5" />
-                                    </button>
-                                  )}
+                                  <button onClick={(e) => handleSendWhatsApp(e, tx)} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-50 border border-green-200 text-green-700 hover:bg-green-100 rounded-md text-[11px] font-semibold transition-colors">
+                                    <MessageCircle className="w-3 h-3" /> WhatsApp
+                                  </button>
+                                  <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(tx.pix_code!); toast.success("Pix copiado!"); }} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 rounded-md text-[11px] font-semibold transition-colors">
+                                    <Copy className="w-3 h-3" /> Copiar Pix
+                                  </button>
                                 </div>
                               ) : (
                                 (tx.status !== 'Recebido' && tx.status !== 'Pago' && tx.status !== 'Cancelado') && (
                                   <button onClick={() => handleOpenPaghiperModal(tx)} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-md text-[11px] font-semibold transition-colors">
-                                    <DollarSign className="w-3 h-3 text-blue-500" /> Gerar Boleto
+                                    <DollarSign className="w-3 h-3 text-blue-500" /> Gerar Pix
                                   </button>
                                 )
                               )}
@@ -897,13 +923,13 @@ export default function Financeiro() {
         </div>
       )}
 
-      {/* Modal PagHiper */}
+      {/* Modal PagHiper PIX */}
       <Dialog open={paghiperModalOpen} onOpenChange={(open) => !open && setPaghiperModalOpen(false)}>
         <DialogContent className="sm:max-w-[400px] bg-white rounded-3xl p-0 overflow-hidden shadow-2xl">
           <div className="px-6 py-6 border-b border-gray-100 bg-blue-50/50">
             <DialogTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-blue-500" />
-              Gerar Boleto / Pix
+              Gerar Pix
             </DialogTitle>
           </div>
 
@@ -932,7 +958,7 @@ export default function Financeiro() {
             <div className="space-y-1.5">
               <label className="text-sm font-bold text-gray-700">E-mail do Pagador</label>
               <input 
-                type="email" placeholder="Para enviar o boleto (opcional)"
+                type="email" placeholder="Opcional"
                 value={paghiperData?.payer_email || ''} 
                 onChange={e => setPaghiperData({...paghiperData, payer_email: e.target.value})}
                 className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"
@@ -944,7 +970,7 @@ export default function Financeiro() {
                 Cancelar
               </button>
               <button type="submit" disabled={paghiperLoading} className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-sm flex items-center gap-2 disabled:opacity-50">
-                {paghiperLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Emitir Cobrança'}
+                {paghiperLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Gerar Cobrança'}
               </button>
             </DialogFooter>
           </form>
