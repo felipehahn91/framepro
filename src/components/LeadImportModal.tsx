@@ -12,6 +12,21 @@ interface LeadImportModalProps {
   onImportSuccess: () => void;
 }
 
+// Funções utilitárias para extrair dados perdidos no meio de textos
+const extractEmail = (text: string): string | null => {
+  if (!text) return null;
+  const match = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+  return match ? match[0] : null;
+};
+
+const extractPhone = (text: string): string | null => {
+  if (!text) return null;
+  // Expressão regular para pegar números de telefone/celular brasileiros
+  // Pode pegar com ou sem (DDD), com ou sem +55, com ou sem traço. Ex: (11) 99999-9999
+  const match = text.match(/(?:\+?55\s?)?(?:\(?\d{2}\)?\s?)?(?:9\s?)?\d{4}[-\s]?\d{4}/);
+  return match ? match[0].trim() : null;
+};
+
 export default function LeadImportModal({ isOpen, onClose, pipelines, columns, userId, onImportSuccess }: LeadImportModalProps) {
   const [importMode, setImportMode] = useState<'csv' | 'trello'>('csv');
   const [step, setStep] = useState(1);
@@ -111,18 +126,28 @@ export default function LeadImportModal({ isOpen, onClose, pipelines, columns, u
 
     setLoading(true);
     try {
-      const leadsToInsert = csvData.map(row => ({
-        user_id: userId,
-        pipeline_id: targetPipeline,
-        column_id: targetColumn,
-        name: row[mapping.name] || 'Sem Nome',
-        email: mapping.email ? row[mapping.email] : null,
-        phone: mapping.phone ? row[mapping.phone] : null,
-        value: mapping.value ? row[mapping.value] : null,
-        instagram: mapping.instagram ? row[mapping.instagram] : null,
-        observations: mapping.observations ? row[mapping.observations] : null,
-        is_client: false
-      }));
+      const leadsToInsert = csvData.map(row => {
+        const obs = mapping.observations ? row[mapping.observations] : '';
+        let email = mapping.email ? row[mapping.email] : null;
+        let phone = mapping.phone ? row[mapping.phone] : null;
+        
+        // Extrai automaticamente caso não tenha vindo nas colunas específicas
+        if (!email && obs) email = extractEmail(obs);
+        if (!phone && obs) phone = extractPhone(obs);
+
+        return {
+          user_id: userId,
+          pipeline_id: targetPipeline,
+          column_id: targetColumn,
+          name: row[mapping.name] || 'Sem Nome',
+          email: email,
+          phone: phone,
+          value: mapping.value ? row[mapping.value] : null,
+          instagram: mapping.instagram ? row[mapping.instagram] : null,
+          observations: obs || null,
+          is_client: false
+        };
+      });
 
       const { error } = await supabase.from('opportunities').insert(leadsToInsert);
       if (error) throw error;
@@ -208,22 +233,32 @@ export default function LeadImportModal({ isOpen, onClose, pipelines, columns, u
         if (sCol) listMap[tList.id] = sCol.id;
       });
 
-      // 3. Criar as Oportunidades (Cartões)
+      // 3. Criar as Oportunidades (Cartões) extraindo email e telefone da descrição
       const oppsToInsert = trelloData.cards
         .filter(c => listMap[c.idList]) // Apenas cartões em listas não arquivadas
-        .map(c => ({
-          name: c.name || 'Sem Nome',
-          observations: c.desc || null,
-          event_date: c.due ? c.due.split('T')[0] : null,
-          pipeline_id: pipe.id,
-          column_id: listMap[c.idList],
-          user_id: userId,
-          is_client: false
-        }));
+        .map(c => {
+          const desc = c.desc || '';
+          return {
+            name: c.name || 'Sem Nome',
+            observations: desc || null,
+            email: extractEmail(desc),
+            phone: extractPhone(desc),
+            event_date: c.due ? c.due.split('T')[0] : null,
+            pipeline_id: pipe.id,
+            column_id: listMap[c.idList],
+            user_id: userId,
+            is_client: false
+          };
+        });
 
+      // Divide em lotes caso tenha muitos cards pra não dar timeout
       if (oppsToInsert.length > 0) {
-        const { error: oppsErr } = await supabase.from('opportunities').insert(oppsToInsert);
-        if (oppsErr) throw oppsErr;
+        const batchSize = 1000;
+        for (let i = 0; i < oppsToInsert.length; i += batchSize) {
+          const batch = oppsToInsert.slice(i, i + batchSize);
+          const { error: oppsErr } = await supabase.from('opportunities').insert(batch);
+          if (oppsErr) throw oppsErr;
+        }
       }
 
       toast.success(`Quadro "${trelloData.boardName}" importado com sucesso!`);
@@ -324,7 +359,7 @@ export default function LeadImportModal({ isOpen, onClose, pipelines, columns, u
               <div className="space-y-6">
                 <div className="bg-orange-50 text-orange-800 p-4 rounded-lg flex gap-3 text-sm">
                   <FileText className="w-5 h-5 shrink-0" />
-                  <p>Mapeie as colunas do seu arquivo CSV para os campos correspondentes no sistema. O campo "Nome" é obrigatório.</p>
+                  <p>Mapeie as colunas do seu arquivo CSV para os campos correspondentes no sistema. O campo "Nome" é obrigatório. Tentaremos extrair e-mail e telefone automaticamente das observações, caso existam.</p>
                 </div>
 
                 <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-2">
@@ -395,6 +430,7 @@ export default function LeadImportModal({ isOpen, onClose, pipelines, columns, u
                   <li><strong>Novo Funil:</strong> {trelloData.boardName}</li>
                   <li><strong>Colunas:</strong> {trelloData.lists.length} listas encontradas</li>
                   <li><strong>Oportunidades:</strong> {trelloData.cards.length} cartões encontrados</li>
+                  <li className="text-orange-500 font-medium italic mt-2">Extrairemos e-mails e telefones automaticamente da descrição dos cards.</li>
                 </ul>
               </div>
             )}
