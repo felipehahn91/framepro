@@ -348,12 +348,35 @@ export default function Financeiro() {
     }
   };
 
-  const handleMarkPaid = async (tx: Transaction) => {
+  const handleMarkAsPaid = async (txId: string) => {
     try {
-      await supabase.from('transactions').update({ status: 'Recebido' }).eq('id', tx.id);
-      setTransactions(prev => prev.map(t => t.id === tx.id ? { ...t, status: 'Recebido' } : t));
-      toast.success("Marcado como recebido!");
-    } catch (e) {
+      const { data: updatedTx, error } = await supabase
+        .from('transactions')
+        .update({ 
+          status: 'Pago',
+          paid_at: new Date().toISOString().split('T')[0]
+        })
+        .eq('id', txId)
+        .select('*, opportunities(name)')
+        .single();
+        
+      if (error) throw error;
+      
+      if (user && updatedTx) {
+        const clientName = updatedTx.opportunities?.name || 'Cliente';
+        await supabase.from('notifications').insert({
+          user_id: user.id,
+          title: 'Pagamento Recebido',
+          content: `A cobrança de ${formatCurrency(updatedTx.amount)} do cliente ${clientName} foi marcada como paga.`,
+          type: 'success',
+          related_entity_type: 'transaction',
+          related_entity_id: txId
+        });
+      }
+      
+      toast.success("Transação marcada como paga!");
+      fetchData();
+    } catch (error) {
       toast.error("Erro ao atualizar status.");
     }
   };
@@ -514,6 +537,16 @@ export default function Financeiro() {
         await new Promise(r => setTimeout(r, 1500));
         await sendTextMessage(instanceData.instance_name, phone, pixCode);
       }
+      
+      // Notify internal system
+      await supabase.from('notifications').insert({
+        user_id: user?.id,
+        title: 'Cobrança Manual Enviada',
+        content: `A cobrança de ${formatCurrency(amount)} foi enviada para ${clientName} via WhatsApp.`,
+        type: 'info',
+        related_entity_type: 'transaction',
+        related_entity_id: tx.id
+      });
 
       toast.success("Cobrança enviada por WhatsApp!");
     } catch(e) {
@@ -804,7 +837,7 @@ export default function Financeiro() {
 
                               {(tx.status !== 'Recebido' && tx.status !== 'Pago' && tx.status !== 'Cancelado') && (
                                 <button 
-                                  onClick={() => handleMarkPaid(tx)}
+                                  onClick={() => handleMarkAsPaid(tx.id)}
                                   className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-green-200 text-green-600 hover:bg-green-50 rounded-md text-[11px] font-semibold transition-colors shadow-sm"
                                 >
                                   <CheckCircle2 className="w-3.5 h-3.5" /> Receber

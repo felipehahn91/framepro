@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { InstallPWA } from "./InstallPWA";
+import { Notifications } from "./Notifications";
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -150,9 +151,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           <div className="hidden md:block"></div>
           
           <div className="flex items-center gap-4">
-            <button className="text-gray-500 hover:text-gray-700 transition-colors">
-              <Bell className="w-5 h-5" />
-            </button>
+            <Notifications />
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
