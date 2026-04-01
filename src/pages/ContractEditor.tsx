@@ -74,10 +74,13 @@ export default function ContractEditor() {
           
         if (error) throw error;
         
+        // Se o client_id for null, assumimos que é um template
+        const clientId = contract.client_id || "template";
+        
         setFormData({
-          client_id: contract.client_id || "",
-          value: contract.value.toString(),
-          start_date: contract.start_date,
+          client_id: clientId,
+          value: contract.value ? contract.value.toString() : "",
+          start_date: contract.start_date || new Date().toISOString().split('T')[0],
           end_date: contract.end_date || "",
           description: contract.description || "",
           contract_image: contract.contract_image || "",
@@ -145,8 +148,11 @@ export default function ContractEditor() {
   };
 
   const handleSave = async () => {
-    if (!formData.client_id) return toast.error("Selecione um cliente (ou crie um contrato modelo sem atrelar, caso seja apenas um template).");
-    if (!formData.value) return toast.error("Informe o valor base.");
+    if (!formData.client_id) return toast.error("Selecione um cliente (ou crie um contrato modelo sem atrelar).");
+    
+    const isTemplate = formData.client_id === 'template';
+    
+    if (!isTemplate && !formData.value) return toast.error("Informe o valor base.");
 
     setSaving(true);
     try {
@@ -169,12 +175,13 @@ export default function ContractEditor() {
         }
       }
 
+      // Se for template, usamos valores neutros/padrão para contornar restrições do banco
       const payload = {
         user_id: user?.id,
-        client_id: formData.client_id === 'template' ? null : formData.client_id, // Se for template, pode salvar sem cliente
-        value: parseFloat(formData.value) || 0,
-        start_date: formData.start_date,
-        end_date: formData.end_date || null,
+        client_id: isTemplate ? null : formData.client_id,
+        value: isTemplate ? 0 : (parseFloat(formData.value) || 0),
+        start_date: isTemplate ? new Date().toISOString().split('T')[0] : formData.start_date,
+        end_date: isTemplate ? null : (formData.end_date || null),
         description: formData.description,
         contract_image: imageUrl,
         supplier_signature: formData.supplier_signature,
@@ -184,7 +191,7 @@ export default function ContractEditor() {
       if (isNew) {
         const share_token = crypto.randomUUID();
         await supabase.from('contracts').insert({ ...payload, share_token });
-        toast.success("Contrato criado com sucesso!");
+        toast.success("Contrato salvo com sucesso!");
       } else {
         await supabase.from('contracts').update(payload).eq('id', id);
         toast.success("Contrato atualizado com sucesso!");
@@ -199,6 +206,8 @@ export default function ContractEditor() {
   };
 
   if (loading) return <Layout><div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div></Layout>;
+
+  const isTemplate = formData.client_id === 'template';
 
   return (
     <Layout>
@@ -247,32 +256,48 @@ export default function ContractEditor() {
                 <p className="text-xs text-gray-500 mt-1.5">Se você está criando um contrato apenas para usar como "Modelo Base" no link de fechamento, selecione a opção de Modelo.</p>
               </div>
 
-              <div>
-                <label className="block text-sm font-bold text-gray-900 mb-1.5">Valor Base (R$) *</label>
-                <input 
-                  type="number" step="0.01" placeholder="0.00"
-                  value={formData.value} onChange={e => setFormData({...formData, value: e.target.value})}
-                  className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 text-gray-700"
-                />
-              </div>
+              {isTemplate ? (
+                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 animate-in fade-in">
+                  <div className="flex items-start gap-3">
+                    <Info className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="font-bold text-orange-900 text-sm">Modo Template Ativo</h4>
+                      <p className="text-xs text-orange-700 mt-1">
+                        Campos como "Valor Base" e "Data" não são necessários. Eles serão preenchidos automaticamente usando as variáveis quando o seu cliente acessar o link de fechamento.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-5 animate-in fade-in">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-1.5">Valor Base (R$) *</label>
+                    <input 
+                      type="number" step="0.01" placeholder="0.00"
+                      value={formData.value} onChange={e => setFormData({...formData, value: e.target.value})}
+                      className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 text-gray-700"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-sm font-bold text-gray-900 mb-1.5">Data de Início *</label>
-                <input 
-                  type="date"
-                  value={formData.start_date} onChange={e => setFormData({...formData, start_date: e.target.value})}
-                  className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 text-gray-700"
-                />
-              </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-1.5">Data de Início *</label>
+                    <input 
+                      type="date"
+                      value={formData.start_date} onChange={e => setFormData({...formData, start_date: e.target.value})}
+                      className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 text-gray-700"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-sm font-bold text-gray-900 mb-1.5">Data de Término (Opcional)</label>
-                <input 
-                  type="date"
-                  value={formData.end_date} onChange={e => setFormData({...formData, end_date: e.target.value})}
-                  className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 text-gray-700"
-                />
-              </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-1.5">Data de Término (Opcional)</label>
+                    <input 
+                      type="date"
+                      value={formData.end_date} onChange={e => setFormData({...formData, end_date: e.target.value})}
+                      className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 text-gray-700"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Espaço para a Assinatura do Fornecedor */}
