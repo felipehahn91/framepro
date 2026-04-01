@@ -31,6 +31,7 @@ import Pricing from "./pages/Pricing";
 import FounderPack from "./pages/FounderPack";
 import BillingSuccess from "./pages/BillingSuccess";
 import BillingCancel from "./pages/BillingCancel";
+import UpdatePassword from "./pages/UpdatePassword";
 import NotFound from "./pages/NotFound";
 
 applyTheme(getActiveTheme());
@@ -47,7 +48,7 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/login" element={<Login />} />
-              {/* Rota Exclusiva de Cadastro Founder */}
+              <Route path="/update-password" element={<UpdatePassword />} />
               <Route path="/founder-signup" element={<FounderSignup />} />
               
               <Route path="/link-form/:id" element={<LinkFormPage />} />

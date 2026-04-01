@@ -75,7 +75,7 @@ const Login = () => {
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/`,
+        redirectTo: `${window.location.origin}/update-password`,
       });
       if (error) throw error;
       toast.success("Email de recuperação enviado! Verifique sua caixa de entrada.");
