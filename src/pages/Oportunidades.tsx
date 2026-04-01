@@ -134,7 +134,7 @@ export default function Oportunidades() {
     fetchBaseData();
   }, [user]);
 
-  // Busca de oportunidades apenas quando a Pipeline muda (Isso resolve o problema de limite/memória)
+  // Busca de oportunidades apenas quando a Pipeline muda
   useEffect(() => {
     if (activePipelineId) {
       fetchOpportunitiesForPipeline(activePipelineId);
@@ -241,15 +241,36 @@ export default function Oportunidades() {
   const fetchOpportunitiesForPipeline = async (pipelineId: string) => {
     setLoadingOpps(true);
     try {
-      const { data, error } = await supabase
-        .from('opportunities')
-        .select('*')
-        .eq('pipeline_id', pipelineId)
-        .order('order_index', { ascending: true, nullsFirst: false })
-        .order('created_at', { ascending: false });
+      let allData: Opportunity[] = [];
+      let hasMore = true;
+      let from = 0;
+      const step = 1000;
 
-      if (error) throw error;
-      setOpportunities(data as Opportunity[] || []);
+      // Loop para garantir que carrega todos os milhares de leads sem bater no limite da API
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('opportunities')
+          .select('*')
+          .eq('pipeline_id', pipelineId)
+          .order('order_index', { ascending: true, nullsFirst: false })
+          .order('created_at', { ascending: false })
+          .range(from, from + step - 1);
+
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          allData = [...allData, ...(data as Opportunity[])];
+          if (data.length < step) {
+            hasMore = false; // Última página
+          } else {
+            from += step;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+      
+      setOpportunities(allData);
     } catch (error) {
       toast.error("Erro ao carregar oportunidades deste funil.");
     } finally {
@@ -266,6 +287,8 @@ export default function Oportunidades() {
 
   const filteredOpportunities = useMemo(() => {
     return opportunities.filter(opp => {
+      if (opp.pipeline_id !== activePipelineId) return false;
+
       const query = searchQuery.toLowerCase();
       const matchesSearch = !searchQuery || (
         opp.name.toLowerCase().includes(query) ||
@@ -280,7 +303,7 @@ export default function Oportunidades() {
 
       return true;
     });
-  }, [opportunities, searchQuery, selectedTags]);
+  }, [opportunities, activePipelineId, searchQuery, selectedTags]);
 
   // Drag and Drop (Colunas e Cards)
   const onDragEnd = async (result: any) => {

@@ -55,15 +55,35 @@ export default function Clientes() {
   const fetchClients = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('opportunities')
-        .select('*')
-        .eq('user_id', user?.id)
-        .eq('is_client', true)
-        .order('created_at', { ascending: false });
+      let allData: Client[] = [];
+      let hasMore = true;
+      let from = 0;
+      const step = 1000;
 
-      if (error) throw error;
-      setClients(data as Client[] || []);
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from('opportunities')
+          .select('*')
+          .eq('user_id', user?.id)
+          .eq('is_client', true)
+          .order('created_at', { ascending: false })
+          .range(from, from + step - 1);
+
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          allData = [...allData, ...(data as Client[])];
+          if (data.length < step) {
+            hasMore = false;
+          } else {
+            from += step;
+          }
+        } else {
+          hasMore = false;
+        }
+      }
+      
+      setClients(allData);
     } catch (error) {
       toast.error("Erro ao carregar clientes.");
     } finally {
