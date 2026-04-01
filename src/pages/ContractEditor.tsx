@@ -26,6 +26,7 @@ export default function ContractEditor() {
 
   const [formData, setFormData] = useState({
     client_id: "",
+    title: "",
     value: "",
     start_date: new Date().toISOString().split('T')[0],
     end_date: "",
@@ -74,11 +75,11 @@ export default function ContractEditor() {
           
         if (error) throw error;
         
-        // Se o client_id for null, assumimos que é um template
         const clientId = contract.client_id || "template";
         
         setFormData({
           client_id: clientId,
+          title: contract.title || "",
           value: contract.value ? contract.value.toString() : "",
           start_date: contract.start_date || new Date().toISOString().split('T')[0],
           end_date: contract.end_date || "",
@@ -152,6 +153,7 @@ export default function ContractEditor() {
     
     const isTemplate = formData.client_id === 'template';
     
+    if (isTemplate && !formData.title) return toast.error("Por favor, dê um nome ao seu modelo de contrato.");
     if (!isTemplate && !formData.value) return toast.error("Informe o valor base.");
 
     setSaving(true);
@@ -175,10 +177,10 @@ export default function ContractEditor() {
         }
       }
 
-      // Se for template, usamos valores neutros/padrão para contornar restrições do banco
       const payload = {
         user_id: user?.id,
         client_id: isTemplate ? null : formData.client_id,
+        title: isTemplate ? formData.title : null,
         value: isTemplate ? 0 : (parseFloat(formData.value) || 0),
         start_date: isTemplate ? new Date().toISOString().split('T')[0] : formData.start_date,
         end_date: isTemplate ? null : (formData.end_date || null),
@@ -191,15 +193,15 @@ export default function ContractEditor() {
       if (isNew) {
         const share_token = crypto.randomUUID();
         await supabase.from('contracts').insert({ ...payload, share_token });
-        toast.success("Contrato salvo com sucesso!");
+        toast.success(isTemplate ? "Modelo salvo com sucesso!" : "Contrato salvo com sucesso!");
       } else {
         await supabase.from('contracts').update(payload).eq('id', id);
-        toast.success("Contrato atualizado com sucesso!");
+        toast.success("Atualizado com sucesso!");
       }
       
       navigate('/contratos');
     } catch (error) {
-      toast.error("Erro ao salvar contrato.");
+      toast.error("Erro ao salvar.");
     } finally {
       setSaving(false);
     }
@@ -248,23 +250,32 @@ export default function ContractEditor() {
                   className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 text-gray-700"
                 >
                   <option value="">Selecione o cliente</option>
-                  <option value="template" className="font-bold text-orange-500">É apenas um Modelo (Template Base)</option>
+                  <option value="template" className="font-bold text-purple-600">É apenas um Modelo (Template Base)</option>
                   <optgroup label="Seus Clientes">
                     {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </optgroup>
                 </select>
-                <p className="text-xs text-gray-500 mt-1.5">Se você está criando um contrato apenas para usar como "Modelo Base" no link de fechamento, selecione a opção de Modelo.</p>
               </div>
 
               {isTemplate ? (
-                <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 animate-in fade-in">
-                  <div className="flex items-start gap-3">
-                    <Info className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
-                    <div>
-                      <h4 className="font-bold text-orange-900 text-sm">Modo Template Ativo</h4>
-                      <p className="text-xs text-orange-700 mt-1">
-                        Campos como "Valor Base" e "Data" não são necessários. Eles serão preenchidos automaticamente usando as variáveis quando o seu cliente acessar o link de fechamento.
-                      </p>
+                <div className="animate-in fade-in space-y-5">
+                  <div>
+                    <label className="block text-sm font-bold text-purple-900 mb-1.5">Nome do Modelo *</label>
+                    <input 
+                      type="text" placeholder="Ex: Modelo Casamento Completo"
+                      value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})}
+                      className="w-full px-3 py-2.5 bg-purple-50 border border-purple-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 text-purple-900 font-semibold placeholder:text-purple-300"
+                    />
+                  </div>
+                  <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+                    <div className="flex items-start gap-3">
+                      <Info className="w-5 h-5 text-purple-500 shrink-0 mt-0.5" />
+                      <div>
+                        <h4 className="font-bold text-purple-900 text-sm">Modo Template Ativo</h4>
+                        <p className="text-xs text-purple-700 mt-1">
+                          Campos de valor e data foram ocultados, pois eles serão preenchidos automaticamente pelas variáveis ao enviar o link de fechamento.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>

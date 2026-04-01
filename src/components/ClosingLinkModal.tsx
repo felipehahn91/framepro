@@ -43,10 +43,10 @@ export default function ClosingLinkModal({ isOpen, onClose, opportunity }: Closi
     
     const { data } = await supabase
       .from('contracts')
-      .select('id, description')
+      .select('id, title')
       .eq('user_id', session.session.user.id)
-      .order('created_at', { ascending: false })
-      .limit(10);
+      .is('client_id', null) // Busca APENAS contratos marcados como Template!
+      .order('created_at', { ascending: false });
       
     if (data) setContracts(data);
   };
@@ -62,7 +62,6 @@ export default function ClosingLinkModal({ isOpen, onClose, opportunity }: Closi
 
       const token = crypto.randomUUID();
       
-      // Salva o link no banco
       const { error } = await supabase.from('closing_links').insert({
         user_id: userId,
         opportunity_id: opportunity.id,
@@ -165,18 +164,18 @@ export default function ClosingLinkModal({ isOpen, onClose, opportunity }: Closi
             </Label>
             <Select value={formData.contractTemplateId} onValueChange={(val) => setFormData({...formData, contractTemplateId: val})}>
               <SelectTrigger className="bg-gray-50 border-gray-200 h-12 focus:ring-orange-400">
-                <SelectValue placeholder="Selecione um contrato existente para usar como base..." />
+                <SelectValue placeholder="Selecione um modelo..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Criar contrato em branco</SelectItem>
+                <SelectItem value="none">Contrato em branco (apenas assinaturas)</SelectItem>
                 {contracts.map(c => (
                   <SelectItem key={c.id} value={c.id}>
-                    Modelo: {c.description ? c.description.replace(/<[^>]*>?/gm, '').substring(0,30) + '...' : 'Contrato sem texto'}
+                    Modelo: {c.title || 'Sem Título'}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-xs text-gray-500">Os dados do cliente serão inseridos automaticamente no modelo selecionado.</p>
+            <p className="text-xs text-gray-500">As variáveis mágicas serão preenchidas com os dados informados pelo cliente.</p>
           </div>
         </div>
 
