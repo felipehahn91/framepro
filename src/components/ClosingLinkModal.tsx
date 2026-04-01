@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,7 +37,6 @@ export default function ClosingLinkModal({ isOpen, onClose, opportunity }: Closi
     }
   }, [opportunity, isOpen]);
 
-  // Busca contratos anteriores para servirem de "Modelo"
   const fetchContracts = async () => {
     const { data: session } = await supabase.auth.getSession();
     if (!session.session?.user.id) return;
@@ -57,11 +56,26 @@ export default function ClosingLinkModal({ isOpen, onClose, opportunity }: Closi
     
     setLoading(true);
     try {
-      // Neste primeiro passo, vamos apenas simular a geração do token
-      // Na próxima etapa, criaremos a tabela 'closing_links' no banco para salvar isso.
-      const fakeToken = crypto.randomUUID();
-      const link = `${window.location.origin}/fechar/${fakeToken}`;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user.id;
+      if (!userId) throw new Error("Usuário não autenticado");
+
+      const token = crypto.randomUUID();
       
+      // Salva o link no banco
+      const { error } = await supabase.from('closing_links').insert({
+        user_id: userId,
+        opportunity_id: opportunity.id,
+        token: token,
+        value: parseFloat(formData.value),
+        event_date: formData.eventDate || null,
+        max_installments: parseInt(formData.installments),
+        contract_template_id: formData.contractTemplateId === 'none' ? null : formData.contractTemplateId
+      });
+
+      if (error) throw error;
+
+      const link = `${window.location.origin}/fechar/${token}`;
       const phone = opportunity?.phone?.replace(/\D/g, '');
       const text = encodeURIComponent(
         `Olá ${opportunity?.name.split(' ')[0]}!\n\nFico muito feliz que vamos fechar negócio! 🎉\n\nAcesse o link seguro abaixo para preencher seus dados, escolher a forma de pagamento e assinar nosso contrato:\n\n${link}`
@@ -78,6 +92,7 @@ export default function ClosingLinkModal({ isOpen, onClose, opportunity }: Closi
       
       onClose();
     } catch (error) {
+      console.error(error);
       toast.error("Erro ao gerar link de fechamento.");
     } finally {
       setLoading(false);

@@ -27,6 +27,7 @@ import SettingsPage from "./pages/SettingsPage";
 import Login from "./pages/Login";
 import FounderSignup from "./pages/FounderSignup";
 import LinkFormPage from "./pages/LinkFormPage";
+import ClosingPublicView from "./pages/ClosingPublicView";
 import Pricing from "./pages/Pricing";
 import FounderPack from "./pages/FounderPack";
 import BillingSuccess from "./pages/BillingSuccess";
@@ -54,6 +55,7 @@ const App = () => (
               <Route path="/link-form/:id" element={<LinkFormPage />} />
               <Route path="/contratos/public/:token" element={<ContractPublicView />} />
               <Route path="/orcamentos/public/:token" element={<OrcamentoPublicView />} />
+              <Route path="/fechar/:token" element={<ClosingPublicView />} />
               
               {/* Paginas de Pagamento */}
               <Route path="/precos" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
