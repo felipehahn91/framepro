@@ -6,7 +6,7 @@ import {
   MessageCircle, Mail, Phone, Instagram, MapPin, Loader2,
   Save, Send, X, Search
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface Opportunity {
   id: string;
@@ -133,15 +133,33 @@ export default function OpportunityDetailModal({
 
       if (!currentUserId) throw new Error('Usuário não autenticado');
 
-      const table = type === 'contract' ? 'contracts' : 'orcamentos';
-      const { data, error } = await supabase
-        .from(table)
-        .select('id, name, share_token')
-        .eq('user_id', currentUserId)
-        .order('updated_at', { ascending: false });
+      if (type === 'orcamento') {
+        const { data, error } = await supabase
+          .from('orcamentos')
+          .select('id, name, share_token')
+          .eq('user_id', currentUserId)
+          .order('updated_at', { ascending: false });
+          
+        if (error) throw error;
+        setDocuments(data || []);
+      } else {
+        // Para contratos, o "nome" na verdade está na oportunidade referenciada
+        const { data, error } = await supabase
+          .from('contracts')
+          .select('id, share_token, opportunities(name)')
+          .eq('user_id', currentUserId)
+          .order('updated_at', { ascending: false });
+          
+        if (error) throw error;
         
-      if (error) throw error;
-      setDocuments(data || []);
+        const formattedData = (data || []).map((doc: any) => ({
+          id: doc.id,
+          share_token: doc.share_token,
+          name: doc.opportunities?.name ? `Contrato: ${doc.opportunities.name}` : 'Contrato (Sem cliente)'
+        }));
+        
+        setDocuments(formattedData);
+      }
     } catch (e: any) {
       console.error(e);
       toast.error(`Erro ao carregar ${type === 'contract' ? 'contratos' : 'orçamentos'}`);
@@ -185,6 +203,8 @@ export default function OpportunityDetailModal({
         className="sm:max-w-[850px] p-0 bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
+        <DialogTitle className="sr-only">Detalhes da Oportunidade</DialogTitle>
+        <DialogDescription className="sr-only">Visualize ou edite os detalhes do lead.</DialogDescription>
         
         {/* Container Principal: 2 Colunas */}
         <div className="flex flex-col md:flex-row flex-1 overflow-hidden h-full">
@@ -369,6 +389,7 @@ export default function OpportunityDetailModal({
               <DialogTitle className="text-lg font-bold text-gray-900">
                 Selecione o {docType === 'contract' ? 'Contrato' : 'Orçamento'}
               </DialogTitle>
+              <DialogDescription className="sr-only">Selecione o documento que deseja enviar ao lead.</DialogDescription>
             </DialogHeader>
             
             <div className="mt-4">

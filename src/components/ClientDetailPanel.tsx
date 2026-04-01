@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface Client {
   id: string;
@@ -107,15 +107,32 @@ export default function ClientDetailPanel({ isOpen, onClose, client, onUpdate, o
 
       if (!currentUserId) throw new Error('Usuário não autenticado');
 
-      const table = type === 'contract' ? 'contracts' : 'orcamentos';
-      const { data, error } = await supabase
-        .from(table)
-        .select('id, name, share_token')
-        .eq('user_id', currentUserId)
-        .order('updated_at', { ascending: false });
+      if (type === 'orcamento') {
+        const { data, error } = await supabase
+          .from('orcamentos')
+          .select('id, name, share_token')
+          .eq('user_id', currentUserId)
+          .order('updated_at', { ascending: false });
+          
+        if (error) throw error;
+        setDocuments(data || []);
+      } else {
+        const { data, error } = await supabase
+          .from('contracts')
+          .select('id, share_token, opportunities(name)')
+          .eq('user_id', currentUserId)
+          .order('updated_at', { ascending: false });
+          
+        if (error) throw error;
         
-      if (error) throw error;
-      setDocuments(data || []);
+        const formattedData = (data || []).map((doc: any) => ({
+          id: doc.id,
+          share_token: doc.share_token,
+          name: doc.opportunities?.name ? `Contrato: ${doc.opportunities.name}` : 'Contrato (Sem cliente)'
+        }));
+        
+        setDocuments(formattedData);
+      }
     } catch (e: any) {
       console.error(e);
       toast.error(`Erro ao carregar ${type === 'contract' ? 'contratos' : 'orçamentos'}`);
@@ -310,6 +327,7 @@ export default function ClientDetailPanel({ isOpen, onClose, client, onUpdate, o
               <DialogTitle className="text-lg font-bold text-gray-900">
                 Selecione o {docType === 'contract' ? 'Contrato' : 'Orçamento'}
               </DialogTitle>
+              <DialogDescription className="sr-only">Selecione o documento que deseja enviar ao cliente.</DialogDescription>
             </DialogHeader>
             
             <div className="mt-4">
