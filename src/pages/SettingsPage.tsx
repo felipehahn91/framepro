@@ -526,7 +526,7 @@ export default function SettingsPage() {
                     </div>
                     <div>
                       <h2 className="text-2xl font-bold">Integração PagHiper</h2>
-                      <p className="text-blue-100 text-sm">Configure suas chaves para gerar boletos e Pix pelo CRM.</p>
+                      <p className="text-blue-100 text-sm">Configure suas chaves para gerar Pix pelo CRM.</p>
                     </div>
                   </div>
                 </div>
@@ -536,8 +536,8 @@ export default function SettingsPage() {
                     <p>
                       <strong>Como obter suas chaves?</strong><br />
                       1. Acesse sua conta em <a href="https://www.paghiper.com/" target="_blank" rel="noreferrer" className="underline font-bold">paghiper.com</a>.<br />
-                      2. Vá no menu lateral <strong>"Minha Conta"</strong> e depois em <strong>"Credenciais"</strong>.<br />
-                      3. Copie o <strong>ApiKey</strong> e o <strong>Token</strong> e cole abaixo.
+                      2. Vá no menu <strong>"Minha Conta"</strong> e depois em <strong>"Dados da Conta"</strong> para pegar a API Key.<br />
+                      3. Vá no menu <strong>"Ferramentas"</strong>, depois em <strong>"Token"</strong> e gere/copie seu Token.
                     </p>
                     <div className="bg-white/60 p-3 rounded-lg border border-blue-200 flex flex-col gap-2">
                       <p className="font-bold text-blue-900 flex items-center gap-1.5">
