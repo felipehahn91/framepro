@@ -12,17 +12,50 @@ interface LeadImportModalProps {
   onImportSuccess: () => void;
 }
 
-// Funções utilitárias para extrair dados perdidos no meio de textos
+// ==========================================
+// FUNÇÕES DE EXTRAÇÃO INTELIGENTE (REGEX)
+// ==========================================
+
+const extractName = (text: string): string | null => {
+  if (!text) return null;
+  // Procura por "Nome:", "Cliente:" ou "Lead:" seguido do nome
+  const match = text.match(/(?:nome|cliente|lead)[\s]*:[\s]*([^\n]+)/i);
+  if (match && match[1]) {
+    // Remove caracteres especiais indesejados no final (como ponto, vírgula) se existirem
+    return match[1].replace(/[,;.*]+$/, '').trim();
+  }
+  return null;
+};
+
 const extractEmail = (text: string): string | null => {
   if (!text) return null;
+  // 1. Tenta achar com prefixo explícito para maior precisão
+  const prefixedMatch = text.match(/(?:e-?mail)[\s]*:[\s]*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+  if (prefixedMatch && prefixedMatch[1]) return prefixedMatch[1].trim();
+
+  // 2. Fallback: Procura qualquer formato de e-mail no texto
   const match = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
-  return match ? match[0] : null;
+  return match ? match[0].trim() : null;
 };
 
 const extractPhone = (text: string): string | null => {
   if (!text) return null;
-  // Expressão regular para pegar números de telefone/celular brasileiros
-  // Pode pegar com ou sem (DDD), com ou sem +55, com ou sem traço. Ex: (11) 99999-9999
+  
+  // 1. Tenta achar link do WhatsApp (ex: wa.me/+5551984766790)
+  const waLinkMatch = text.match(/(?:wa\.me\/|api\.whatsapp\.com\/send\?phone=)\+?(\d+)/i);
+  if (waLinkMatch && waLinkMatch[1]) {
+    return waLinkMatch[1]; // Retorna só os números limpos do link
+  }
+
+  // 2. Tenta achar com prefixo (Telefone:, WhatsApp:, Whats:, etc)
+  const prefixedMatch = text.match(/(?:whatsapp|whats|wpp|telefone|celular|contato)[\s]*:[\s]*([^\n]+)/i);
+  if (prefixedMatch && prefixedMatch[1]) {
+    // Limpa pra pegar só os números (e talvez o +)
+    const cleaned = prefixedMatch[1].replace(/[^\d+]/g, '');
+    if (cleaned.length >= 8) return cleaned;
+  }
+
+  // 3. Fallback: Procura qualquer formato de telefone brasileiro no texto
   const match = text.match(/(?:\+?55\s?)?(?:\(?\d{2}\)?\s?)?(?:9\s?)?\d{4}[-\s]?\d{4}/);
   return match ? match[0].trim() : null;
 };
@@ -122,16 +155,23 @@ export default function LeadImportModal({ isOpen, onClose, pipelines, columns, u
 
   const handleCsvImport = async () => {
     if (!targetPipeline || !targetColumn) return toast.error("Selecione o funil e a coluna de destino.");
-    if (!mapping.name) return toast.error("Você precisa mapear a coluna 'Nome' obrigatoriamente.");
+    
+    // Podemos flexibilizar: se ele não mapear nome, vamos tentar extrair das observações
+    if (!mapping.name && !mapping.observations) {
+      return toast.error("Mapeie a coluna 'Nome' ou 'Observações' para extrairmos os dados.");
+    }
 
     setLoading(true);
     try {
       const leadsToInsert = csvData.map(row => {
         const obs = mapping.observations ? row[mapping.observations] : '';
+        
+        let name = mapping.name ? row[mapping.name] : null;
         let email = mapping.email ? row[mapping.email] : null;
         let phone = mapping.phone ? row[mapping.phone] : null;
         
         // Extrai automaticamente caso não tenha vindo nas colunas específicas
+        if (!name && obs) name = extractName(obs);
         if (!email && obs) email = extractEmail(obs);
         if (!phone && obs) phone = extractPhone(obs);
 
@@ -139,7 +179,7 @@ export default function LeadImportModal({ isOpen, onClose, pipelines, columns, u
           user_id: userId,
           pipeline_id: targetPipeline,
           column_id: targetColumn,
-          name: row[mapping.name] || 'Sem Nome',
+          name: name || 'Sem Nome',
           email: email,
           phone: phone,
           value: mapping.value ? row[mapping.value] : null,
@@ -233,16 +273,22 @@ export default function LeadImportModal({ isOpen, onClose, pipelines, columns, u
         if (sCol) listMap[tList.id] = sCol.id;
       });
 
-      // 3. Criar as Oportunidades (Cartões) extraindo email e telefone da descrição
+      // 3. Criar as Oportunidades (Cartões) extraindo Inteligência da descrição
       const oppsToInsert = trelloData.cards
         .filter(c => listMap[c.idList]) // Apenas cartões em listas não arquivadas
         .map(c => {
           const desc = c.desc || '';
+          
+          // Extrai os dados se disponíveis
+          let extractedName = extractName(desc);
+          let extractedEmail = extractEmail(desc);
+          let extractedPhone = extractPhone(desc);
+
           return {
-            name: c.name || 'Sem Nome',
+            name: extractedName || c.name || 'Sem Nome',
             observations: desc || null,
-            email: extractEmail(desc),
-            phone: extractPhone(desc),
+            email: extractedEmail,
+            phone: extractedPhone,
             event_date: c.due ? c.due.split('T')[0] : null,
             pipeline_id: pipe.id,
             column_id: listMap[c.idList],
@@ -359,12 +405,12 @@ export default function LeadImportModal({ isOpen, onClose, pipelines, columns, u
               <div className="space-y-6">
                 <div className="bg-orange-50 text-orange-800 p-4 rounded-lg flex gap-3 text-sm">
                   <FileText className="w-5 h-5 shrink-0" />
-                  <p>Mapeie as colunas do seu arquivo CSV para os campos correspondentes no sistema. O campo "Nome" é obrigatório. Tentaremos extrair e-mail e telefone automaticamente das observações, caso existam.</p>
+                  <p>Mapeie as colunas do seu arquivo CSV para os campos correspondentes no sistema. Se você mapear "Observações", tentaremos extrair Nome, E-mail e Telefone automaticamente se estiverem escritos lá dentro.</p>
                 </div>
 
                 <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-2">
                   {[
-                    { key: 'name', label: 'Nome do Lead *' },
+                    { key: 'name', label: 'Nome do Lead' },
                     { key: 'email', label: 'E-mail' },
                     { key: 'phone', label: 'Telefone / WhatsApp' },
                     { key: 'value', label: 'Valor (R$)' },
@@ -387,7 +433,7 @@ export default function LeadImportModal({ isOpen, onClose, pipelines, columns, u
 
                 <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
                   <button onClick={() => setStep(1)} className="px-6 py-2.5 text-gray-700 font-semibold border border-gray-200 rounded-lg hover:bg-gray-50">Voltar</button>
-                  <button onClick={handleCsvImport} disabled={loading || !mapping.name} className="px-6 py-2.5 bg-orange-400 text-white font-semibold rounded-lg hover:bg-orange-500 disabled:opacity-50 flex items-center gap-2">
+                  <button onClick={handleCsvImport} disabled={loading || (!mapping.name && !mapping.observations)} className="px-6 py-2.5 bg-orange-400 text-white font-semibold rounded-lg hover:bg-orange-500 disabled:opacity-50 flex items-center gap-2">
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />} Importar {csvData.length} Leads
                   </button>
                 </div>
@@ -430,7 +476,7 @@ export default function LeadImportModal({ isOpen, onClose, pipelines, columns, u
                   <li><strong>Novo Funil:</strong> {trelloData.boardName}</li>
                   <li><strong>Colunas:</strong> {trelloData.lists.length} listas encontradas</li>
                   <li><strong>Oportunidades:</strong> {trelloData.cards.length} cartões encontrados</li>
-                  <li className="text-orange-500 font-medium italic mt-2">Extrairemos e-mails e telefones automaticamente da descrição dos cards.</li>
+                  <li className="text-orange-500 font-medium italic mt-2">Extrairemos Nomes, E-mails e Telefones automaticamente da descrição dos cards.</li>
                 </ul>
               </div>
             )}
