@@ -93,8 +93,16 @@ export const deleteInstance = (instanceName: string) => fetchWithEvolution(`/ins
 export const fetchChats = (instanceName: string) => fetchWithEvolution(`/chat/findChats/${instanceName}`, { method: 'POST', body: JSON.stringify({}) });
 export const fetchMessages = (instanceName: string, remoteJid: string) => fetchWithEvolution(`/chat/findMessages/${instanceName}`, { method: 'POST', body: JSON.stringify({ where: { remoteJid } }) });
 
+const formatWhatsAppNumber = (number: string) => {
+  let clean = number.split('@')[0].replace(/\D/g, '');
+  if (!clean.startsWith('55') && clean.length >= 10) {
+    clean = `55${clean}`;
+  }
+  return clean;
+};
+
 export const sendTextMessage = (instanceName: string, number: string, text: string) => {
-  const cleanNumber = number.split('@')[0];
+  const cleanNumber = formatWhatsAppNumber(number);
   
   return fetchWithEvolution(`/message/sendText/${instanceName}`, {
     method: 'POST',
@@ -107,7 +115,7 @@ export const sendTextMessage = (instanceName: string, number: string, text: stri
 };
 
 export const sendMediaMessage = (instanceName: string, number: string, base64: string, mediatype: string, mimetype: string, caption?: string) => {
-  const cleanNumber = number.split('@')[0];
+  const cleanNumber = formatWhatsAppNumber(number);
   return fetchWithEvolution(`/message/sendMedia/${instanceName}`, {
     method: 'POST',
     body: JSON.stringify({
@@ -121,7 +129,7 @@ export const sendMediaMessage = (instanceName: string, number: string, base64: s
 };
 
 export const sendWhatsAppAudio = (instanceName: string, number: string, audioBase64: string) => {
-  const cleanNumber = number.split('@')[0];
+  const cleanNumber = formatWhatsAppNumber(number);
   return fetchWithEvolution(`/message/sendWhatsAppAudio/${instanceName}`, {
     method: 'POST',
     body: JSON.stringify({

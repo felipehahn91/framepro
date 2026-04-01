@@ -117,8 +117,14 @@ serve(async (req) => {
         const evoKey = settings.evo_api_key;
         
         let formattedPhone = client_phone.replace(/\D/g, '');
-        if (formattedPhone.startsWith('55') && formattedPhone.length === 12) {
-          // If it's a mobile with 12 digits (missing the 9), let's assume it's correct for WhatsApp, Evolution handles formatting, but standard is 55 + DDD + 9 + NUM
+        if (!formattedPhone.startsWith('55') && formattedPhone.length >= 10) {
+          formattedPhone = `55${formattedPhone}`;
+        }
+        
+        // Evita mandar números errados para o WhatsApp
+        if (formattedPhone.length < 12) {
+          console.error("Número de telefone muito curto ou inválido:", formattedPhone);
+          // Podemos decidir não enviar em vez de falhar, mas vamos tentar
         }
 
         const firstName = payer_name ? payer_name.split(' ')[0] : 'Cliente';
