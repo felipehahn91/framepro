@@ -7,7 +7,8 @@ import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import SignaturePad from "react-signature-canvas";
 import { 
-  ArrowLeft, Save, UploadCloud, X, Loader2, Image as ImageIcon, PenTool 
+  ArrowLeft, Save, UploadCloud, X, Loader2, Image as ImageIcon, PenTool, 
+  Wand2, Info, Copy
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -37,6 +38,18 @@ export default function ContractEditor() {
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const availableVariables = [
+    { tag: '{{nome}}', desc: 'Nome do Cliente' },
+    { tag: '{{cpf}}', desc: 'CPF ou CNPJ' },
+    { tag: '{{rg}}', desc: 'RG' },
+    { tag: '{{estado_civil}}', desc: 'Estado Civil' },
+    { tag: '{{profissao}}', desc: 'Profissão' },
+    { tag: '{{endereco}}', desc: 'Endereço Completo' },
+    { tag: '{{valor}}', desc: 'Valor Total (ex: R$ 5.000,00)' },
+    { tag: '{{parcelas}}', desc: 'Quantidade de Parcelas' },
+    { tag: '{{data_evento}}', desc: 'Data do Evento' }
+  ];
 
   useEffect(() => {
     if (user) loadData();
@@ -91,10 +104,49 @@ export default function ContractEditor() {
     setImagePreview(URL.createObjectURL(file));
   };
 
+  const loadDefaultTemplate = () => {
+    if (formData.description && !confirm("Atenção: Isso irá substituir todo o texto que você já escreveu. Deseja continuar?")) {
+      return;
+    }
+
+    const templateHTML = `
+      <h2 style="text-align: center;"><strong>CONTRATO DE PRESTAÇÃO DE SERVIÇOS</strong></h2>
+      <p><br></p>
+      <p><strong>CLÁUSULA PRIMEIRA - DAS PARTES</strong></p>
+      <p><strong>CONTRATANTE:</strong> {{nome}}, {{estado_civil}}, {{profissao}}, portador(a) do RG nº {{rg}} e inscrito(a) no CPF/CNPJ sob o nº {{cpf}}, residente e domiciliado(a) em {{endereco}}.</p>
+      <p><br></p>
+      <p><strong>CONTRATADA:</strong> [SEU NOME / NOME DA SUA EMPRESA], inscrito(a) no CNPJ/CPF sob o nº [SEU CNPJ/CPF], com sede em [SEU ENDEREÇO].</p>
+      <p><br></p>
+      <p><strong>CLÁUSULA SEGUNDA - DO OBJETO</strong></p>
+      <p>O presente contrato tem como objeto a prestação de serviços no evento a ser realizado na data de <strong>{{data_evento}}</strong>.</p>
+      <p><br></p>
+      <p><strong>CLÁUSULA TERCEIRA - DO VALOR E FORMA DE PAGAMENTO</strong></p>
+      <p>Pelos serviços prestados, a CONTRATANTE pagará à CONTRATADA o valor total de <strong>{{valor}}</strong>, que será pago em <strong>{{parcelas}}</strong> vez(es).</p>
+      <p><br></p>
+      <p><strong>CLÁUSULA QUARTA - DO CANCELAMENTO</strong></p>
+      <p>Em caso de rescisão por parte da CONTRATANTE, o valor do sinal não será devolvido, servindo como multa rescisória para cobrir os custos de bloqueio de agenda.</p>
+      <p><br></p>
+      <p><strong>CLÁUSULA QUINTA - DO DIREITO DE IMAGEM</strong></p>
+      <p>A CONTRATANTE autoriza a CONTRATADA a utilizar as imagens produzidas no evento para fins de portfólio, site e redes sociais, desde que não exponham as partes a situações vexatórias.</p>
+      <p><br></p>
+      <p><strong>CLÁUSULA SEXTA - DO FORO</strong></p>
+      <p>Para dirimir quaisquer controvérsias oriundas do presente contrato, as partes elegem o foro da comarca de [SUA CIDADE] / [SEU ESTADO].</p>
+      <p><br></p>
+      <p style="text-align: center;">E, por estarem assim justos e contratados, firmam o presente instrumento.</p>
+    `;
+
+    setFormData({ ...formData, description: templateHTML });
+    toast.success("Modelo padrão carregado com sucesso!");
+  };
+
+  const copyVariable = (tag: string) => {
+    navigator.clipboard.writeText(tag);
+    toast.success(`Variável ${tag} copiada!`);
+  };
+
   const handleSave = async () => {
-    if (!formData.client_id) return toast.error("Selecione um cliente.");
-    if (!formData.value) return toast.error("Informe o valor.");
-    if (!formData.start_date) return toast.error("Informe a data de início.");
+    if (!formData.client_id) return toast.error("Selecione um cliente (ou crie um contrato modelo sem atrelar, caso seja apenas um template).");
+    if (!formData.value) return toast.error("Informe o valor base.");
 
     setSaving(true);
     try {
@@ -119,8 +171,8 @@ export default function ContractEditor() {
 
       const payload = {
         user_id: user?.id,
-        client_id: formData.client_id,
-        value: parseFloat(formData.value),
+        client_id: formData.client_id === 'template' ? null : formData.client_id, // Se for template, pode salvar sem cliente
+        value: parseFloat(formData.value) || 0,
         start_date: formData.start_date,
         end_date: formData.end_date || null,
         description: formData.description,
@@ -150,26 +202,26 @@ export default function ContractEditor() {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto flex flex-col h-full space-y-6">
+      <div className="max-w-7xl mx-auto flex flex-col h-full space-y-6 pb-20">
         
         {/* Top Bar */}
-        <div className="bg-white border border-gray-200 p-4 rounded-2xl shadow-sm flex items-center justify-between">
+        <div className="bg-white border border-gray-200 p-4 rounded-2xl shadow-sm flex items-center justify-between z-10 sticky top-0">
           <div className="flex items-center gap-4">
             <button onClick={() => navigate('/contratos')} className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors">
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">{isNew ? 'Novo Contrato' : 'Editar Contrato'}</h1>
-              <p className="text-sm text-gray-500">Preencha os detalhes, assine e redija o documento.</p>
+              <h1 className="text-xl font-bold text-gray-900">{isNew ? 'Novo Contrato / Modelo' : 'Editar Contrato'}</h1>
+              <p className="text-sm text-gray-500 hidden sm:block">Preencha os detalhes, assine e redija o documento.</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/contratos')} className="px-5 py-2.5 text-gray-700 font-semibold border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+            <button onClick={() => navigate('/contratos')} className="hidden sm:block px-5 py-2.5 text-gray-700 font-semibold border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
               Cancelar
             </button>
             <button onClick={handleSave} disabled={saving} className="px-5 py-2.5 bg-orange-400 text-white font-semibold rounded-lg hover:bg-orange-500 transition-colors flex items-center gap-2 shadow-sm disabled:opacity-50">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              Salvar Contrato
+              Salvar
             </button>
           </div>
         </div>
@@ -181,18 +233,22 @@ export default function ContractEditor() {
           <div className="lg:col-span-4 space-y-6">
             <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-5">
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-1.5">Cliente *</label>
+                <label className="block text-sm font-bold text-gray-900 mb-1.5">Vincular Cliente *</label>
                 <select 
                   value={formData.client_id} onChange={e => setFormData({...formData, client_id: e.target.value})}
                   className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 text-gray-700"
                 >
                   <option value="">Selecione o cliente</option>
-                  {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  <option value="template" className="font-bold text-orange-500">É apenas um Modelo (Template Base)</option>
+                  <optgroup label="Seus Clientes">
+                    {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </optgroup>
                 </select>
+                <p className="text-xs text-gray-500 mt-1.5">Se você está criando um contrato apenas para usar como "Modelo Base" no link de fechamento, selecione a opção de Modelo.</p>
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-1.5">Valor (R$) *</label>
+                <label className="block text-sm font-bold text-gray-900 mb-1.5">Valor Base (R$) *</label>
                 <input 
                   type="number" step="0.01" placeholder="0.00"
                   value={formData.value} onChange={e => setFormData({...formData, value: e.target.value})}
@@ -301,37 +357,77 @@ export default function ContractEditor() {
           </div>
 
           {/* Right Column: Editor */}
-          <div className="lg:col-span-8 bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex flex-col min-h-[600px]">
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
-              <h3 className="font-bold text-gray-900">Corpo do Contrato</h3>
-              <span className="text-xs font-semibold text-gray-500 bg-white px-3 py-1 rounded-full border border-gray-200">
-                {formData.description.length} / 1.000.000
-              </span>
+          <div className="lg:col-span-8 space-y-6">
+            
+            {/* Variáveis Dinâmicas Helper */}
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 shadow-sm">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                <div className="flex items-center gap-2">
+                  <Wand2 className="w-5 h-5 text-blue-500" />
+                  <h3 className="font-bold text-blue-900">Variáveis Inteligentes</h3>
+                </div>
+                <button 
+                  onClick={loadDefaultTemplate}
+                  className="px-4 py-2 bg-white text-blue-600 font-bold text-xs rounded-lg border border-blue-200 shadow-sm hover:bg-blue-100 transition-colors whitespace-nowrap"
+                >
+                  Carregar Modelo Padrão
+                </button>
+              </div>
+              <p className="text-sm text-blue-800 mb-4">
+                Clique nas tags abaixo para copiá-las. Cole-as no texto do seu contrato. 
+                Quando você enviar o link de fechamento para o cliente, o CRM trocará essas tags automaticamente pelos dados dele!
+              </p>
+              
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {availableVariables.map((v, i) => (
+                  <div 
+                    key={i} 
+                    onClick={() => copyVariable(v.tag)}
+                    className="bg-white border border-blue-100 rounded-lg p-2.5 flex items-center justify-between cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition-colors group"
+                    title="Clique para copiar"
+                  >
+                    <div className="flex flex-col min-w-0">
+                      <span className="font-mono text-xs font-bold text-blue-700">{v.tag}</span>
+                      <span className="text-[10px] text-gray-500 truncate">{v.desc}</span>
+                    </div>
+                    <Copy className="w-3.5 h-3.5 text-gray-300 group-hover:text-blue-500 shrink-0" />
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="flex-1 editor-container">
-              <ReactQuill 
-                theme="snow"
-                value={formData.description}
-                onChange={(val) => setFormData({...formData, description: val})}
-                className="h-[500px]"
-                modules={{
-                  toolbar: [
-                    [{ 'header': [1, 2, 3, false] }],
-                    ['bold', 'italic', 'underline', 'strike'],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
-                    [{ 'align': [] }],
-                    ['link', 'image'],
-                    ['clean']
-                  ]
-                }}
-              />
+
+            <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex flex-col min-h-[600px]">
+              <div className="p-4 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
+                <h3 className="font-bold text-gray-900">Corpo do Contrato</h3>
+                <span className="text-xs font-semibold text-gray-500 bg-white px-3 py-1 rounded-full border border-gray-200 shadow-sm">
+                  {formData.description.length} / 1.000.000
+                </span>
+              </div>
+              <div className="flex-1 editor-container">
+                <ReactQuill 
+                  theme="snow"
+                  value={formData.description}
+                  onChange={(val) => setFormData({...formData, description: val})}
+                  className="h-[500px]"
+                  modules={{
+                    toolbar: [
+                      [{ 'header': [1, 2, 3, false] }],
+                      ['bold', 'italic', 'underline', 'strike'],
+                      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                      [{ 'align': [] }],
+                      ['link', 'image'],
+                      ['clean']
+                    ]
+                  }}
+                />
+              </div>
+              <style dangerouslySetInnerHTML={{__html: `
+                .editor-container .quill { display: flex; flex-direction: column; height: 100%; }
+                .editor-container .ql-toolbar { border: none !important; border-bottom: 1px solid #e5e7eb !important; padding: 12px 16px !important; background: #fff; }
+                .editor-container .ql-container { border: none !important; flex: 1; font-family: inherit; font-size: 15px; }
+                .editor-container .ql-editor { min-height: 500px; padding: 24px; color: #374151; line-height: 1.6; }
+              `}} />
             </div>
-            <style dangerouslySetInnerHTML={{__html: `
-              .editor-container .quill { display: flex; flex-direction: column; height: 100%; }
-              .editor-container .ql-toolbar { border: none !important; border-bottom: 1px solid #e5e7eb !important; padding: 12px 16px !important; background: #fff; }
-              .editor-container .ql-container { border: none !important; flex: 1; font-family: inherit; font-size: 15px; }
-              .editor-container .ql-editor { min-height: 500px; padding: 24px; color: #374151; }
-            `}} />
           </div>
 
         </div>
