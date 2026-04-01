@@ -161,7 +161,7 @@ export default function Oportunidades() {
       const [pipesRes, colsRes, oppsRes, formsRes, queueRes, triggersRes] = await Promise.all([
         supabase.from('pipelines').select('*').order('order_index', { ascending: true, nullsFirst: false }).order('created_at', { ascending: true }),
         supabase.from('columns').select('*').order('order_index', { ascending: true }),
-        supabase.from('opportunities').select('*').order('order_index', { ascending: true, nullsFirst: false }).order('created_at', { ascending: false }),
+        supabase.from('opportunities').select('*').order('order_index', { ascending: true, nullsFirst: false }).order('created_at', { ascending: false }).limit(10000),
         supabase.from('link_forms').select('*'),
         supabase.from('cadencia_queue').select('opportunity_id').eq('user_id', user?.id).eq('status', 'pending'),
         supabase.from('whatsapp_triggers').select('*')
@@ -629,7 +629,7 @@ export default function Oportunidades() {
       const { data } = await supabase.from('whatsapp_triggers').insert({
         user_id: user?.id,
         trigger_phrase: newTriggerData.phrase,
-        pipeline_id: activePipelineId, // Salva no pipeline atual
+        pipeline_id: activePipelineId, 
         column_id: newTriggerData.column_id,
         tag: newTriggerData.tag,
         enabled: true
@@ -832,7 +832,7 @@ export default function Oportunidades() {
           </div>
         </div>
 
-        {/* Kanban Board */}
+        {/* Kanban Board (Ganha mais altura sem os painéis inferiores) */}
         <div className="flex gap-3 sm:gap-4 overflow-x-auto flex-1 items-start snap-x snap-mandatory custom-scrollbar relative pb-4 min-h-0">
           <DragDropContext onDragEnd={onDragEnd}>
             <Droppable droppableId="board" direction="horizontal" type="column">
@@ -842,7 +842,7 @@ export default function Oportunidades() {
                     const colOpps = filteredOpportunities
                       .filter(o => o.column_id === col.id)
                       .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
-                    
+                      
                     const colOppsIds = colOpps.map(o => o.id);
                     const allSelectedInCol = colOppsIds.length > 0 && colOppsIds.every(id => selectedOpps.includes(id));
                     const someSelectedInCol = colOppsIds.some(id => selectedOpps.includes(id));
@@ -945,6 +945,7 @@ export default function Oportunidades() {
                                                 </span>
                                               </div>
                                               
+                                              {/* Menu Mobile / Desktop unificado para o card */}
                                               <div onClick={e => e.stopPropagation()}>
                                                 <DropdownMenu>
                                                   <DropdownMenuTrigger asChild>
@@ -956,7 +957,6 @@ export default function Oportunidades() {
                                                     <DropdownMenuItem onClick={() => { setOppToMoveSingle(opp); setMoveSingleModalOpen(true); }} className="cursor-pointer font-medium">
                                                       <MoveRight className="w-4 h-4 mr-2 text-blue-500" /> Mover de Etapa
                                                     </DropdownMenuItem>
-                                                    {/* Opções removidas pois o DND com drag já está ativado. Mantido apenas para fallback caso queiram usar clique */}
                                                     <DropdownMenuSeparator />
                                                     <DropdownMenuItem onClick={() => deleteSingleOpp(opp.id)} className="text-red-500 focus:bg-red-50 focus:text-red-600 font-medium cursor-pointer">
                                                       <Trash2 className="w-4 h-4 mr-2" /> Excluir
@@ -972,10 +972,25 @@ export default function Oportunidades() {
                                               </div>
                                             )}
                                             
-                                            <div className="text-xs font-medium text-gray-500 mb-3 truncate">
-                                              {opp.email || opp.phone || 'Sem contato'}
+                                            <div className="flex flex-col gap-0.5 mb-3">
+                                              {opp.email && (
+                                                <span className="text-xs font-medium text-gray-500 truncate" title={opp.email}>
+                                                  {opp.email}
+                                                </span>
+                                              )}
+                                              {opp.phone && (
+                                                <span className="text-xs font-medium text-gray-500 truncate" title={opp.phone}>
+                                                  {opp.phone}
+                                                </span>
+                                              )}
+                                              {!opp.email && !opp.phone && (
+                                                <span className="text-xs font-medium text-gray-400 italic truncate">
+                                                  Sem contato
+                                                </span>
+                                              )}
                                             </div>
                                             
+                                            {/* Botões de Ação */}
                                             <div className="flex gap-1.5">
                                               <button 
                                                 onClick={(e) => handleToggleClient(e, opp)} 
@@ -1030,12 +1045,12 @@ export default function Oportunidades() {
 
       {/* MODAL: Gerenciar Pipelines */}
       <Dialog open={isManagePipelinesOpen} onOpenChange={setIsManagePipelinesOpen}>
-        <DialogContent className="sm:max-w-md bg-white rounded-2xl">
+        <DialogContent className="w-[95vw] sm:max-w-md bg-white rounded-2xl p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>Gerenciar Funis</DialogTitle>
-            <DialogDescription>Mude a ordem, renomeie ou exclua seus funis de venda.</DialogDescription>
+            <DialogTitle className="text-lg font-bold">Gerenciar Funis</DialogTitle>
+            <DialogDescription className="text-sm">Mude a ordem, renomeie ou exclua seus funis de venda.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+          <div className="space-y-3 py-2 max-h-[60vh] overflow-y-auto custom-scrollbar">
             {pipelines.map((pipe, idx) => (
               <div key={pipe.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-100 group">
                 {editingPipelineId === pipe.id ? (
