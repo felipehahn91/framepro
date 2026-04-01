@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { 
   Wallet, TrendingDown, TrendingUp, Plus, Filter, 
   Edit2, Trash2, CheckCircle2, Loader2, X, DollarSign,
-  AlertCircle, Calendar as CalendarIcon
+  AlertCircle, Calendar as CalendarIcon, ChevronDown, ChevronUp
 } from "lucide-react";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
@@ -58,6 +58,9 @@ export default function Financeiro() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   
+  // Accordion State
+  const [expandedTxIds, setExpandedTxIds] = useState<Set<string>>(new Set());
+
   const [period, setPeriod] = useState("this_month");
   const [customDateRange, setCustomDateRange] = useState({ start: "", end: "" });
 
@@ -96,6 +99,15 @@ export default function Financeiro() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpandedTxIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   const dateRange = useMemo(() => {
@@ -541,55 +553,75 @@ export default function Financeiro() {
                 <div className="space-y-3">
                   {listToRender.map((tx) => {
                     const insts = getInstallments(tx);
+                    const isExpanded = expandedTxIds.has(tx.id);
+
                     return (
                     <div key={tx.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
                       {insts.length > 0 ? (
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-                            <div>
-                              <p className="font-bold text-gray-900">{tx.description}</p>
-                              <p className="text-xs text-gray-500 mt-0.5">{tx.clients?.name || 'Sem cliente'} • {tx.installment_count} parcelas</p>
+                        <div className="space-y-1">
+                          {/* Cabeçalho da transação que atua como trigger do Accordion */}
+                          <div 
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 cursor-pointer hover:bg-gray-50 -mx-4 px-4 pt-1 rounded-t-xl transition-colors"
+                            onClick={() => toggleExpand(tx.id)}
+                          >
+                            <div className="flex items-start sm:items-center gap-3">
+                              <button className="text-gray-400 hover:text-orange-500 transition-colors mt-1 sm:mt-0">
+                                {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                              </button>
+                              <div>
+                                <p className="font-bold text-gray-900">{tx.description}</p>
+                                <p className="text-xs text-gray-500 mt-0.5">{tx.clients?.name || 'Sem cliente'} • {tx.installment_count} parcelas</p>
+                              </div>
                             </div>
-                            <div className="text-right flex items-center gap-4">
+                            <div className="flex items-center gap-4 self-end sm:self-auto">
                               <span className="font-bold text-gray-900">{formatCurrency(tx.amount)}</span>
                               {getStatusBadge(tx.status)}
-                              <button onClick={() => handleDelete(tx.id)} className="text-gray-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); handleDelete(tx.id); }} 
+                                className="text-gray-400 hover:text-red-500 p-1.5 rounded-md hover:bg-red-50 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             </div>
                           </div>
-                          <div className="space-y-2 pl-4 border-l-2 border-orange-100">
-                            {insts.map((inst: Installment) => (
-                              <div key={inst.id} className="flex items-center justify-between bg-gray-50 p-2.5 rounded-lg border border-gray-100">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-500">
-                                    {inst.number}
+
+                          {/* Lista de parcelas expandidas */}
+                          {isExpanded && (
+                            <div className="space-y-2 pl-4 sm:pl-10 border-l-2 border-orange-100 pt-3 pb-1 animate-in fade-in slide-in-from-top-2">
+                              {insts.map((inst: Installment) => (
+                                <div key={inst.id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-gray-50 p-2.5 rounded-lg border border-gray-100 gap-2">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-500 shrink-0">
+                                      {inst.number}
+                                    </div>
+                                    <div>
+                                      <p className="font-semibold text-sm text-gray-900">{formatCurrency(inst.amount)}</p>
+                                      <p className="text-[11px] text-gray-500">Vence: {new Date(inst.dueDate).toLocaleDateString('pt-BR')}</p>
+                                    </div>
                                   </div>
-                                  <div>
-                                    <p className="font-semibold text-sm text-gray-900">{formatCurrency(inst.amount)}</p>
-                                    <p className="text-[11px] text-gray-500">Vence: {new Date(inst.dueDate).toLocaleDateString('pt-BR')}</p>
+                                  <div className="flex items-center gap-3 self-end sm:self-auto">
+                                    {getStatusBadge(inst.status, inst.dueDate)}
+                                    {inst.status !== 'Pago' && (
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); handleMarkInstallmentPaid(tx, inst.id); }}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-green-200 text-green-600 hover:bg-green-50 rounded-md text-xs font-semibold transition-colors shadow-sm"
+                                      >
+                                        <CheckCircle2 className="w-3.5 h-3.5" /> Pago
+                                      </button>
+                                    )}
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                  {getStatusBadge(inst.status, inst.dueDate)}
-                                  {inst.status !== 'Pago' && (
-                                    <button 
-                                      onClick={() => handleMarkInstallmentPaid(tx, inst.id)}
-                                      className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-green-200 text-green-600 hover:bg-green-50 rounded-md text-xs font-semibold transition-colors"
-                                    >
-                                      <CheckCircle2 className="w-3.5 h-3.5" /> Pago
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       ) : (
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <div>
                             <p className="font-bold text-gray-900">{tx.description}</p>
                             <p className="text-xs text-gray-500 mt-0.5">{tx.clients?.name || 'Sem cliente'} • {new Date(tx.date).toLocaleDateString('pt-BR')}</p>
                           </div>
-                          <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-4 self-end sm:self-auto">
                             <span className="font-bold text-gray-900">{formatCurrency(tx.amount)}</span>
                             {getStatusBadge(tx.status, tx.date)}
                             
@@ -597,15 +629,15 @@ export default function Financeiro() {
                               {(tx.status !== 'Recebido' && tx.status !== 'Pago' && tx.status !== 'Cancelado') && (
                                 <button 
                                   onClick={() => handleMarkPaid(tx)}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-green-200 text-green-600 hover:bg-green-50 rounded-md text-xs font-semibold transition-colors"
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-green-200 text-green-600 hover:bg-green-50 rounded-md text-xs font-semibold transition-colors shadow-sm"
                                 >
                                   <CheckCircle2 className="w-3.5 h-3.5" /> Pago
                                 </button>
                               )}
-                              <button onClick={() => handleOpenModal(tx)} className="p-1.5 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-md">
+                              <button onClick={() => handleOpenModal(tx)} className="p-1.5 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-md transition-colors">
                                 <Edit2 className="w-4 h-4" />
                               </button>
-                              <button onClick={() => handleDelete(tx.id)} className="p-1.5 text-gray-400 hover:text-red-500 rounded-md">
+                              <button onClick={() => handleDelete(tx.id)} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors">
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
@@ -616,7 +648,7 @@ export default function Financeiro() {
                   )})}
                 </div>
               ) : (
-                <div className="bg-white border border-gray-200 rounded-xl p-12 text-center">
+                <div className="bg-white border border-gray-200 rounded-xl p-12 text-center shadow-sm">
                   <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
                     <DollarSign className="w-6 h-6 text-gray-400" />
                   </div>
@@ -631,7 +663,7 @@ export default function Financeiro() {
         )}
 
         {activeTab === 'relatorios' && (
-          <div className="bg-white border border-gray-200 rounded-xl p-12 text-center h-64 flex flex-col items-center justify-center">
+          <div className="bg-white border border-gray-200 rounded-xl p-12 text-center h-64 flex flex-col items-center justify-center shadow-sm">
             <h3 className="text-lg font-bold text-gray-900">Relatórios Avançados</h3>
             <p className="text-sm text-gray-500 mt-1">Módulo em desenvolvimento.</p>
           </div>
@@ -641,14 +673,14 @@ export default function Financeiro() {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
-          <div className="relative bg-white rounded-2xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in-95">
-            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 rounded-t-2xl">
+          <div className="relative bg-white rounded-3xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in-95">
+            <div className="px-6 py-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 rounded-t-3xl">
               <div>
                 <h2 className="text-xl font-bold text-gray-900">{editingTx ? 'Editar Recebimento' : 'Novo Recebimento'}</h2>
                 <p className="text-sm text-gray-500 mt-1">Adicione um novo recebimento ou parcelamento ao seu financeiro</p>
               </div>
               <button onClick={() => setIsModalOpen(false)} className="p-2 text-gray-400 hover:text-gray-700 bg-white rounded-full border border-gray-200 shadow-sm transition-colors">
-                <X className="w-4 h-4" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
@@ -660,7 +692,7 @@ export default function Financeiro() {
                     <input 
                       type="date" required
                       value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})}
-                      className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 text-gray-700"
+                      className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 text-gray-700 transition-all"
                     />
                   </div>
                 </div>
@@ -669,7 +701,7 @@ export default function Financeiro() {
                   <input 
                     type="number" step="0.01" required placeholder="0.00"
                     value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})}
-                    className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                    className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all"
                   />
                 </div>
               </div>
@@ -679,7 +711,7 @@ export default function Financeiro() {
                 <input 
                   required
                   value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})}
-                  className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                  className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all"
                   placeholder="Ex: Casamento João e Maria"
                 />
               </div>
@@ -689,7 +721,7 @@ export default function Financeiro() {
                   <label className="block text-sm font-semibold text-gray-700 mb-1.5">Cliente</label>
                   <select 
                     value={formData.client_id} onChange={e => setFormData({...formData, client_id: e.target.value})}
-                    className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                    className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all"
                   >
                     <option value="none">Nenhum</option>
                     {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -701,7 +733,7 @@ export default function Financeiro() {
                     <label className="block text-sm font-semibold text-gray-700 mb-1.5">Número de Parcelas</label>
                     <select 
                       value={formData.installment_count} onChange={e => setFormData({...formData, installment_count: e.target.value})}
-                      className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all"
                     >
                       {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => (
                         <option key={n} value={n}>{n} {n === 1 ? 'vez (À vista)' : 'vezes'}</option>
@@ -713,7 +745,7 @@ export default function Financeiro() {
                     <label className="block text-sm font-semibold text-gray-700 mb-1.5">Status</label>
                     <select 
                       value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}
-                      className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+                      className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all"
                     >
                       <option value="Pendente">Pendente</option>
                       <option value="Recebido">Recebido</option>
@@ -724,11 +756,11 @@ export default function Financeiro() {
               </div>
 
               <div className="flex justify-end gap-3 pt-6 pb-2 border-t border-gray-100">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2.5 text-gray-700 font-semibold border border-gray-200 hover:bg-gray-50 rounded-lg transition-colors">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-2.5 text-gray-700 font-semibold border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors">
                   Cancelar
                 </button>
-                <button type="submit" disabled={isSubmitting} className="px-6 py-2.5 bg-orange-400 text-white font-semibold rounded-lg hover:bg-orange-500 transition-colors flex items-center justify-center shadow-sm disabled:opacity-50">
-                  {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Criar Recebimento'}
+                <button type="submit" disabled={isSubmitting} className="px-8 py-2.5 bg-orange-400 text-white font-bold rounded-xl hover:bg-orange-500 transition-colors flex items-center justify-center shadow-md disabled:opacity-50">
+                  {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Salvar Recebimento'}
                 </button>
               </div>
             </form>
