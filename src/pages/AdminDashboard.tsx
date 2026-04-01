@@ -30,11 +30,17 @@ const growthData = [
 
 export default function AdminDashboard() {
   const { profile, user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'evolution'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'evolution' | 'notifications'>('overview');
   const [usersList, setUsersList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [totalOpps, setTotalOpps] = useState(0);
+
+  // Estados para Notification global
+  const [globalNotifTitle, setGlobalNotifTitle] = useState("");
+  const [globalNotifContent, setGlobalNotifContent] = useState("");
+  const [globalNotifType, setGlobalNotifType] = useState("info");
+  const [sendingNotif, setSendingNotif] = useState(false);
 
   // Estados para Evolution API
   const [evolutionUrl, setEvolutionUrl] = useState("");
@@ -157,6 +163,43 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleSendGlobalNotification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!globalNotifTitle || !globalNotifContent) return toast.error("Preencha título e conteúdo.");
+    
+    setSendingNotif(true);
+    try {
+      const activeUsers = usersList.filter(u => u.role !== 'admin'); // Optional: send to everyone or just non-admins
+      
+      if (activeUsers.length === 0) {
+        toast.info("Nenhum usuário encontrado para notificar.");
+        setSendingNotif(false);
+        return;
+      }
+
+      const notificationsToInsert = activeUsers.map(u => ({
+        user_id: u.id,
+        title: globalNotifTitle,
+        content: globalNotifContent,
+        type: globalNotifType
+      }));
+
+      const { error } = await supabase.from('notifications').insert(notificationsToInsert);
+      
+      if (error) throw error;
+      
+      toast.success(`Notificação enviada para ${activeUsers.length} usuários!`);
+      setGlobalNotifTitle("");
+      setGlobalNotifContent("");
+      setGlobalNotifType("info");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao enviar notificação em massa.");
+    } finally {
+      setSendingNotif(false);
+    }
+  };
+
   if (loading) {
     return <Layout><div className="flex h-full items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div></Layout>;
   }
@@ -196,6 +239,7 @@ export default function AdminDashboard() {
               <button onClick={() => setActiveTab('overview')} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'overview' ? 'bg-white text-gray-900 shadow-md' : 'text-gray-400 hover:text-white'}`}>Visão Geral</button>
               <button onClick={() => setActiveTab('users')} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'users' ? 'bg-white text-gray-900 shadow-md' : 'text-gray-400 hover:text-white'}`}>Usuários</button>
               <button onClick={() => setActiveTab('evolution')} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'evolution' ? 'bg-white text-gray-900 shadow-md' : 'text-gray-400 hover:text-white'}`}>Evolution API</button>
+              <button onClick={() => setActiveTab('notifications')} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'notifications' ? 'bg-white text-gray-900 shadow-md' : 'text-gray-400 hover:text-white'}`}>Notificações Globais</button>
             </div>
           </div>
         </div>
@@ -401,7 +445,146 @@ export default function AdminDashboard() {
               </div>
             </div>
           )}
-          
+
+          {activeTab === 'notifications' && (
+            <div className="max-w-4xl space-y-6 animate-in fade-in slide-in-from-bottom-4">
+              <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl p-6 sm:p-8 text-white shadow-lg flex flex-col sm:flex-row items-center justify-between gap-6">
+                <div>
+                  <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
+                    <MessageSquare className="w-6 h-6" /> Notificações Globais
+                  </h2>
+                  <p className="text-blue-50 max-w-xl leading-relaxed">
+                    Envie notificações automáticas para todos os usuários da plataforma.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="p-6 space-y-6">
+                  <form onSubmit={handleSendGlobalNotification}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                          <MessageSquare className="w-4 h-4 text-gray-400" /> Título
+                        </label>
+                        <input 
+                          type="text"
+                          value={globalNotifTitle}
+                          onChange={e => setGlobalNotifTitle(e.target.value)}
+                          placeholder="Título da notificação"
+                          className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                          <MessageSquare className="w-4 h-4 text-gray-400" /> Conteúdo
+                        </label>
+                        <textarea 
+                          value={globalNotifContent}
+                          onChange={e => setGlobalNotifContent(e.target.value)}
+                          placeholder="Conteúdo da notificação"
+                          rows={3}
+                          className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4 text-gray-400" /> Tipo
+                      </label>
+                      <select 
+                        value={globalNotifType}
+                        onChange={e => setGlobalNotifType(e.target.value)}
+                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="info">Informação</option>
+                        <option value="warning">Aviso</option>
+                        <option value="error">Erro</option>
+                        <option value="success">Sucesso</option>
+                      </select>
+                    </div>
+                    
+                    <div className="flex justify-end mt-6">
+                      <button 
+                        type="submit"
+                        disabled={sendingNotif}
+                        className="px-8 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-md flex items-center gap-2"
+                      >
+                        {sendingNotif ? <Loader2 className="w-5 h-5 animate-spin" /> : <MessageSquare className="w-5 h-5" />}
+                        {sendingNotif ? 'Enviando...' : 'Enviar Notificação'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
+  
+          {/* Global Notifications Tab */}
+          {activeTab === 'notifications' && (
+            <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-100 flex-1 animate-in fade-in slide-in-from-bottom-4">
+              <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center shadow-inner">
+                  <MessageSquare className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Mensagens em Massa</h2>
+                  <p className="text-gray-500">Envie um alerta ou aviso para todos os usuários do sistema simultaneamente.</p>
+                </div>
+              </div>
+  
+              <div className="max-w-2xl bg-gray-50 p-6 sm:p-8 rounded-3xl border border-gray-200">
+                <form onSubmit={handleSendGlobalNotification} className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-2">Título da Notificação</label>
+                    <input
+                      type="text" required
+                      value={globalNotifTitle}
+                      onChange={(e) => setGlobalNotifTitle(e.target.value)}
+                      placeholder="Ex: Atualização do Sistema, Aviso Importante..."
+                      className="w-full px-5 py-3.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400 outline-none transition-all font-medium text-gray-900"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-2">Conteúdo da Mensagem</label>
+                    <textarea
+                      required rows={4}
+                      value={globalNotifContent}
+                      onChange={(e) => setGlobalNotifContent(e.target.value)}
+                      placeholder="Escreva aqui a mensagem que todos irão receber em seus sininhos de notificação..."
+                      className="w-full px-5 py-3.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400 outline-none transition-all font-medium text-gray-900 resize-none"
+                    />
+                  </div>
+  
+                  <div>
+                    <label className="block text-sm font-bold text-gray-900 mb-2">Tipo de Alerta</label>
+                    <div className="flex gap-3">
+                      <button type="button" onClick={() => setGlobalNotifType('info')} className={`flex-1 py-3 px-4 rounded-xl border-2 transition-all font-bold text-sm ${globalNotifType === 'info' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>Informação</button>
+                      <button type="button" onClick={() => setGlobalNotifType('success')} className={`flex-1 py-3 px-4 rounded-xl border-2 transition-all font-bold text-sm ${globalNotifType === 'success' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>Sucesso</button>
+                      <button type="button" onClick={() => setGlobalNotifType('warning')} className={`flex-1 py-3 px-4 rounded-xl border-2 transition-all font-bold text-sm ${globalNotifType === 'warning' ? 'border-yellow-500 bg-yellow-50 text-yellow-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'}`}>Aviso</button>
+                    </div>
+                  </div>
+  
+                  <div className="pt-4 border-t border-gray-200">
+                    <button
+                      type="submit"
+                      disabled={sendingNotif}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 transition-all flex items-center justify-center gap-2"
+                    >
+                      {sendingNotif ? (
+                        <><Loader2 className="w-5 h-5 animate-spin" /> Enviando para todos...</>
+                      ) : (
+                        <><MessageSquare className="w-5 h-5" /> Enviar Notificação Global</>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+  
         </div>
       </div>
 
