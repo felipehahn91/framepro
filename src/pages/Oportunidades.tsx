@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import LeadImportModal from "@/components/LeadImportModal";
 import OpportunityDetailModal from "@/components/OpportunityDetailModal";
+import ClosingLinkModal from "@/components/ClosingLinkModal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -110,6 +111,10 @@ export default function Oportunidades() {
   // Modal de Detalhes da Oportunidade
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedOppToView, setSelectedOppToView] = useState<Opportunity | null>(null);
+
+  // Modal Link de Fechamento
+  const [isClosingLinkOpen, setIsClosingLinkOpen] = useState(false);
+  const [oppForClosingLink, setOppForClosingLink] = useState<Opportunity | null>(null);
 
   // Mover Oportunidade Individual (Mobile UX)
   const [moveSingleModalOpen, setMoveSingleModalOpen] = useState(false);
@@ -1050,7 +1055,14 @@ export default function Oportunidades() {
                                                         <MoreVertical className="w-4 h-4" />
                                                       </button>
                                                     </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="w-48">
+                                                    <DropdownMenuContent align="end" className="w-56">
+                                                      <DropdownMenuItem onClick={() => {
+                                                        setOppForClosingLink(opp);
+                                                        setIsClosingLinkOpen(true);
+                                                      }} className="cursor-pointer font-bold text-green-600 focus:text-green-700 focus:bg-green-50">
+                                                        <LinkIcon className="w-4 h-4 mr-2" /> Fechar Negócio (Link)
+                                                      </DropdownMenuItem>
+                                                      <DropdownMenuSeparator />
                                                       <DropdownMenuItem onClick={() => { setOppToMoveSingle(opp); setMoveSingleModalOpen(true); }} className="cursor-pointer font-medium">
                                                         <MoveRight className="w-4 h-4 mr-2 text-blue-500" /> Mover de Etapa
                                                       </DropdownMenuItem>
@@ -1157,6 +1169,20 @@ export default function Oportunidades() {
           setSelectedOppForCadencia(opp);
           setIsCadenciaModalOpen(true);
         }}
+        onOpenClosingLink={(opp) => {
+          setIsDetailModalOpen(false);
+          setOppForClosingLink(opp);
+          setIsClosingLinkOpen(true);
+        }}
+      />
+
+      <ClosingLinkModal
+        isOpen={isClosingLinkOpen}
+        onClose={() => {
+          setIsClosingLinkOpen(false);
+          setOppForClosingLink(null);
+        }}
+        opportunity={oppForClosingLink}
       />
 
       {/* MODAL: Gerenciar Pipelines */}

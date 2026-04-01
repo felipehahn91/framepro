@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { 
   Trash2, UserMinus, UserPlus, FileText, Calculator, 
   MessageCircle, Mail, Phone, Instagram, MapPin, Loader2,
-  Save, Send, X, Search
+  Save, Send, X, Search, Link as LinkIcon
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
@@ -34,6 +34,7 @@ interface OpportunityDetailModalProps {
   onSave: (updatedOpp: Opportunity) => void;
   onDelete: (id: string) => void;
   onOpenCadence?: (opp: Opportunity) => void;
+  onOpenClosingLink?: (opp: Opportunity) => void;
 }
 
 const getObservationString = (obs: string | null | undefined) => {
@@ -50,7 +51,7 @@ const getObservationString = (obs: string | null | undefined) => {
 };
 
 export default function OpportunityDetailModal({ 
-  isOpen, onClose, opportunity, onSave, onDelete, onOpenCadence 
+  isOpen, onClose, opportunity, onSave, onDelete, onOpenCadence, onOpenClosingLink 
 }: OpportunityDetailModalProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<Partial<Opportunity>>({});
@@ -143,7 +144,6 @@ export default function OpportunityDetailModal({
         if (error) throw error;
         setDocuments(data || []);
       } else {
-        // Para contratos, o "nome" na verdade está na oportunidade referenciada
         const { data, error } = await supabase
           .from('contracts')
           .select('id, share_token, opportunities(name)')
@@ -171,7 +171,6 @@ export default function OpportunityDetailModal({
   const handleSendDocument = async (doc: any) => {
     let token = doc.share_token;
     
-    // Se o documento não tiver um token público gerado, gera um agora
     if (!token) {
       token = crypto.randomUUID();
       const table = docType === 'contract' ? 'contracts' : 'orcamentos';
@@ -279,9 +278,22 @@ export default function OpportunityDetailModal({
               <div>
                 <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">Ações Rápidas</h3>
                 <div className="space-y-3">
+                  
+                  {/* Novo Botão de Fechar Negócio (Link) */}
+                  <button 
+                    onClick={() => {
+                      onClose();
+                      if (onOpenClosingLink) onOpenClosingLink(opportunity);
+                    }}
+                    className="w-full flex items-center gap-3 py-3.5 px-4 rounded-xl font-bold bg-green-500 text-white hover:bg-green-600 transition-all shadow-md group"
+                  >
+                    <LinkIcon className="w-5 h-5 text-white group-hover:scale-110 transition-transform" />
+                    Gerar Link de Fechamento
+                  </button>
+
                   <button 
                     onClick={handleToggleClient}
-                    className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl font-bold transition-all shadow-sm border ${formData.is_client ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'}`}
+                    className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl font-bold transition-all shadow-sm border ${formData.is_client ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200'}`}
                   >
                     <div className="flex items-center gap-3">
                       {formData.is_client ? <UserMinus className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
