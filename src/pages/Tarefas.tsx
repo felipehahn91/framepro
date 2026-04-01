@@ -90,6 +90,9 @@ export default function Tarefas() {
       if (activeFilter === 'completed') return task.status === 'Concluída';
       if (activeFilter === 'in_progress') return task.status === 'Em execução' || task.status === 'Em Progresso';
 
+      // Para as outras abas (inbox, hoje, próximos, projetos) nós ESCONDEMOS as tarefas concluídas
+      if (task.status === 'Concluída') return false;
+
       if (activeFilter === 'inbox') return true;
       
       if (activeFilter === 'today') {
@@ -113,12 +116,6 @@ export default function Tarefas() {
     });
 
     result.sort((a, b) => {
-      // Tarefas concluídas sempre vão para o final da lista
-      const aCompleted = a.status === 'Concluída';
-      const bCompleted = b.status === 'Concluída';
-      if (aCompleted && !bCompleted) return 1;
-      if (!aCompleted && bCompleted) return -1;
-
       if (sortBy === 'date_asc') {
         if (!a.due_date) return 1;
         if (!b.due_date) return -1;
@@ -143,7 +140,6 @@ export default function Tarefas() {
     });
 
     return {
-      // Contadores exibem apenas tarefas ativas (não concluídas) para não inflar os números
       inbox: tasks.filter(t => t.status !== 'Concluída').length,
       today: tasks.filter(t => t.status !== 'Concluída' && t.due_date && isToday(new Date(t.due_date))).length,
       next_7: tasks.filter(t => t.status !== 'Concluída' && t.due_date && isWithinInterval(new Date(t.due_date), { start: today, end: next7 })).length,
@@ -225,16 +221,26 @@ export default function Tarefas() {
     }
   };
 
-  const handleToggleComplete = async (task: Task, e: React.MouseEvent) => {
+  // Ciclo de Cliques: Pendente -> Em execução -> Concluída -> Pendente
+  const handleToggleStatusClick = async (task: Task, e: React.MouseEvent) => {
     e.stopPropagation();
-    const newStatus = task.status === 'Concluída' ? 'Pendente' : 'Concluída';
+    
+    let newStatus = 'Pendente';
+    if (task.status === 'Pendente') newStatus = 'Em execução';
+    else if (task.status === 'Em execução' || task.status === 'Em Progresso') newStatus = 'Concluída';
+    else if (task.status === 'Concluída') newStatus = 'Pendente';
+
     setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
     
     try {
       await supabase.from('tasks').update({ status: newStatus }).eq('id', task.id);
-      toast.success(newStatus === 'Concluída' ? "Tarefa concluída!" : "Tarefa reaberta.");
-    } catch (e) {
-      toast.error("Erro ao atualizar.");
+      
+      if (newStatus === 'Em execução') toast.success("Tarefa em execução!");
+      else if (newStatus === 'Concluída') toast.success("Tarefa concluída!");
+      else toast.info("Tarefa marcada como pendente.");
+      
+    } catch (error) {
+      toast.error("Erro ao atualizar o status.");
     }
   };
 
@@ -427,17 +433,25 @@ export default function Tarefas() {
                   >
                     <div className="flex items-start gap-3 w-full sm:w-auto flex-1">
                       <button 
-                        onClick={(e) => handleToggleComplete(task, e)}
-                        className={`mt-0.5 shrink-0 transition-colors ${completed ? 'text-green-500' : 'text-gray-300 hover:text-orange-400'}`}
+                        onClick={(e) => handleToggleStatusClick(task, e)}
+                        title="Clique para mudar o status"
+                        className={`mt-0.5 shrink-0 transition-all hover:scale-110 ${
+                          completed ? 'text-green-500' : 
+                          inProgress ? 'text-yellow-500' : 
+                          'text-gray-300 hover:text-yellow-500'
+                        }`}
                       >
-                        {completed ? <CheckCircle2 className="w-6 h-6" /> : <Circle className="w-6 h-6" />}
+                        {completed ? (
+                          <CheckCircle2 className="w-6 h-6" />
+                        ) : inProgress ? (
+                          <Zap className="w-6 h-6 fill-yellow-500" />
+                        ) : (
+                          <Circle className="w-6 h-6" />
+                        )}
                       </button>
                       
                       <div className="flex-1 min-w-0 pr-8 sm:pr-0">
                         <div className="flex items-center gap-2">
-                          {inProgress && !completed && (
-                            <Zap className="w-4 h-4 text-yellow-500 fill-yellow-500 shrink-0" />
-                          )}
                           <h3 className={`text-[15px] font-bold truncate ${completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>
                             {task.title}
                           </h3>
