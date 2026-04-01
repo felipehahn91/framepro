@@ -77,6 +77,9 @@ export default function Oportunidades() {
   const [activePipelineId, setActivePipelineId] = useState<string>("");
   const [selectedOpps, setSelectedOpps] = useState<string[]>([]);
   
+  // Lazy Load no Kanban
+  const [visibleCounts, setVisibleCounts] = useState<Record<string, number>>({});
+
   // Filtros e Pesquisa
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -137,6 +140,7 @@ export default function Oportunidades() {
   // Busca de oportunidades apenas quando a Pipeline muda
   useEffect(() => {
     if (activePipelineId) {
+      setVisibleCounts({}); // Reseta o contador de lazy load ao trocar de pipeline
       fetchOpportunitiesForPipeline(activePipelineId);
     }
   }, [activePipelineId]);
@@ -280,6 +284,20 @@ export default function Oportunidades() {
 
   const handleImportSuccess = (newPipelineId?: string) => {
     fetchBaseData(newPipelineId);
+  };
+
+  // Lida com o Scroll em uma coluna para carregar mais itens
+  const handleScrollColumn = (e: React.UIEvent<HTMLDivElement>, colId: string, totalInCol: number) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    const currentVisible = visibleCounts[colId] || 10;
+    
+    // Se a rolagem chegar perto do final (50px de margem), carrega mais 10 itens
+    if (currentVisible < totalInCol && scrollHeight - scrollTop <= clientHeight + 50) {
+      setVisibleCounts(prev => ({
+        ...prev,
+        [colId]: currentVisible + 10
+      }));
+    }
   };
 
   const activeColumns = columns.filter(c => c.pipeline_id === activePipelineId).sort((a, b) => a.order_index - b.order_index);
@@ -921,6 +939,10 @@ export default function Oportunidades() {
                       const allSelectedInCol = colOppsIds.length > 0 && colOppsIds.every(id => selectedOpps.includes(id));
                       const someSelectedInCol = colOppsIds.some(id => selectedOpps.includes(id));
 
+                      // Lazy Load slice
+                      const currentVisibleCount = visibleCounts[col.id] || 10;
+                      const renderedOpps = colOpps.slice(0, currentVisibleCount);
+
                       return (
                         <Draggable key={col.id} draggableId={col.id} index={index}>
                           {(provided) => (
@@ -989,10 +1011,11 @@ export default function Oportunidades() {
                                 {(provided, snapshot) => (
                                   <div 
                                     ref={provided.innerRef} {...provided.droppableProps}
+                                    onScroll={(e) => handleScrollColumn(e, col.id, colOpps.length)}
                                     className={`flex-1 p-2 overflow-y-auto rounded-b-xl space-y-2.5 transition-colors custom-scrollbar ${snapshot.isDraggingOver ? 'bg-orange-50/50' : 'bg-transparent'}`}
                                     style={{ minHeight: '100px' }}
                                   >
-                                    {colOpps.map((opp, oppIndex) => {
+                                    {renderedOpps.map((opp, oppIndex) => {
                                       const isFromWhatsApp = opp.observations?.includes("gatilho de WhatsApp");
                                       return (
                                         <Draggable key={opp.id} draggableId={opp.id} index={oppIndex}>
@@ -1083,6 +1106,14 @@ export default function Oportunidades() {
                                       );
                                     })}
                                     {provided.placeholder}
+                                    
+                                    {/* Indicador de Carregamento Lazy */}
+                                    {renderedOpps.length < colOpps.length && (
+                                      <div className="py-4 text-center">
+                                        <Loader2 className="w-5 h-5 animate-spin text-orange-400 mx-auto" />
+                                      </div>
+                                    )}
+
                                     {filteredOpportunities.length === 0 && searchQuery && (
                                       <div className="text-center py-6 opacity-40">
                                         <p className="text-xs font-bold">Nenhum lead encontrado.</p>
