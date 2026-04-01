@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { 
   Plus, Edit2, Trash2, Search, Loader2, X, CheckSquare, 
   Calendar as CalendarIcon, AlertCircle, CheckCircle2, Circle, 
-  ArrowUpDown, Inbox, Calendar, Clock, Hash, Check, Folder
+  ArrowUpDown, Inbox, Calendar, Clock, Hash, Check, Folder, Zap
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, isToday, isWithinInterval, addDays, startOfDay, endOfDay } from "date-fns";
@@ -23,7 +23,7 @@ interface Task {
   user_id: string;
 }
 
-type FilterType = 'inbox' | 'today' | 'next_7' | 'completed' | string;
+type FilterType = 'inbox' | 'today' | 'next_7' | 'in_progress' | 'completed' | string;
 
 export default function Tarefas() {
   const { user } = useAuth();
@@ -88,8 +88,7 @@ export default function Tarefas() {
       if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
 
       if (activeFilter === 'completed') return task.status === 'Concluída';
-      
-      if (task.status === 'Concluída') return false;
+      if (activeFilter === 'in_progress') return task.status === 'Em execução' || task.status === 'Em Progresso';
 
       if (activeFilter === 'inbox') return true;
       
@@ -114,6 +113,12 @@ export default function Tarefas() {
     });
 
     result.sort((a, b) => {
+      // Tarefas concluídas sempre vão para o final da lista
+      const aCompleted = a.status === 'Concluída';
+      const bCompleted = b.status === 'Concluída';
+      if (aCompleted && !bCompleted) return 1;
+      if (!aCompleted && bCompleted) return -1;
+
       if (sortBy === 'date_asc') {
         if (!a.due_date) return 1;
         if (!b.due_date) return -1;
@@ -138,9 +143,11 @@ export default function Tarefas() {
     });
 
     return {
+      // Contadores exibem apenas tarefas ativas (não concluídas) para não inflar os números
       inbox: tasks.filter(t => t.status !== 'Concluída').length,
       today: tasks.filter(t => t.status !== 'Concluída' && t.due_date && isToday(new Date(t.due_date))).length,
       next_7: tasks.filter(t => t.status !== 'Concluída' && t.due_date && isWithinInterval(new Date(t.due_date), { start: today, end: next7 })).length,
+      in_progress: tasks.filter(t => t.status === 'Em execução' || t.status === 'Em Progresso').length,
       completed: tasks.filter(t => t.status === 'Concluída').length,
       projectCounts
     };
@@ -153,7 +160,7 @@ export default function Tarefas() {
       setFormData({
         title: task.title || "",
         description: task.description || "",
-        status: task.status || "Pendente",
+        status: task.status === 'Em Progresso' ? 'Em execução' : (task.status || "Pendente"),
         priority: task.priority || "Média",
         due_date: task.due_date ? task.due_date.split('T')[0] : "",
         project: task.project || ""
@@ -161,18 +168,22 @@ export default function Tarefas() {
     } else {
       setSelectedTask(null);
       
-      // Se estiver visualizando um projeto específico, preenche automaticamente o campo
       let defaultProject = "";
+      let defaultStatus = "Pendente";
+
       if (activeFilter.startsWith('project:')) {
         defaultProject = activeFilter.replace('project:', '');
+      }
+      if (activeFilter === 'in_progress') {
+        defaultStatus = 'Em execução';
       }
 
       setFormData({
         title: "",
         description: "",
-        status: "Pendente",
+        status: defaultStatus,
         priority: "Média",
-        due_date: "",
+        due_date: activeFilter === 'today' ? new Date().toISOString().split('T')[0] : "",
         project: defaultProject
       });
     }
@@ -208,7 +219,7 @@ export default function Tarefas() {
       }
       setIsModalOpen(false);
     } catch (error) {
-      toast.error("Erro ao salvar tarefa. Verifique se você criou a coluna no Supabase.");
+      toast.error("Erro ao salvar tarefa.");
     } finally {
       setIsSubmitting(false);
     }
@@ -221,7 +232,7 @@ export default function Tarefas() {
     
     try {
       await supabase.from('tasks').update({ status: newStatus }).eq('id', task.id);
-      toast.success(newStatus === 'Concluída' ? "Concluída!" : "Reaberta.");
+      toast.success(newStatus === 'Concluída' ? "Tarefa concluída!" : "Tarefa reaberta.");
     } catch (e) {
       toast.error("Erro ao atualizar.");
     }
@@ -243,6 +254,7 @@ export default function Tarefas() {
     if (activeFilter === 'inbox') return 'Entrada';
     if (activeFilter === 'today') return 'Hoje';
     if (activeFilter === 'next_7') return 'Próximos 7 dias';
+    if (activeFilter === 'in_progress') return 'Em execução';
     if (activeFilter === 'completed') return 'Concluídas';
     if (activeFilter.startsWith('project:')) return activeFilter.replace('project:', '');
     return activeFilter;
@@ -252,6 +264,7 @@ export default function Tarefas() {
     { id: 'inbox', label: 'Entrada', count: counts.inbox, icon: Inbox },
     { id: 'today', label: 'Hoje', count: counts.today, icon: Calendar },
     { id: 'next_7', label: 'Próx. 7 dias', count: counts.next_7, icon: Clock },
+    { id: 'in_progress', label: 'Em execução', count: counts.in_progress, icon: Zap },
     { id: 'completed', label: 'Concluídas', count: counts.completed, icon: CheckCircle2 }
   ];
 
@@ -281,7 +294,7 @@ export default function Tarefas() {
                   : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
               }`}
             >
-              <filter.icon className={`w-4 h-4 ${activeFilter === filter.id ? 'text-orange-500' : 'text-gray-400'}`} />
+              <filter.icon className={`w-4 h-4 ${activeFilter === filter.id ? (filter.id === 'in_progress' ? 'text-yellow-500 fill-yellow-500' : 'text-orange-500') : 'text-gray-400'}`} />
               {filter.label}
               <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[10px] ${activeFilter === filter.id ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500'}`}>
                 {filter.count}
@@ -325,6 +338,11 @@ export default function Tarefas() {
             <button onClick={() => setActiveFilter('next_7')} className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${activeFilter === 'next_7' ? 'bg-orange-50 text-orange-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}>
               <div className="flex items-center gap-3"><Clock className={`w-5 h-5 ${activeFilter === 'next_7' ? 'text-purple-500' : 'text-gray-400'}`} /><span className="text-sm">Próximos 7 dias</span></div>
               <span className="text-xs opacity-60">{counts.next_7}</span>
+            </button>
+
+            <button onClick={() => setActiveFilter('in_progress')} className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${activeFilter === 'in_progress' ? 'bg-orange-50 text-orange-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}>
+              <div className="flex items-center gap-3"><Zap className={`w-5 h-5 ${activeFilter === 'in_progress' ? 'text-yellow-500 fill-yellow-500' : 'text-gray-400'}`} /><span className="text-sm">Em execução</span></div>
+              <span className="text-xs opacity-60">{counts.in_progress}</span>
             </button>
 
             <button onClick={() => setActiveFilter('completed')} className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${activeFilter === 'completed' ? 'bg-orange-50 text-orange-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}>
@@ -399,11 +417,13 @@ export default function Tarefas() {
             {filteredTasks.length > 0 ? (
               filteredTasks.map((task) => {
                 const completed = task.status === 'Concluída';
+                const inProgress = task.status === 'Em execução' || task.status === 'Em Progresso';
+
                 return (
                   <div 
                     key={task.id}
                     onClick={() => handleOpenModal(task)}
-                    className="group flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 p-4 rounded-xl bg-white border border-gray-200 hover:border-orange-200 hover:shadow-md transition-all cursor-pointer relative"
+                    className={`group flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 p-4 rounded-xl bg-white border ${inProgress && !completed ? 'border-yellow-400 shadow-md ring-1 ring-yellow-400/20' : 'border-gray-200 hover:border-orange-200 hover:shadow-md'} transition-all cursor-pointer relative`}
                   >
                     <div className="flex items-start gap-3 w-full sm:w-auto flex-1">
                       <button 
@@ -414,10 +434,21 @@ export default function Tarefas() {
                       </button>
                       
                       <div className="flex-1 min-w-0 pr-8 sm:pr-0">
-                        <h3 className={`text-[15px] font-bold truncate ${completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>
-                          {task.title}
-                        </h3>
+                        <div className="flex items-center gap-2">
+                          {inProgress && !completed && (
+                            <Zap className="w-4 h-4 text-yellow-500 fill-yellow-500 shrink-0" />
+                          )}
+                          <h3 className={`text-[15px] font-bold truncate ${completed ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                            {task.title}
+                          </h3>
+                        </div>
+                        
                         <div className="flex flex-wrap items-center gap-3 mt-1.5">
+                          {inProgress && !completed && (
+                            <div className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md border text-yellow-600 bg-yellow-50 border-yellow-200 uppercase tracking-wider">
+                              Em execução
+                            </div>
+                          )}
                           {task.project && (
                             <div className={`flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md border ${completed ? 'text-gray-400 bg-gray-50 border-gray-100' : 'text-blue-600 bg-blue-50 border-blue-100'}`}>
                               <Folder className="w-3 h-3" />
@@ -521,24 +552,36 @@ export default function Tarefas() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1.5">Data de Vencimento</label>
-                  <input 
-                    type="date"
-                    value={formData.due_date} onChange={e => setFormData({...formData, due_date: e.target.value})}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-gray-700"
-                  />
+                  <label className="block text-sm font-bold text-gray-700 mb-1.5">Status</label>
+                  <select 
+                    value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none font-semibold text-gray-700"
+                  >
+                    <option value="Pendente">Pendente</option>
+                    <option value="Em execução">Em execução</option>
+                    <option value="Concluída">Concluída</option>
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-1.5">Prioridade</label>
                   <select 
                     value={formData.priority} onChange={e => setFormData({...formData, priority: e.target.value})}
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none font-semibold text-gray-700"
                   >
                     <option value="Baixa">Baixa</option>
                     <option value="Média">Média</option>
                     <option value="Alta">Alta</option>
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1.5">Data de Vencimento</label>
+                <input 
+                  type="date"
+                  value={formData.due_date} onChange={e => setFormData({...formData, due_date: e.target.value})}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-gray-700"
+                />
               </div>
 
               <div>
