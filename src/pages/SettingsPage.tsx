@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { 
   Camera, Save, Loader2, Palette, Check, MessageSquare, QrCode, 
   Smartphone, LogOut, RefreshCw, Webhook, CreditCard, ShieldCheck, FileText, ExternalLink,
-  Banknote
+  Banknote, Link as LinkIcon, Copy
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import * as evolutionApi from '@/lib/evolution';
@@ -36,6 +36,7 @@ export default function SettingsPage() {
   // --- PAGHIPER STATES ---
   const [paghiperKey, setPaghiperKey] = useState('');
   const [paghiperToken, setPaghiperToken] = useState('');
+  const paghiperWebhookUrl = "https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/paghiper-webhook";
 
   // --- WHATSAPP STATES ---
   const [waInstance, setWaInstance] = useState<any>(null);
@@ -531,11 +532,30 @@ export default function SettingsPage() {
                 </div>
 
                 <CardContent className="p-6 sm:p-8 space-y-6">
-                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-800">
-                    <strong>Como obter suas chaves?</strong><br />
-                    1. Acesse sua conta em <a href="https://www.paghiper.com/" target="_blank" rel="noreferrer" className="underline font-bold">paghiper.com</a>.<br />
-                    2. Vá no menu lateral <strong>"Minha Conta"</strong> e depois em <strong>"Credenciais"</strong>.<br />
-                    3. Copie o <strong>ApiKey</strong> e o <strong>Token</strong> e cole abaixo.
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-5 text-sm text-blue-800 space-y-3">
+                    <p>
+                      <strong>Como obter suas chaves?</strong><br />
+                      1. Acesse sua conta em <a href="https://www.paghiper.com/" target="_blank" rel="noreferrer" className="underline font-bold">paghiper.com</a>.<br />
+                      2. Vá no menu lateral <strong>"Minha Conta"</strong> e depois em <strong>"Credenciais"</strong>.<br />
+                      3. Copie o <strong>ApiKey</strong> e o <strong>Token</strong> e cole abaixo.
+                    </p>
+                    <div className="bg-white/60 p-3 rounded-lg border border-blue-200 flex flex-col gap-2">
+                      <p className="font-bold text-blue-900 flex items-center gap-1.5">
+                        <Webhook className="w-4 h-4" /> Configuração do Retorno Automático (Webhook)
+                      </p>
+                      <p className="text-xs">Para que o CRM saiba quando seu cliente pagou e dê baixa automática na cobrança, cole este link na página de <strong>Retorno de Dados</strong> do PagHiper:</p>
+                      <div className="flex items-center gap-2">
+                        <Input value={paghiperWebhookUrl} readOnly className="bg-white font-mono text-xs text-gray-500 h-8" />
+                        <Button 
+                          variant="secondary" 
+                          size="sm" 
+                          onClick={() => { navigator.clipboard.writeText(paghiperWebhookUrl); toast.success("URL copiada!"); }}
+                          className="h-8 shadow-sm flex items-center gap-1.5"
+                        >
+                          <Copy className="w-3.5 h-3.5" /> Copiar
+                        </Button>
+                      </div>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
