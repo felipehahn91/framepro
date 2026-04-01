@@ -64,8 +64,17 @@ export default function OpportunityDetailModal({
 
   useEffect(() => {
     if (opportunity && isOpen) {
+      let formattedValue = opportunity.value || '';
+      let v = formattedValue.replace(/\D/g, '');
+      if (v) {
+          formattedValue = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v) / 100);
+      } else {
+          formattedValue = '';
+      }
+
       setFormData({
         ...opportunity,
+        value: formattedValue,
         observations: getObservationString(opportunity.observations)
       });
     }
@@ -240,13 +249,17 @@ export default function OpportunityDetailModal({
             <div className="mb-6 p-5 bg-gray-50 rounded-2xl border border-gray-100 shadow-sm focus-within:ring-2 focus-within:ring-orange-400 transition-all">
               <label className="text-xs font-bold text-gray-400 uppercase tracking-widest block mb-2">Valor da Oportunidade</label>
               <div className="flex items-center gap-2">
-                <span className="text-3xl font-black text-gray-900">R$</span>
                 <input 
-                  type="number"
+                  type="text"
                   value={formData.value || ''} 
-                  onChange={e => setFormData({...formData, value: e.target.value})}
+                  onChange={e => {
+                    let v = e.target.value.replace(/\D/g, '');
+                    if (!v) { setFormData({...formData, value: ''}); return; }
+                    const formatted = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v) / 100);
+                    setFormData({...formData, value: formatted});
+                  }}
                   className="text-3xl font-black text-gray-900 bg-transparent border-none p-0 focus:ring-0 outline-none w-full placeholder:text-gray-300"
-                  placeholder="0,00"
+                  placeholder="R$ 0,00"
                 />
               </div>
             </div>

@@ -27,8 +27,16 @@ export default function ClosingLinkModal({ isOpen, onClose, opportunity }: Closi
 
   useEffect(() => {
     if (opportunity && isOpen) {
+      let initialValue = opportunity.value || '';
+      if (typeof initialValue === 'string') {
+          const numericStr = initialValue.replace(/\D/g, '');
+          if (numericStr) {
+              initialValue = (Number(numericStr) / 100).toFixed(2);
+          }
+      }
+
       setFormData({
-        value: opportunity.value || '',
+        value: initialValue,
         eventDate: opportunity.event_date || '',
         installments: '1',
         contractTemplateId: 'none'

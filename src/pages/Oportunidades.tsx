@@ -1446,7 +1446,18 @@ export default function Oportunidades() {
                 
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold text-gray-700">Valor</label>
-                  <input type="number" value={formData.value} onChange={e => setFormData({...formData, value: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-orange-400 text-sm" placeholder="0.00" />
+                  <input 
+                    type="text" 
+                    value={formData.value} 
+                    onChange={e => {
+                      let v = e.target.value.replace(/\D/g, '');
+                      if (!v) { setFormData({...formData, value: ''}); return; }
+                      const formatted = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v) / 100);
+                      setFormData({...formData, value: formatted});
+                    }}
+                    className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-orange-400 text-sm" 
+                    placeholder="R$ 0,00" 
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
