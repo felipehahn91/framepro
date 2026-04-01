@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { 
   Plus, Edit2, Trash2, Search, Loader2, X, CheckSquare, 
   Calendar as CalendarIcon, AlertCircle, CheckCircle2, Circle, 
-  ArrowUpDown, Inbox, Calendar, Clock, Hash, Check
+  ArrowUpDown, Inbox, Calendar, Clock, Hash, Check, Folder
 } from "lucide-react";
 import { toast } from "sonner";
 import { format, isToday, isWithinInterval, addDays, startOfDay, endOfDay } from "date-fns";
@@ -18,6 +18,7 @@ interface Task {
   status: string;
   priority: string;
   due_date: string | null;
+  project: string | null;
   created_at: string;
   user_id: string;
 }
@@ -39,13 +40,15 @@ export default function Tarefas() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
 
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     status: "Pendente",
     priority: "Média",
-    due_date: ""
+    due_date: "",
+    project: ""
   });
 
   useEffect(() => {
@@ -69,6 +72,12 @@ export default function Tarefas() {
       setLoading(false);
     }
   };
+
+  // Extrai lista única de projetos existentes
+  const existingProjects = useMemo(() => {
+    const projects = tasks.map(t => t.project).filter(Boolean) as string[];
+    return Array.from(new Set(projects)).sort();
+  }, [tasks]);
 
   // Lógica de filtragem baseada na sidebar/menu mobile
   const filteredTasks = useMemo(() => {
@@ -123,6 +132,7 @@ export default function Tarefas() {
   }, [tasks]);
 
   const handleOpenModal = (task?: Task) => {
+    setIsCreatingProject(false);
     if (task) {
       setSelectedTask(task);
       setFormData({
@@ -130,7 +140,8 @@ export default function Tarefas() {
         description: task.description || "",
         status: task.status || "Pendente",
         priority: task.priority || "Média",
-        due_date: task.due_date ? task.due_date.split('T')[0] : ""
+        due_date: task.due_date ? task.due_date.split('T')[0] : "",
+        project: task.project || ""
       });
     } else {
       setSelectedTask(null);
@@ -139,7 +150,8 @@ export default function Tarefas() {
         description: "",
         status: "Pendente",
         priority: "Média",
-        due_date: ""
+        due_date: "",
+        project: ""
       });
     }
     setIsModalOpen(true);
@@ -157,7 +169,8 @@ export default function Tarefas() {
         description: formData.description,
         status: formData.status,
         priority: formData.priority,
-        due_date: formData.due_date || null
+        due_date: formData.due_date || null,
+        project: formData.project || null
       };
 
       if (selectedTask) {
@@ -173,7 +186,7 @@ export default function Tarefas() {
       }
       setIsModalOpen(false);
     } catch (error) {
-      toast.error("Erro ao salvar tarefa.");
+      toast.error("Erro ao salvar tarefa. Verifique se você criou a coluna no Supabase.");
     } finally {
       setIsSubmitting(false);
     }
@@ -339,6 +352,12 @@ export default function Tarefas() {
                           {task.title}
                         </h3>
                         <div className="flex flex-wrap items-center gap-3 mt-1.5">
+                          {task.project && (
+                            <div className={`flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md border ${completed ? 'text-gray-400 bg-gray-50 border-gray-100' : 'text-blue-600 bg-blue-50 border-blue-100'}`}>
+                              <Folder className="w-3 h-3" />
+                              {task.project}
+                            </div>
+                          )}
                           {task.due_date && (
                             <div className={`flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md border ${new Date(task.due_date) < new Date() && !completed ? 'text-red-600 bg-red-50 border-red-100' : 'text-gray-500 bg-gray-50 border-gray-100'}`}>
                               <CalendarIcon className="w-3 h-3" />
@@ -390,6 +409,48 @@ export default function Tarefas() {
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none transition-all font-semibold"
                   placeholder="Ex: Enviar fotos do casamento"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1.5">Projeto / Categoria</label>
+                {isCreatingProject ? (
+                  <div className="flex gap-2">
+                    <input 
+                      autoFocus
+                      placeholder="Nome do novo projeto..."
+                      value={formData.project}
+                      onChange={e => setFormData({...formData, project: e.target.value})}
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none transition-all font-semibold text-sm"
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        setIsCreatingProject(false); 
+                        setFormData({...formData, project: ''});
+                      }} 
+                      className="px-3 bg-gray-100 rounded-xl text-gray-500 hover:text-gray-700 hover:bg-gray-200 transition-colors flex items-center justify-center border border-gray-200"
+                    >
+                       <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                ) : (
+                  <select 
+                    value={formData.project}
+                    onChange={e => {
+                      if (e.target.value === 'new') {
+                        setIsCreatingProject(true);
+                        setFormData({...formData, project: ''});
+                      } else {
+                        setFormData({...formData, project: e.target.value});
+                      }
+                    }}
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none text-sm text-gray-700 font-medium"
+                  >
+                    <option value="">Sem projeto</option>
+                    {existingProjects.map(p => <option key={p} value={p}>{p}</option>)}
+                    <option value="new">+ Criar novo projeto...</option>
+                  </select>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
