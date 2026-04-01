@@ -27,7 +27,6 @@ export default function ClosingPublicView() {
   // Formulário do Cliente
   const [clientData, setClientData] = useState({
     cpf: '',
-    rg: '',
     civil_status: 'Solteiro(a)',
     profession: '',
     address: ''
@@ -69,7 +68,7 @@ export default function ClosingPublicView() {
 
   const handleNextStep = () => {
     if (step === 1) {
-      if (!clientData.cpf || !clientData.rg || !clientData.address || !clientData.profession) {
+      if (!clientData.cpf || !clientData.address || !clientData.profession) {
         return toast.error("Preencha todos os campos obrigatórios para continuar.");
       }
     }
@@ -90,7 +89,6 @@ export default function ClosingPublicView() {
       await supabase.from('opportunities').update({
         is_client: true,
         cpf: clientData.cpf,
-        rg: clientData.rg,
         civil_status: clientData.civil_status,
         profession: clientData.profession,
         address: clientData.address
@@ -136,7 +134,6 @@ export default function ClosingPublicView() {
       // Substituição de Variáveis
       contractText = contractText.replace(/\{\{nome\}\}/gi, opportunity.name);
       contractText = contractText.replace(/\{\{cpf\}\}/gi, clientData.cpf);
-      contractText = contractText.replace(/\{\{rg\}\}/gi, clientData.rg);
       contractText = contractText.replace(/\{\{endereco\}\}/gi, clientData.address);
       contractText = contractText.replace(/\{\{estado_civil\}\}/gi, clientData.civil_status);
       contractText = contractText.replace(/\{\{profissao\}\}/gi, clientData.profession);
@@ -276,14 +273,6 @@ export default function ClosingPublicView() {
                 <input 
                   type="text" required
                   value={clientData.cpf} onChange={e => setClientData({...clientData, cpf: e.target.value})}
-                  className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none transition-all font-medium"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">RG *</label>
-                <input 
-                  type="text" required
-                  value={clientData.rg} onChange={e => setClientData({...clientData, rg: e.target.value})}
                   className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none transition-all font-medium"
                 />
               </div>
