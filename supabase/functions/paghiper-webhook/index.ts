@@ -73,35 +73,77 @@ serve(async (req) => {
     const status = statusRequest.status; // 'paid', 'completed', 'canceled', etc.
     const orderId = statusRequest.order_id; // Formato no nosso DB: "txId" ou "txId_instId"
 
+    const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
+
     // Se estiver pago ou completado
     if (status === 'paid' || status === 'completed') {
       if (orderId.includes('_')) {
         // É uma parcela ("ID_da_transacao_ID_da_parcela")
         const [txId, instId] = orderId.split('_');
         
-        const { data: tx } = await supabase.from('transactions').select('installments').eq('id', txId).single();
+        const { data: tx } = await supabaseAdmin.from('transactions')
+          .select('*, opportunities(name)')
+          .eq('id', txId)
+          .single();
         
         if (tx && tx.installments) {
            const insts = typeof tx.installments === 'string' ? JSON.parse(tx.installments) : tx.installments;
+           
+           let paidAmount = 0;
+           let isAlreadyPaid = false;
+
            const updatedInsts = insts.map((i: any) => {
              if (i.id === instId) {
+               if (i.status === 'Pago') isAlreadyPaid = true;
+               paidAmount = Number(i.amount) || 0;
                return { ...i, status: 'Pago', paidDate: new Date().toISOString() };
              }
              return i;
            });
            
-           const allPaid = updatedInsts.every((i: any) => i.status === 'Pago');
-           
-           await supabase.from('transactions').update({
-             installments: updatedInsts,
-             status: allPaid ? 'Recebido' : 'Pendente'
-           }).eq('id', txId);
+           if (!isAlreadyPaid) {
+             const allPaid = updatedInsts.every((i: any) => i.status === 'Pago');
+             
+             await supabaseAdmin.from('transactions').update({
+               installments: updatedInsts,
+               status: allPaid ? 'Pago' : 'Pendente' // Updated to 'Pago' to match Financeiro
+             }).eq('id', txId);
+
+             // Create Notification
+             const clientName = tx.opportunities?.name || 'Cliente';
+             const formatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+             await supabaseAdmin.from('notifications').insert({
+               user_id: tx.user_id,
+               title: 'Pagamento Pix Recebido',
+               content: `Uma parcela de ${formatter.format(paidAmount)} do cliente ${clientName} acabou de ser paga via Pix Automático!`,
+               type: 'success',
+               related_entity_type: 'transaction',
+               related_entity_id: tx.id
+             });
+           }
         }
       } else {
         // É um recebimento de cota única
-        await supabase.from('transactions').update({
-          status: 'Recebido'
-        }).eq('id', orderId);
+        const { data: updatedTx, error } = await supabaseAdmin.from('transactions')
+          .update({
+            status: 'Pago' // Changed from 'Recebido' to 'Pago'
+          })
+          .eq('id', orderId)
+          .select('*, opportunities(name)')
+          .single();
+          
+        if (updatedTx && !error) {
+          const clientName = updatedTx.opportunities?.name || 'Cliente';
+          const formatter = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+          await supabaseAdmin.from('notifications').insert({
+            user_id: updatedTx.user_id,
+            title: 'Pagamento Pix Recebido',
+            content: `O pagamento de ${formatter.format(Number(updatedTx.amount) || 0)} do cliente ${clientName} acabou de ser pago via Pix Automático!`,
+            type: 'success',
+            related_entity_type: 'transaction',
+            related_entity_id: updatedTx.id
+          });
+        }
       }
     } else if (status === 'canceled') {
       // Se foi cancelado/expirado, podemos tratar aqui caso ache necessário no futuro
