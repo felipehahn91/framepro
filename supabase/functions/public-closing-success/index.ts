@@ -1,4 +1,6 @@
+// @ts-ignore
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+// @ts-ignore
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
 const corsHeaders = {
@@ -19,7 +21,9 @@ serve(async (req) => {
       return new Response("Missing link_token", { status: 400, headers: corsHeaders });
     }
 
+    // @ts-ignore
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    // @ts-ignore
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
@@ -121,12 +125,12 @@ serve(async (req) => {
         let messageText = `Olá ${firstName}! 🎉 Muito obrigado por fechar negócio conosco!\n\nSeu contrato foi assinado e salvo com sucesso.\n`;
         
         if (pixCode) {
-          messageText += `\nAbaixo estão os dados para pagamento do primeiro vencimento:\n\n*PIX Copia e Cola:*\n${pixCode}\n\n`;
-          messageText += `Você também pode escanear o QR Code acessando este link: ${pixUrl}\n`;
+          messageText += `\nAbaixo estão os dados para o pagamento do seu acordo:`;
+        } else {
+          messageText += `\nQualquer dúvida, estamos à disposição.`;
         }
 
-        messageText += `\nQualquer dúvida, estamos à disposição.`;
-
+        // Send 1: Welcome and Text
         await fetch(`${evoUrl}/message/sendText/${waInstance.instance_name}`, {
           method: 'POST',
           headers: {
@@ -140,6 +144,46 @@ serve(async (req) => {
             delay: 1500
           })
         });
+
+        if (pixCode && pixUrl) {
+          // Send 2: QR Code Image
+          await fetch(`${evoUrl}/message/sendMedia/${waInstance.instance_name}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': evoKey,
+              'Authorization': `Bearer ${evoKey}`
+            },
+            body: JSON.stringify({
+              number: formattedPhone,
+              options: {
+                delay: 2000,
+                presence: "composing"
+              },
+              mediaMessage: {
+                mediatype: "image",
+                fileName: "qrcode_pix.png",
+                caption: "QR Code do PIX para pagamento.",
+                media: pixUrl
+              }
+            })
+          });
+
+          // Send 3: Pix Copy and Paste (Alone to allow easy copying)
+          await fetch(`${evoUrl}/message/sendText/${waInstance.instance_name}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': evoKey,
+              'Authorization': `Bearer ${evoKey}`
+            },
+            body: JSON.stringify({
+              number: formattedPhone,
+              text: pixCode,
+              delay: 3000
+            })
+          });
+        }
       }
     }
 
