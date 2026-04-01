@@ -41,11 +41,14 @@ export default function ClosingLinkModal({ isOpen, onClose, opportunity }: Closi
     const { data: session } = await supabase.auth.getSession();
     if (!session.session?.user.id) return;
     
+    // Busca APENAS contratos que são modelos (client_id é nulo E possuem título)
     const { data } = await supabase
       .from('contracts')
       .select('id, title')
       .eq('user_id', session.session.user.id)
-      .is('client_id', null) // Busca APENAS contratos marcados como Template!
+      .is('client_id', null)
+      .not('title', 'is', null)
+      .neq('title', '')
       .order('created_at', { ascending: false });
       
     if (data) setContracts(data);
@@ -170,7 +173,7 @@ export default function ClosingLinkModal({ isOpen, onClose, opportunity }: Closi
                 <SelectItem value="none">Contrato em branco (apenas assinaturas)</SelectItem>
                 {contracts.map(c => (
                   <SelectItem key={c.id} value={c.id}>
-                    Modelo: {c.title || 'Sem Título'}
+                    Modelo: {c.title}
                   </SelectItem>
                 ))}
               </SelectContent>
