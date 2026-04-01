@@ -79,7 +79,7 @@ export default function Tarefas() {
     return Array.from(new Set(projects)).sort();
   }, [tasks]);
 
-  // Lógica de filtragem baseada na sidebar/menu mobile
+  // Lógica de filtragem
   const filteredTasks = useMemo(() => {
     const today = startOfDay(new Date());
     const next7 = endOfDay(addDays(today, 7));
@@ -104,6 +104,12 @@ export default function Tarefas() {
         return isWithinInterval(d, { start: today, end: next7 });
       }
 
+      // Filtragem por projeto específico
+      if (activeFilter.startsWith('project:')) {
+        const projectName = activeFilter.replace('project:', '');
+        return task.project === projectName;
+      }
+
       return true;
     });
 
@@ -123,11 +129,20 @@ export default function Tarefas() {
     const today = startOfDay(new Date());
     const next7 = endOfDay(addDays(today, 7));
     
+    const projectCounts: Record<string, number> = {};
+    
+    tasks.forEach(t => {
+      if (t.status !== 'Concluída' && t.project) {
+        projectCounts[t.project] = (projectCounts[t.project] || 0) + 1;
+      }
+    });
+
     return {
       inbox: tasks.filter(t => t.status !== 'Concluída').length,
       today: tasks.filter(t => t.status !== 'Concluída' && t.due_date && isToday(new Date(t.due_date))).length,
       next_7: tasks.filter(t => t.status !== 'Concluída' && t.due_date && isWithinInterval(new Date(t.due_date), { start: today, end: next7 })).length,
-      completed: tasks.filter(t => t.status === 'Concluída').length
+      completed: tasks.filter(t => t.status === 'Concluída').length,
+      projectCounts
     };
   }, [tasks]);
 
@@ -145,13 +160,20 @@ export default function Tarefas() {
       });
     } else {
       setSelectedTask(null);
+      
+      // Se estiver visualizando um projeto específico, preenche automaticamente o campo
+      let defaultProject = "";
+      if (activeFilter.startsWith('project:')) {
+        defaultProject = activeFilter.replace('project:', '');
+      }
+
       setFormData({
         title: "",
         description: "",
         status: "Pendente",
         priority: "Média",
         due_date: "",
-        project: ""
+        project: defaultProject
       });
     }
     setIsModalOpen(true);
@@ -222,6 +244,7 @@ export default function Tarefas() {
     if (activeFilter === 'today') return 'Hoje';
     if (activeFilter === 'next_7') return 'Próximos 7 dias';
     if (activeFilter === 'completed') return 'Concluídas';
+    if (activeFilter.startsWith('project:')) return activeFilter.replace('project:', '');
     return activeFilter;
   };
 
@@ -265,10 +288,29 @@ export default function Tarefas() {
               </span>
             </button>
           ))}
+
+          {/* Projetos Mobile */}
+          {existingProjects.map(project => (
+            <button
+              key={`mob-proj-${project}`}
+              onClick={() => setActiveFilter(`project:${project}`)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap text-sm font-bold border transition-colors ${
+                activeFilter === `project:${project}` 
+                  ? 'bg-orange-50 border-orange-200 text-orange-600' 
+                  : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <Hash className={`w-4 h-4 ${activeFilter === `project:${project}` ? 'text-orange-500' : 'text-gray-400'}`} />
+              {project}
+              <span className={`ml-1 px-1.5 py-0.5 rounded-md text-[10px] ${activeFilter === `project:${project}` ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-500'}`}>
+                {counts.projectCounts[project] || 0}
+              </span>
+            </button>
+          ))}
         </div>
 
         {/* SIDEBAR TAREFAS DESKTOP */}
-        <div className="hidden md:flex w-64 shrink-0 flex-col pt-2">
+        <div className="hidden md:flex w-64 shrink-0 flex-col pt-2 overflow-y-auto custom-scrollbar pr-2">
           <div className="space-y-1 mb-8">
             <button onClick={() => setActiveFilter('inbox')} className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${activeFilter === 'inbox' ? 'bg-orange-50 text-orange-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}>
               <div className="flex items-center gap-3"><Inbox className={`w-5 h-5 ${activeFilter === 'inbox' ? 'text-orange-500' : 'text-gray-400'}`} /><span className="text-sm">Entrada</span></div>
@@ -290,15 +332,39 @@ export default function Tarefas() {
               <span className="text-xs opacity-60">{counts.completed}</span>
             </button>
           </div>
+
+          {existingProjects.length > 0 && (
+            <div className="mb-8">
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 px-3">Projetos</h3>
+              <div className="space-y-1">
+                {existingProjects.map(project => (
+                  <button 
+                    key={`desktop-proj-${project}`}
+                    onClick={() => setActiveFilter(`project:${project}`)} 
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${activeFilter === `project:${project}` ? 'bg-orange-50 text-orange-600 font-bold' : 'text-gray-600 hover:bg-gray-100'}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Hash className={`w-4 h-4 ${activeFilter === `project:${project}` ? 'text-orange-500' : 'text-gray-400'}`} />
+                      <span className="text-sm truncate max-w-[140px] text-left">{project}</span>
+                    </div>
+                    <span className="text-xs opacity-60">{counts.projectCounts[project] || 0}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* CONTEÚDO PRINCIPAL */}
         <div className="flex-1 flex flex-col pt-2 min-w-0">
           
           <div className="flex items-center justify-between mb-4 md:mb-2">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">{getSectionTitle()}</h2>
-              <p className="text-xs text-gray-400 font-medium">{filteredTasks.length} tarefas</p>
+            <div className="flex items-center gap-3">
+              {activeFilter.startsWith('project:') && <Hash className="w-6 h-6 text-gray-400" />}
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">{getSectionTitle()}</h2>
+                <p className="text-xs text-gray-400 font-medium">{filteredTasks.length} tarefas</p>
+              </div>
             </div>
             <button 
               onClick={() => handleOpenModal()}
