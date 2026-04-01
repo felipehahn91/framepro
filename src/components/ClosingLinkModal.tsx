@@ -89,7 +89,13 @@ export default function ClosingLinkModal({ isOpen, onClose, opportunity }: Closi
       if (error) throw error;
 
       const link = `${window.location.origin}/fechar/${token}`;
-      const phone = opportunity?.phone?.replace(/\D/g, '');
+      let phone = opportunity?.phone?.replace(/\D/g, '');
+      
+      // Garante que o telefone tenha o código do país (55 para o Brasil)
+      if (phone && !phone.startsWith('55') && phone.length <= 11) {
+        phone = `55${phone}`;
+      }
+      
       const text = `Olá ${opportunity?.name.split(' ')[0]}!\n\nFico muito feliz que vamos fechar negócio! 🎉\n\nAcesse o link seguro abaixo para preencher seus dados, escolher a forma de pagamento e assinar nosso contrato:\n\n${link}`;
 
       setGeneratedLink(link);
@@ -139,8 +145,8 @@ export default function ClosingLinkModal({ isOpen, onClose, opportunity }: Closi
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-[500px] bg-white rounded-3xl p-0 overflow-hidden shadow-2xl">
         {generatedLink ? (
-          <div className="p-8 text-center flex flex-col items-center animate-in zoom-in-95 duration-300">
-            <div className="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-6">
+          <div className="p-8 text-center flex flex-col items-center animate-in zoom-in-95 duration-300 w-full max-w-full">
+            <div className="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mb-6 shrink-0">
               <CheckCircle2 className="w-8 h-8" />
             </div>
             <h2 className="text-2xl font-black text-gray-900 mb-2">Link Gerado!</h2>
@@ -148,8 +154,8 @@ export default function ClosingLinkModal({ isOpen, onClose, opportunity }: Closi
               O link de fechamento foi gerado com sucesso para <strong>{opportunity.name}</strong>.
             </p>
 
-            <div className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 mb-6 relative group flex items-center gap-3">
-              <div className="truncate flex-1 text-sm font-medium text-gray-600 text-left select-all">
+            <div className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 sm:p-4 mb-6 relative flex items-center gap-2 sm:gap-3 overflow-hidden">
+              <div className="truncate flex-1 text-xs sm:text-sm font-medium text-gray-600 text-left select-all overflow-hidden">
                 {generatedLink}
               </div>
               <Button size="icon" variant="ghost" onClick={handleCopyLink} className="shrink-0 h-8 w-8 hover:bg-gray-200 text-gray-500 hover:text-gray-900">
@@ -157,7 +163,7 @@ export default function ClosingLinkModal({ isOpen, onClose, opportunity }: Closi
               </Button>
             </div>
 
-            <Button onClick={onClose} className="w-full bg-gray-900 hover:bg-black text-white rounded-xl h-12 font-bold">
+            <Button onClick={onClose} className="w-full bg-gray-900 hover:bg-black text-white rounded-xl h-12 font-bold shrink-0">
               Concluir
             </Button>
           </div>
