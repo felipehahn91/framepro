@@ -21,6 +21,7 @@ export interface Client {
   pipeline_id: string | null;
   is_client: boolean;
   observations: string;
+  user_id: string;
 }
 
 export default function Clientes() {

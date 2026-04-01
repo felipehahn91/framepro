@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { 
   Trash2, UserMinus, UserPlus, FileText, Calculator, 
   MessageCircle, Mail, Phone, Instagram, MapPin, Loader2,
-  Save, Send, X
+  Save, Send, X, Search
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -59,6 +59,7 @@ export default function OpportunityDetailModal({
   const [docType, setDocType] = useState<'contract' | 'orcamento' | null>(null);
   const [documents, setDocuments] = useState<any[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
+  const [docSearch, setDocSearch] = useState('');
 
   useEffect(() => {
     if (opportunity && isOpen) {
@@ -124,17 +125,25 @@ export default function OpportunityDetailModal({
   const openSendModal = async (type: 'contract' | 'orcamento') => {
     setDocType(type);
     setLoadingDocs(true);
+    setDocSearch('');
+    
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const currentUserId = opportunity?.user_id || sessionData.session?.user.id;
+
+      if (!currentUserId) throw new Error('Usuário não autenticado');
+
       const table = type === 'contract' ? 'contracts' : 'orcamentos';
       const { data, error } = await supabase
         .from(table)
         .select('id, name, share_token')
-        .eq('user_id', opportunity?.user_id)
+        .eq('user_id', currentUserId)
         .order('updated_at', { ascending: false });
         
-      if (error && error.code !== '42P01') throw error;
+      if (error) throw error;
       setDocuments(data || []);
-    } catch (e) {
+    } catch (e: any) {
+      console.error(e);
       toast.error(`Erro ao carregar ${type === 'contract' ? 'contratos' : 'orçamentos'}`);
     } finally {
       setLoadingDocs(false);
@@ -165,6 +174,8 @@ export default function OpportunityDetailModal({
     
     setDocType(null);
   };
+
+  const filteredDocs = documents.filter(d => d.name.toLowerCase().includes(docSearch.toLowerCase()));
 
   if (!isOpen || !opportunity) return null;
 
@@ -350,36 +361,51 @@ export default function OpportunityDetailModal({
         </div>
       </DialogContent>
 
-      {/* Sub-Modal para Selecionar Documento */}
+      {/* Sub-Modal para Selecionar Documento com Pesquisa */}
       {docType && (
-        <Dialog open={!!docType} onOpenChange={() => setDocType(null)}>
-          <DialogContent className="sm:max-w-[400px] bg-white rounded-3xl p-6 shadow-2xl">
+        <Dialog open={!!docType} onOpenChange={(open) => { if(!open) { setDocType(null); setDocSearch(''); } }}>
+          <DialogContent className="sm:max-w-[450px] bg-white rounded-3xl p-6 shadow-2xl">
             <DialogHeader>
               <DialogTitle className="text-lg font-bold text-gray-900">
                 Selecione o {docType === 'contract' ? 'Contrato' : 'Orçamento'}
               </DialogTitle>
             </DialogHeader>
-            <div className="mt-4 max-h-[60vh] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-              {loadingDocs ? (
-                <div className="py-8 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-orange-400" /></div>
-              ) : documents.length > 0 ? (
-                documents.map(doc => (
-                  <button 
-                    key={doc.id}
-                    onClick={() => handleSendDocument(doc)}
-                    className="w-full flex items-center justify-between p-4 rounded-2xl border border-gray-200 hover:border-orange-300 hover:bg-orange-50 transition-all text-left group shadow-sm"
-                  >
-                    <span className="font-semibold text-gray-800 text-sm truncate pr-4">{doc.name}</span>
-                    <Send className="w-4 h-4 text-orange-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                  </button>
-                ))
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-sm text-gray-500 font-medium">
-                    Nenhum {docType === 'contract' ? 'contrato' : 'orçamento'} encontrado no sistema.
-                  </p>
-                </div>
-              )}
+            
+            <div className="mt-4">
+              <div className="relative mb-4">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input 
+                  autoFocus
+                  type="text" 
+                  placeholder={`Pesquisar ${docType === 'contract' ? 'contrato' : 'orçamento'}...`}
+                  value={docSearch}
+                  onChange={e => setDocSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-orange-400 outline-none transition-all"
+                />
+              </div>
+
+              <div className="max-h-[50vh] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+                {loadingDocs ? (
+                  <div className="py-8 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-orange-400" /></div>
+                ) : filteredDocs.length > 0 ? (
+                  filteredDocs.map(doc => (
+                    <button 
+                      key={doc.id}
+                      onClick={() => handleSendDocument(doc)}
+                      className="w-full flex items-center justify-between p-4 rounded-2xl border border-gray-200 hover:border-orange-400 hover:bg-orange-50 transition-all text-left group shadow-sm"
+                    >
+                      <span className="font-semibold text-gray-800 text-sm truncate pr-4">{doc.name}</span>
+                      <Send className="w-4 h-4 text-orange-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    </button>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-gray-500 font-medium">
+                      Nenhum {docType === 'contract' ? 'contrato' : 'orçamento'} encontrado.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </DialogContent>
         </Dialog>
