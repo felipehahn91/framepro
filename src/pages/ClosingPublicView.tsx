@@ -29,9 +29,17 @@ export default function ClosingPublicView() {
     cpf: '',
     civil_status: 'Solteiro(a)',
     profession: '',
-    address: ''
+    cep: '',
+    street: '',
+    number: '',
+    complement: '',
+    neighborhood: '',
+    city: '',
+    state: ''
   });
   
+  const [fetchingCep, setFetchingCep] = useState(false);
+
   // Condições Comerciais
   const [selectedInstallments, setSelectedInstallments] = useState(1);
 
@@ -66,9 +74,37 @@ export default function ClosingPublicView() {
     }
   };
 
+  const handleCepBlur = async (e: React.FocusEvent<HTMLInputElement>) => {
+    const cep = e.target.value.replace(/\D/g, '');
+    if (cep.length !== 8) return;
+
+    setFetchingCep(true);
+    try {
+      const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const data = await response.json();
+
+      if (data.erro) {
+        toast.error("CEP não encontrado.");
+        return;
+      }
+
+      setClientData(prev => ({
+        ...prev,
+        street: data.logradouro || '',
+        neighborhood: data.bairro || '',
+        city: data.localidade || '',
+        state: data.uf || ''
+      }));
+    } catch (error) {
+      toast.error("Erro ao buscar o CEP.");
+    } finally {
+      setFetchingCep(false);
+    }
+  };
+
   const handleNextStep = () => {
     if (step === 1) {
-      if (!clientData.cpf || !clientData.address || !clientData.profession) {
+      if (!clientData.cpf || !clientData.profession || !clientData.cep || !clientData.street || !clientData.number || !clientData.neighborhood || !clientData.city || !clientData.state) {
         return toast.error("Preencha todos os campos obrigatórios para continuar.");
       }
     }
@@ -85,13 +121,15 @@ export default function ClosingPublicView() {
     try {
       const signatureImage = sigCanvas.current.getCanvas().toDataURL('image/png');
 
+      const fullAddress = `${clientData.street}, ${clientData.number}${clientData.complement ? ` - ${clientData.complement}` : ''}, ${clientData.neighborhood}, ${clientData.city} - ${clientData.state}, CEP: ${clientData.cep}`;
+
       // 1. Atualiza Oportunidade (Torna Cliente e salva documentos)
       await supabase.from('opportunities').update({
         is_client: true,
         cpf: clientData.cpf,
         civil_status: clientData.civil_status,
         profession: clientData.profession,
-        address: clientData.address
+        address: fullAddress
       }).eq('id', opportunity.id);
 
       // 2. Gera as Parcelas e cria no Financeiro (Transações)
@@ -134,7 +172,7 @@ export default function ClosingPublicView() {
       // Substituição de Variáveis
       contractText = contractText.replace(/\{\{nome\}\}/gi, opportunity.name);
       contractText = contractText.replace(/\{\{cpf\}\}/gi, clientData.cpf);
-      contractText = contractText.replace(/\{\{endereco\}\}/gi, clientData.address);
+      contractText = contractText.replace(/\{\{endereco\}\}/gi, fullAddress);
       contractText = contractText.replace(/\{\{estado_civil\}\}/gi, clientData.civil_status);
       contractText = contractText.replace(/\{\{profissao\}\}/gi, clientData.profession);
       contractText = contractText.replace(/\{\{valor\}\}/gi, formatCurrency(amount));
@@ -161,7 +199,7 @@ export default function ClosingPublicView() {
         await supabase.from('tasks').insert({
           user_id: linkData.user_id,
           title: `🎉 EVENTO: ${opportunity.name}`,
-          description: `Evento fechado automaticamente via link.\n\nLocal/Endereço: ${clientData.address || opportunity.address || 'Não informado'}\nTelefone: ${opportunity.phone}`,
+          description: `Evento fechado automaticamente via link.\n\nLocal/Endereço: ${fullAddress || opportunity.address || 'Não informado'}\nTelefone: ${opportunity.phone}`,
           status: 'Pendente',
           priority: 'Alta',
           due_date: linkData.event_date
@@ -298,13 +336,81 @@ export default function ClosingPublicView() {
                   />
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1.5">Endereço Completo (com CEP) *</label>
-                <textarea 
-                  required rows={3}
-                  value={clientData.address} onChange={e => setClientData({...clientData, address: e.target.value})}
-                  className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none transition-all font-medium resize-none"
-                />
+              <div className="pt-4 border-t border-gray-100">
+                <h3 className="font-bold text-gray-900 mb-4">Endereço</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div className="md:col-span-1">
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">CEP *</label>
+                    <div className="relative">
+                      <input 
+                        type="text" required maxLength={9}
+                        value={clientData.cep} 
+                        onChange={e => setClientData({...clientData, cep: e.target.value.replace(/\D/g, '').replace(/(\d{5})(\d)/, '$1-$2')})}
+                        onBlur={handleCepBlur}
+                        className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none transition-all font-medium"
+                      />
+                      {fetchingCep && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                          <Loader2 className="w-5 h-5 animate-spin text-orange-500" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Logradouro / Rua *</label>
+                    <input 
+                      type="text" required
+                      value={clientData.street} onChange={e => setClientData({...clientData, street: e.target.value})}
+                      className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none transition-all font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                  <div className="col-span-1">
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Número *</label>
+                    <input 
+                      type="text" required
+                      value={clientData.number} onChange={e => setClientData({...clientData, number: e.target.value})}
+                      className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none transition-all font-medium"
+                    />
+                  </div>
+                  <div className="col-span-1 md:col-span-3">
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Complemento</label>
+                    <input 
+                      type="text"
+                      value={clientData.complement} onChange={e => setClientData({...clientData, complement: e.target.value})}
+                      className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none transition-all font-medium"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Bairro *</label>
+                    <input 
+                      type="text" required
+                      value={clientData.neighborhood} onChange={e => setClientData({...clientData, neighborhood: e.target.value})}
+                      className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none transition-all font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Cidade *</label>
+                    <input 
+                      type="text" required
+                      value={clientData.city} onChange={e => setClientData({...clientData, city: e.target.value})}
+                      className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none transition-all font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-1.5">Estado (UF) *</label>
+                    <input 
+                      type="text" required maxLength={2}
+                      value={clientData.state} onChange={e => setClientData({...clientData, state: e.target.value.toUpperCase()})}
+                      className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none transition-all font-medium uppercase"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
