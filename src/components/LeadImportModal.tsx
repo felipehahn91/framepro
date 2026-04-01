@@ -9,7 +9,7 @@ interface LeadImportModalProps {
   pipelines: any[];
   columns: any[];
   userId: string | undefined;
-  onImportSuccess: () => void;
+  onImportSuccess: (newPipelineId?: string) => void;
 }
 
 // ==========================================
@@ -18,10 +18,8 @@ interface LeadImportModalProps {
 
 const extractName = (text: string): string | null => {
   if (!text) return null;
-  // Procura por "Nome:", "Cliente:" ou "Lead:" seguido do nome
   const match = text.match(/(?:nome|cliente|lead)[\s]*:[\s]*([^\n]+)/i);
   if (match && match[1]) {
-    // Remove caracteres especiais indesejados no final (como ponto, vírgula) se existirem
     return match[1].replace(/[,;.*]+$/, '').trim();
   }
   return null;
@@ -29,11 +27,9 @@ const extractName = (text: string): string | null => {
 
 const extractEmail = (text: string): string | null => {
   if (!text) return null;
-  // 1. Tenta achar com prefixo explícito para maior precisão
   const prefixedMatch = text.match(/(?:e-?mail)[\s]*:[\s]*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
   if (prefixedMatch && prefixedMatch[1]) return prefixedMatch[1].trim();
 
-  // 2. Fallback: Procura qualquer formato de e-mail no texto
   const match = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
   return match ? match[0].trim() : null;
 };
@@ -41,21 +37,15 @@ const extractEmail = (text: string): string | null => {
 const extractPhone = (text: string): string | null => {
   if (!text) return null;
   
-  // 1. Tenta achar link do WhatsApp (ex: wa.me/+5551984766790)
   const waLinkMatch = text.match(/(?:wa\.me\/|api\.whatsapp\.com\/send\?phone=)\+?(\d+)/i);
-  if (waLinkMatch && waLinkMatch[1]) {
-    return waLinkMatch[1]; // Retorna só os números limpos do link
-  }
+  if (waLinkMatch && waLinkMatch[1]) return waLinkMatch[1];
 
-  // 2. Tenta achar com prefixo (Telefone:, WhatsApp:, Whats:, etc)
   const prefixedMatch = text.match(/(?:whatsapp|whats|wpp|telefone|celular|contato)[\s]*:[\s]*([^\n]+)/i);
   if (prefixedMatch && prefixedMatch[1]) {
-    // Limpa pra pegar só os números (e talvez o +)
     const cleaned = prefixedMatch[1].replace(/[^\d+]/g, '');
     if (cleaned.length >= 8) return cleaned;
   }
 
-  // 3. Fallback: Procura qualquer formato de telefone brasileiro no texto
   const match = text.match(/(?:\+?55\s?)?(?:\(?\d{2}\)?\s?)?(?:9\s?)?\d{4}[-\s]?\d{4}/);
   return match ? match[0].trim() : null;
 };
@@ -156,7 +146,6 @@ export default function LeadImportModal({ isOpen, onClose, pipelines, columns, u
   const handleCsvImport = async () => {
     if (!targetPipeline || !targetColumn) return toast.error("Selecione o funil e a coluna de destino.");
     
-    // Podemos flexibilizar: se ele não mapear nome, vamos tentar extrair das observações
     if (!mapping.name && !mapping.observations) {
       return toast.error("Mapeie a coluna 'Nome' ou 'Observações' para extrairmos os dados.");
     }
@@ -170,7 +159,6 @@ export default function LeadImportModal({ isOpen, onClose, pipelines, columns, u
         let email = mapping.email ? row[mapping.email] : null;
         let phone = mapping.phone ? row[mapping.phone] : null;
         
-        // Extrai automaticamente caso não tenha vindo nas colunas específicas
         if (!name && obs) name = extractName(obs);
         if (!email && obs) email = extractEmail(obs);
         if (!phone && obs) phone = extractPhone(obs);
@@ -193,6 +181,7 @@ export default function LeadImportModal({ isOpen, onClose, pipelines, columns, u
       if (error) throw error;
 
       toast.success(`${leadsToInsert.length} leads importados com sucesso!`);
+      onImportSuccess(targetPipeline);
       handleClose();
     } catch (error) {
       console.error(error);
@@ -242,7 +231,6 @@ export default function LeadImportModal({ isOpen, onClose, pipelines, columns, u
     setLoading(true);
 
     try {
-      // 1. Criar a Pipeline com o nome do quadro do Trello
       const { data: pipe, error: pipeErr } = await supabase
         .from('pipelines')
         .insert({ name: trelloData.boardName, user_id: userId })
@@ -251,7 +239,6 @@ export default function LeadImportModal({ isOpen, onClose, pipelines, columns, u
 
       if (pipeErr) throw pipeErr;
 
-      // 2. Criar as Colunas
       const columnsToInsert = trelloData.lists.map((l, idx) => ({
         name: l.name,
         pipeline_id: pipe.id,
@@ -266,20 +253,17 @@ export default function LeadImportModal({ isOpen, onClose, pipelines, columns, u
 
       if (colsErr) throw colsErr;
 
-      // Mapear IDs do Trello para os IDs recém criados no Supabase
       const listMap: Record<string, string> = {};
       trelloData.lists.forEach((tList, idx) => {
         const sCol = cols.find(c => c.name === tList.name && c.order_index === idx);
         if (sCol) listMap[tList.id] = sCol.id;
       });
 
-      // 3. Criar as Oportunidades (Cartões) extraindo Inteligência da descrição
       const oppsToInsert = trelloData.cards
-        .filter(c => listMap[c.idList]) // Apenas cartões em listas não arquivadas
+        .filter(c => listMap[c.idList]) 
         .map(c => {
           const desc = c.desc || '';
           
-          // Extrai os dados se disponíveis
           let extractedName = extractName(desc);
           let extractedEmail = extractEmail(desc);
           let extractedPhone = extractPhone(desc);
@@ -297,7 +281,6 @@ export default function LeadImportModal({ isOpen, onClose, pipelines, columns, u
           };
         });
 
-      // Divide em lotes caso tenha muitos cards pra não dar timeout
       if (oppsToInsert.length > 0) {
         const batchSize = 1000;
         for (let i = 0; i < oppsToInsert.length; i += batchSize) {
@@ -308,7 +291,7 @@ export default function LeadImportModal({ isOpen, onClose, pipelines, columns, u
       }
 
       toast.success(`Quadro "${trelloData.boardName}" importado com sucesso!`);
-      onImportSuccess();
+      onImportSuccess(pipe.id); // Avisa o sistema para ir para o novo funil
       handleClose();
     } catch (err: any) {
       console.error(err);
@@ -332,7 +315,6 @@ export default function LeadImportModal({ isOpen, onClose, pipelines, columns, u
           <button onClick={handleClose} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5"/></button>
         </div>
 
-        {/* Tabs */}
         {step === 1 && (
           <div className="flex bg-gray-50 p-1 rounded-xl mb-6">
             <button 
@@ -405,12 +387,12 @@ export default function LeadImportModal({ isOpen, onClose, pipelines, columns, u
               <div className="space-y-6">
                 <div className="bg-orange-50 text-orange-800 p-4 rounded-lg flex gap-3 text-sm">
                   <FileText className="w-5 h-5 shrink-0" />
-                  <p>Mapeie as colunas do seu arquivo CSV para os campos correspondentes no sistema. Se você mapear "Observações", tentaremos extrair Nome, E-mail e Telefone automaticamente se estiverem escritos lá dentro.</p>
+                  <p>Mapeie as colunas do seu arquivo CSV para os campos correspondentes no sistema. O campo "Nome" é obrigatório. Tentaremos extrair e-mail e telefone automaticamente das observações, caso existam.</p>
                 </div>
 
                 <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-2">
                   {[
-                    { key: 'name', label: 'Nome do Lead' },
+                    { key: 'name', label: 'Nome do Lead *' },
                     { key: 'email', label: 'E-mail' },
                     { key: 'phone', label: 'Telefone / WhatsApp' },
                     { key: 'value', label: 'Valor (R$)' },
