@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { 
   Trash2, UserMinus, UserPlus, FileText, Calculator, 
   MessageCircle, Mail, Phone, Instagram, MapPin, Loader2,
-  Save, Send
+  Save, Send, X
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -93,6 +93,7 @@ export default function OpportunityDetailModal({
       
       toast.success('Dados salvos com sucesso!');
       onSave(data as Opportunity);
+      onClose();
     } catch (error) {
       toast.error('Erro ao atualizar os dados.');
     } finally {
@@ -169,150 +170,180 @@ export default function OpportunityDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[450px] p-0 bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 sm:p-8 relative">
+      <DialogContent className="sm:max-w-[850px] p-0 bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+        
+        {/* Container Principal: 2 Colunas */}
+        <div className="flex flex-col md:flex-row flex-1 overflow-hidden h-full">
           
-          {/* Header */}
-          <div className="flex items-start justify-between mb-1">
+          {/* ESQUERDA - Info Principais */}
+          <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar p-6 md:p-8">
+            <div className="flex items-center justify-between mb-4">
+               <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500 font-medium">Lead</span>
+                  {formData.tag && (
+                    <>
+                      <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
+                      <span className="bg-orange-50 text-orange-600 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider">
+                        {formData.tag}
+                      </span>
+                    </>
+                  )}
+               </div>
+               {/* Mobile Delete Button */}
+               <button onClick={() => { if(confirm('Excluir este lead?')) onDelete(opportunity.id); }} className="md:hidden p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                 <Trash2 className="w-4 h-4" />
+               </button>
+            </div>
+
+            {/* Nome */}
             <input 
               value={formData.name || ''} 
               onChange={e => setFormData({...formData, name: e.target.value})}
-              className="text-2xl sm:text-3xl font-extrabold text-gray-900 bg-transparent border-none p-0 focus:ring-0 w-full outline-none leading-tight"
+              className="text-3xl sm:text-4xl font-extrabold text-gray-900 bg-transparent border-none p-0 focus:ring-0 w-full outline-none leading-tight mb-8"
               placeholder="Nome do Lead"
             />
-            <button 
-              onClick={() => { if(confirm('Excluir este lead?')) onDelete(opportunity.id); }} 
-              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0 ml-2"
-            >
-              <Trash2 className="w-5 h-5" />
-            </button>
-          </div>
-          
-          <div className="flex items-center gap-2 mb-8">
-            <span className="text-sm text-gray-500 font-medium">Lead</span>
-            {formData.tag && (
-              <>
-                <span className="w-1 h-1 rounded-full bg-gray-300"></span>
-                <span className="text-sm text-gray-500 font-medium">{formData.tag}</span>
-              </>
-            )}
-          </div>
 
-          {/* Action Buttons */}
-          <div className="space-y-3 mb-10">
-            <button 
-              onClick={handleToggleClient}
-              className={`w-full flex items-center justify-center gap-3 py-3.5 rounded-xl font-bold transition-all shadow-sm ${formData.is_client ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-[#4ade80] hover:bg-[#22c55e] text-white'}`}
-            >
-              {formData.is_client ? <UserMinus className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
-              {formData.is_client ? 'Remover Cliente' : 'Marcar como Cliente'}
-            </button>
-
-            <button 
-              onClick={() => openSendModal('contract')}
-              className="w-full flex items-center gap-3 py-3.5 px-5 rounded-xl font-bold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-all shadow-sm"
-            >
-              <FileText className="w-5 h-5 text-blue-500" />
-              Enviar Contrato
-            </button>
-
-            <button 
-              onClick={() => openSendModal('orcamento')}
-              className="w-full flex items-center gap-3 py-3.5 px-5 rounded-xl font-bold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-all shadow-sm"
-            >
-              <Calculator className="w-5 h-5 text-emerald-500" />
-              Enviar Orçamento
-            </button>
-
-            <button 
-              onClick={() => onOpenCadence && onOpenCadence(opportunity)}
-              className="w-full flex items-center gap-3 py-3.5 px-5 rounded-xl font-bold bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-all shadow-sm"
-            >
-              <MessageCircle className="w-5 h-5 text-orange-400" />
-              Fazer Follow Up
-            </button>
-          </div>
-
-          {/* Details */}
-          <div>
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4">Detalhes</h3>
-            
-            <div className="mb-6">
-              <label className="text-sm text-gray-500 block mb-1">Valor</label>
+            {/* Valor */}
+            <div className="mb-6 p-5 bg-gray-50 rounded-2xl border border-gray-100 shadow-sm focus-within:ring-2 focus-within:ring-orange-400 transition-all">
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest block mb-2">Valor da Oportunidade</label>
               <div className="flex items-center gap-2">
-                <span className="text-2xl font-black text-gray-900">R$</span>
+                <span className="text-3xl font-black text-gray-900">R$</span>
                 <input 
                   type="number"
                   value={formData.value || ''} 
                   onChange={e => setFormData({...formData, value: e.target.value})}
-                  className="text-2xl font-black text-gray-400 placeholder:text-gray-300 bg-transparent border-none p-0 focus:ring-0 outline-none w-full"
+                  className="text-3xl font-black text-gray-900 bg-transparent border-none p-0 focus:ring-0 outline-none w-full placeholder:text-gray-300"
                   placeholder="0,00"
                 />
               </div>
             </div>
 
-            <div className="space-y-4 mb-6">
-              <div className="flex items-center gap-3">
-                <Mail className="w-5 h-5 text-gray-500 shrink-0" />
-                <input 
-                  value={formData.email || ''} 
-                  onChange={e => setFormData({...formData, email: e.target.value})}
-                  className="text-base text-gray-700 bg-transparent border-none p-0 focus:ring-0 outline-none w-full placeholder:text-gray-400"
-                  placeholder="simone2306@gmail.com"
-                />
-              </div>
-              <div className="flex items-center gap-3">
-                <Phone className="w-5 h-5 text-gray-500 shrink-0" />
-                <input 
-                  value={formData.phone || ''} 
-                  onChange={e => setFormData({...formData, phone: e.target.value})}
-                  className="text-base text-gray-700 bg-transparent border-none p-0 focus:ring-0 outline-none w-full placeholder:text-gray-400"
-                  placeholder="5511974543704"
-                />
-              </div>
-              <div className="flex items-center gap-3">
-                <Instagram className="w-5 h-5 text-gray-500 shrink-0" />
-                <input 
-                  value={formData.instagram || ''} 
-                  onChange={e => setFormData({...formData, instagram: e.target.value})}
-                  className="text-base text-gray-700 bg-transparent border-none p-0 focus:ring-0 outline-none w-full placeholder:text-gray-400"
-                  placeholder="Instagram (@)"
-                />
-              </div>
-              <div className="flex items-center gap-3">
-                <MapPin className="w-5 h-5 text-gray-500 shrink-0" />
-                <input 
-                  value={formData.address || ''} 
-                  onChange={e => setFormData({...formData, address: e.target.value})}
-                  className="text-base text-gray-700 bg-transparent border-none p-0 focus:ring-0 outline-none w-full placeholder:text-gray-400"
-                  placeholder="Local / Endereço"
-                />
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <label className="text-sm text-gray-500 block mb-2">Observações</label>
+            {/* Observações */}
+            <div className="flex flex-col flex-1 min-h-[200px]">
+              <label className="text-xs font-bold text-gray-400 uppercase tracking-widest block mb-2">Anotações e Histórico</label>
               <textarea 
                 value={formData.observations || ''}
                 onChange={e => setFormData({...formData, observations: e.target.value})}
-                className="w-full bg-gray-50 rounded-2xl p-4 text-sm text-gray-700 resize-none outline-none focus:ring-2 focus:ring-gray-200 min-h-[140px]"
-                placeholder="Anotações sobre o lead..."
+                className="w-full flex-1 bg-gray-50 rounded-2xl p-5 text-sm text-gray-700 resize-none outline-none focus:ring-2 focus:ring-orange-400 border border-gray-100 shadow-sm min-h-[150px] leading-relaxed"
+                placeholder="Detalhes do cliente, histórico de conversas, preferências..."
               />
             </div>
           </div>
 
-          {/* Sticky Save Button inside the scrollable area at the bottom */}
-          <div className="sticky bottom-0 bg-gradient-to-t from-white via-white to-transparent pt-6 pb-2 flex justify-center mt-4">
-            <button 
-              onClick={handleSave}
-              disabled={loading}
-              className="px-8 py-3.5 bg-gray-900 hover:bg-black text-white font-bold rounded-xl shadow-xl transition-all flex items-center gap-2 active:scale-95"
-            >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-              Salvar Alterações
-            </button>
-          </div>
+          {/* DIREITA - Ações e Contatos */}
+          <div className="w-full md:w-[340px] bg-gray-50/80 border-l border-gray-100 flex flex-col overflow-y-auto custom-scrollbar shrink-0">
+            <div className="p-6 md:p-8 space-y-8">
+              
+              {/* Header Right Col (Desktop Delete) */}
+              <div className="hidden md:flex justify-end">
+                <button onClick={() => { if(confirm('Excluir este lead?')) onDelete(opportunity.id); }} className="flex items-center gap-2 text-xs font-bold text-red-500 hover:text-red-600 hover:bg-red-50 px-3 py-2 rounded-xl transition-colors">
+                  <Trash2 className="w-4 h-4" /> Excluir Lead
+                </button>
+              </div>
 
+              {/* Ações Rápidas */}
+              <div>
+                <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">Ações Rápidas</h3>
+                <div className="space-y-3">
+                  <button 
+                    onClick={handleToggleClient}
+                    className={`w-full flex items-center justify-between px-4 py-3.5 rounded-xl font-bold transition-all shadow-sm border ${formData.is_client ? 'bg-red-50 text-red-600 border-red-200 hover:bg-red-100' : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      {formData.is_client ? <UserMinus className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
+                      {formData.is_client ? 'Remover Cliente' : 'Marcar como Cliente'}
+                    </div>
+                  </button>
+
+                  <button 
+                    onClick={() => openSendModal('orcamento')}
+                    className="w-full flex items-center gap-3 py-3.5 px-4 rounded-xl font-bold bg-white border border-gray-200 text-gray-700 hover:border-orange-300 hover:bg-orange-50 transition-all shadow-sm group"
+                  >
+                    <Calculator className="w-5 h-5 text-emerald-500 group-hover:scale-110 transition-transform" />
+                    Enviar Orçamento
+                  </button>
+
+                  <button 
+                    onClick={() => openSendModal('contract')}
+                    className="w-full flex items-center gap-3 py-3.5 px-4 rounded-xl font-bold bg-white border border-gray-200 text-gray-700 hover:border-orange-300 hover:bg-orange-50 transition-all shadow-sm group"
+                  >
+                    <FileText className="w-5 h-5 text-blue-500 group-hover:scale-110 transition-transform" />
+                    Enviar Contrato
+                  </button>
+
+                  <button 
+                    onClick={() => onOpenCadence && onOpenCadence(opportunity)}
+                    className="w-full flex items-center gap-3 py-3.5 px-4 rounded-xl font-bold bg-white border border-gray-200 text-gray-700 hover:border-orange-300 hover:bg-orange-50 transition-all shadow-sm group"
+                  >
+                    <MessageCircle className="w-5 h-5 text-orange-400 group-hover:scale-110 transition-transform" />
+                    Fazer Follow Up
+                  </button>
+                </div>
+              </div>
+
+              {/* Contato e Endereço */}
+              <div>
+                <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">Informações de Contato</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm focus-within:ring-2 focus-within:ring-orange-400 transition-all group">
+                    <Mail className="w-4 h-4 text-gray-400 group-focus-within:text-orange-400 shrink-0" />
+                    <input 
+                      value={formData.email || ''} 
+                      onChange={e => setFormData({...formData, email: e.target.value})}
+                      className="text-sm text-gray-700 font-medium bg-transparent border-none p-0 focus:ring-0 outline-none w-full placeholder:text-gray-300 placeholder:font-normal"
+                      placeholder="E-mail"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm focus-within:ring-2 focus-within:ring-orange-400 transition-all group">
+                    <Phone className="w-4 h-4 text-gray-400 group-focus-within:text-orange-400 shrink-0" />
+                    <input 
+                      value={formData.phone || ''} 
+                      onChange={e => setFormData({...formData, phone: e.target.value})}
+                      className="text-sm text-gray-700 font-medium bg-transparent border-none p-0 focus:ring-0 outline-none w-full placeholder:text-gray-300 placeholder:font-normal"
+                      placeholder="Telefone / WhatsApp"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm focus-within:ring-2 focus-within:ring-orange-400 transition-all group">
+                    <Instagram className="w-4 h-4 text-gray-400 group-focus-within:text-orange-400 shrink-0" />
+                    <input 
+                      value={formData.instagram || ''} 
+                      onChange={e => setFormData({...formData, instagram: e.target.value})}
+                      className="text-sm text-gray-700 font-medium bg-transparent border-none p-0 focus:ring-0 outline-none w-full placeholder:text-gray-300 placeholder:font-normal"
+                      placeholder="Instagram (@)"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm focus-within:ring-2 focus-within:ring-orange-400 transition-all group">
+                    <MapPin className="w-4 h-4 text-gray-400 group-focus-within:text-orange-400 shrink-0" />
+                    <input 
+                      value={formData.address || ''} 
+                      onChange={e => setFormData({...formData, address: e.target.value})}
+                      className="text-sm text-gray-700 font-medium bg-transparent border-none p-0 focus:ring-0 outline-none w-full placeholder:text-gray-300 placeholder:font-normal"
+                      placeholder="Localização / Endereço"
+                    />
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        {/* Footer / Salvar */}
+        <div className="p-4 border-t border-gray-100 bg-white flex justify-end gap-3 shrink-0 relative z-10">
+          <button 
+            onClick={onClose}
+            className="px-6 py-2.5 text-gray-500 font-bold hover:bg-gray-100 rounded-xl transition-colors"
+          >
+            Cancelar
+          </button>
+          <button 
+            onClick={handleSave}
+            disabled={loading}
+            className="px-8 py-2.5 bg-orange-400 hover:bg-orange-500 text-white font-bold rounded-xl shadow-md transition-all flex items-center gap-2 active:scale-95 disabled:opacity-50"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Salvar Alterações
+          </button>
         </div>
       </DialogContent>
 
