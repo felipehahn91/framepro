@@ -4,12 +4,19 @@ import { Layout } from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
 import {
   ShieldAlert, Users, Activity, Settings, Server,
-  MessageSquare, DollarSign, Loader2, Mail, Phone, Save
+  MessageSquare, DollarSign, Loader2, Mail, Phone, Save,
+  ExternalLink, Target, FileText, Calculator, Calendar, CreditCard
 } from "lucide-react";
 import { toast } from "sonner";
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from "recharts";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // Dados mockados para o gráfico de crescimento do SaaS
 const growthData = [
@@ -32,6 +39,11 @@ export default function AdminDashboard() {
   // Estados para Evolution API
   const [evolutionUrl, setEvolutionUrl] = useState("");
   const [evolutionKey, setEvolutionKey] = useState("");
+
+  // Estados do Modal de Detalhes do Usuário
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [userStats, setUserStats] = useState({ leads: 0, clients: 0, contracts: 0, orcamentos: 0 });
+  const [loadingStats, setLoadingStats] = useState(false);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -120,6 +132,31 @@ export default function AdminDashboard() {
     return mrr;
   };
 
+  const openUserModal = async (u: any) => {
+    setSelectedUser(u);
+    setLoadingStats(true);
+    try {
+      const [leads, clients, contracts, orcamentos] = await Promise.all([
+         supabase.from('opportunities').select('id', { count: 'exact', head: true }).eq('user_id', u.id).eq('is_client', false),
+         supabase.from('opportunities').select('id', { count: 'exact', head: true }).eq('user_id', u.id).eq('is_client', true),
+         supabase.from('contracts').select('id', { count: 'exact', head: true }).eq('user_id', u.id),
+         supabase.from('orcamentos').select('id', { count: 'exact', head: true }).eq('user_id', u.id)
+      ]);
+      
+      setUserStats({
+        leads: leads.count || 0,
+        clients: clients.count || 0,
+        contracts: contracts.count || 0,
+        orcamentos: orcamentos.count || 0
+      });
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao buscar dados de uso deste usuário.");
+    } finally {
+      setLoadingStats(false);
+    }
+  };
+
   if (loading) {
     return <Layout><div className="flex h-full items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div></Layout>;
   }
@@ -140,7 +177,7 @@ export default function AdminDashboard() {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto flex flex-col h-full space-y-6">
+      <div className="max-w-7xl mx-auto flex flex-col h-full space-y-6 relative">
         
         <div className="bg-gray-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden shrink-0">
           <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500 rounded-full blur-3xl opacity-20 -mr-20 -mt-20"></div>
@@ -155,15 +192,15 @@ export default function AdminDashboard() {
               <p className="text-gray-400 max-w-xl">Gerencie usuários, assinaturas e configure integrações globais.</p>
             </div>
             
-            <div className="flex gap-2 bg-gray-800/50 p-1.5 rounded-xl border border-gray-700 backdrop-blur-md">
+            <div className="flex flex-wrap gap-2 bg-gray-800/50 p-1.5 rounded-xl border border-gray-700 backdrop-blur-md">
               <button onClick={() => setActiveTab('overview')} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'overview' ? 'bg-white text-gray-900 shadow-md' : 'text-gray-400 hover:text-white'}`}>Visão Geral</button>
-              <button onClick={() => setActiveTab('users')} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'users' ? 'bg-white text-gray-900 shadow-md' : 'text-gray-400 hover:text-white'}`}>Usuários e Assinaturas</button>
+              <button onClick={() => setActiveTab('users')} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'users' ? 'bg-white text-gray-900 shadow-md' : 'text-gray-400 hover:text-white'}`}>Usuários</button>
               <button onClick={() => setActiveTab('evolution')} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === 'evolution' ? 'bg-white text-gray-900 shadow-md' : 'text-gray-400 hover:text-white'}`}>Evolution API</button>
             </div>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto pb-8">
+        <div className="flex-1 overflow-y-auto pb-8 custom-scrollbar">
           
           {activeTab === 'overview' && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
@@ -227,7 +264,7 @@ export default function AdminDashboard() {
             <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4">
               <div className="p-6 border-b border-gray-100">
                 <h2 className="text-lg font-bold text-gray-900">Assinaturas e Usuários</h2>
-                <p className="text-sm text-gray-500">Controle e status de pagamentos via Stripe.</p>
+                <p className="text-sm text-gray-500">Controle e status de pagamentos via Stripe. Clique em um usuário para ver os detalhes.</p>
               </div>
               
               <div className="overflow-x-auto">
@@ -243,12 +280,20 @@ export default function AdminDashboard() {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {usersList.map((usr) => (
-                      <tr key={usr.id} className="hover:bg-gray-50/50 transition-colors">
+                      <tr 
+                        key={usr.id} 
+                        onClick={() => openUserModal(usr)}
+                        className="hover:bg-orange-50 cursor-pointer transition-colors"
+                      >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center font-bold text-xs text-orange-600">
-                              {usr.first_name ? usr.first_name.substring(0,2).toUpperCase() : 'US'}
-                            </div>
+                            {usr.avatar_url ? (
+                              <img src={usr.avatar_url} alt={usr.first_name} className="w-8 h-8 rounded-full object-cover border border-gray-200" />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center font-bold text-xs text-orange-600">
+                                {usr.first_name ? usr.first_name.substring(0,2).toUpperCase() : 'US'}
+                              </div>
+                            )}
                             <span className="font-semibold text-gray-900">{usr.first_name || 'Sem Nome'} {usr.last_name || ''}</span>
                           </div>
                         </td>
@@ -287,7 +332,7 @@ export default function AdminDashboard() {
                             </span>
                           ) : (
                             <span className="px-2.5 py-1 text-[11px] font-bold rounded-full bg-red-100 text-red-700 border border-red-200">
-                              Inativo
+                              {usr.subscription_status || 'Inativo'}
                             </span>
                           )}
                         </td>
@@ -359,6 +404,119 @@ export default function AdminDashboard() {
           
         </div>
       </div>
+
+      {/* MODAL: Detalhes do Usuário */}
+      <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
+        <DialogContent className="sm:max-w-2xl bg-white p-0 overflow-hidden rounded-3xl">
+          <div className="p-6 bg-gray-50 border-b border-gray-100 flex items-center gap-4">
+            {selectedUser?.avatar_url ? (
+              <img src={selectedUser.avatar_url} alt="Avatar" className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm" />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-xl font-bold border-2 border-white shadow-sm">
+                {selectedUser?.first_name ? selectedUser.first_name.substring(0,2).toUpperCase() : 'US'}
+              </div>
+            )}
+            <div>
+              <DialogTitle className="text-xl font-bold text-gray-900">
+                {selectedUser?.first_name || 'Sem Nome'} {selectedUser?.last_name || ''}
+              </DialogTitle>
+              <div className="flex flex-wrap items-center gap-3 mt-1.5 text-sm text-gray-500 font-medium">
+                {selectedUser?.email && <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" /> {selectedUser.email}</span>}
+                {selectedUser?.phone && <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {selectedUser.phone}</span>}
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+            
+            {/* Informações da Assinatura (Stripe) */}
+            <div className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <CreditCard className="w-4 h-4" /> Status da Assinatura (Stripe)
+              </h3>
+              
+              <div className="grid grid-cols-2 gap-4 mb-5">
+                <div>
+                  <p className="text-[11px] text-gray-500 font-medium mb-1">Status Atual</p>
+                  <span className={`px-2.5 py-1 text-xs font-bold rounded-md border inline-block ${
+                    selectedUser?.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                    selectedUser?.subscription_status === 'active' ? 'bg-green-50 text-green-700 border-green-200' :
+                    selectedUser?.subscription_status === 'trialing' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                    'bg-red-50 text-red-700 border-red-200'
+                  }`}>
+                    {selectedUser?.role === 'admin' ? 'Isento (Admin)' : (selectedUser?.subscription_status || 'Inativo')}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-[11px] text-gray-500 font-medium mb-1">Plano</p>
+                  <p className="text-sm font-bold text-gray-900 capitalize">{selectedUser?.plan_type || 'Mensal'}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-[11px] text-gray-500 font-medium mb-1">ID do Cliente no Stripe</p>
+                  <p className="text-sm font-mono text-gray-700 bg-gray-50 p-2 rounded border border-gray-100">
+                    {selectedUser?.stripe_customer_id || 'Não vinculado ao Stripe'}
+                  </p>
+                </div>
+              </div>
+
+              {selectedUser?.stripe_customer_id ? (
+                <a 
+                  href={`https://dashboard.stripe.com/customers/${selectedUser.stripe_customer_id}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full flex items-center justify-center gap-2 bg-[#635BFF] hover:bg-[#4B45D6] text-white py-2.5 rounded-xl font-bold text-sm transition-colors shadow-sm"
+                >
+                  <ExternalLink className="w-4 h-4" /> Ver Histórico / Faturas no Stripe
+                </a>
+              ) : (
+                <p className="text-xs text-gray-400 italic text-center">Este usuário ainda não passou pelo checkout e não possui faturas no Stripe.</p>
+              )}
+            </div>
+
+            {/* Estatísticas de Uso do CRM */}
+            <div>
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <Activity className="w-4 h-4" /> Utilização do CRM
+              </h3>
+              
+              {loadingStats ? (
+                <div className="py-8 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-orange-400" /></div>
+              ) : (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center"><Target className="w-5 h-5" /></div>
+                    <div>
+                      <p className="text-2xl font-black text-gray-900">{userStats.leads}</p>
+                      <p className="text-xs font-semibold text-gray-500">Leads (Oportunidades)</p>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center"><Users className="w-5 h-5" /></div>
+                    <div>
+                      <p className="text-2xl font-black text-gray-900">{userStats.clients}</p>
+                      <p className="text-xs font-semibold text-gray-500">Clientes Fechados</p>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center"><Calculator className="w-5 h-5" /></div>
+                    <div>
+                      <p className="text-2xl font-black text-gray-900">{userStats.orcamentos}</p>
+                      <p className="text-xs font-semibold text-gray-500">Orçamentos Criados</p>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center"><FileText className="w-5 h-5" /></div>
+                    <div>
+                      <p className="text-2xl font-black text-gray-900">{userStats.contracts}</p>
+                      <p className="text-xs font-semibold text-gray-500">Contratos Gerados</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
