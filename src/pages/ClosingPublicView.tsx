@@ -42,6 +42,7 @@ export default function ClosingPublicView() {
 
   // Condições Comerciais
   const [selectedInstallments, setSelectedInstallments] = useState(1);
+  const [contractPreview, setContractPreview] = useState<string>("");
 
   useEffect(() => {
     if (token) fetchLinkData();
@@ -108,6 +109,27 @@ export default function ClosingPublicView() {
         return toast.error("Preencha todos os campos obrigatórios para continuar.");
       }
     }
+    if (step === 2) {
+      // Gerar a pré-visualização do contrato
+      const fullAddress = `${clientData.street}, ${clientData.number}${clientData.complement ? ` - ${clientData.complement}` : ''}, ${clientData.neighborhood}, ${clientData.city} - ${clientData.state}, CEP: ${clientData.cep}`;
+      const amount = Number(linkData.value);
+      const count = selectedInstallments;
+      
+      let contractText = template?.description || 'Contrato Padrão';
+      contractText = contractText.replace(/\{\{nome\}\}/gi, opportunity.name);
+      contractText = contractText.replace(/\{\{cpf\}\}/gi, clientData.cpf);
+      contractText = contractText.replace(/\{\{endereco\}\}/gi, fullAddress);
+      contractText = contractText.replace(/\{\{estado_civil\}\}/gi, clientData.civil_status);
+      contractText = contractText.replace(/\{\{profissao\}\}/gi, clientData.profession);
+      contractText = contractText.replace(/\{\{valor\}\}/gi, formatCurrency(amount));
+      contractText = contractText.replace(/\{\{parcelas\}\}/gi, String(count));
+      if (linkData.event_date) {
+        contractText = contractText.replace(/\{\{data_evento\}\}/gi, formatDate(linkData.event_date));
+      }
+      
+      setContractPreview(contractText);
+    }
+    
     setStep(prev => prev + 1);
     window.scrollTo(0, 0);
   };
@@ -167,26 +189,12 @@ export default function ClosingPublicView() {
       if (txError) throw txError;
 
       // 3. Monta e Cria o Contrato
-      let contractText = template?.description || 'Contrato Padrão';
-      
-      // Substituição de Variáveis
-      contractText = contractText.replace(/\{\{nome\}\}/gi, opportunity.name);
-      contractText = contractText.replace(/\{\{cpf\}\}/gi, clientData.cpf);
-      contractText = contractText.replace(/\{\{endereco\}\}/gi, fullAddress);
-      contractText = contractText.replace(/\{\{estado_civil\}\}/gi, clientData.civil_status);
-      contractText = contractText.replace(/\{\{profissao\}\}/gi, clientData.profession);
-      contractText = contractText.replace(/\{\{valor\}\}/gi, formatCurrency(amount));
-      contractText = contractText.replace(/\{\{parcelas\}\}/gi, String(count));
-      if (linkData.event_date) {
-        contractText = contractText.replace(/\{\{data_evento\}\}/gi, formatDate(linkData.event_date));
-      }
-
       await supabase.from('contracts').insert({
         user_id: linkData.user_id,
         client_id: opportunity.id,
         value: amount,
         start_date: new Date().toISOString().split('T')[0],
-        description: contractText,
+        description: contractPreview,
         client_signature: signatureImage,
         supplier_signature: template?.supplier_signature || null,
         signature_status: 'Assinado 2/2',
@@ -514,8 +522,8 @@ export default function ClosingPublicView() {
                 {linkData.event_date && <p className="text-sm"><strong className="text-gray-900">Data:</strong> <span className="text-gray-600">{formatDate(linkData.event_date)}</span></p>}
               </div>
 
-              <div className="text-xs text-gray-500 leading-relaxed text-justify max-h-[150px] overflow-y-auto custom-scrollbar pr-2 mb-2">
-                O Contrato completo com as cláusulas será gerado com os dados acima e assinado digitalmente nesta etapa. Você receberá uma cópia do documento no momento em que clicar em finalizar.
+              <div className="text-sm text-gray-700 leading-relaxed text-justify max-h-[300px] overflow-y-auto custom-scrollbar pr-4 mb-2 bg-white p-4 rounded-xl border border-gray-100 shadow-inner prose max-w-none">
+                <div dangerouslySetInnerHTML={{ __html: contractPreview }} />
               </div>
             </div>
 
