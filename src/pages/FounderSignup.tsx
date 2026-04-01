@@ -8,11 +8,11 @@ import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/PasswordInput';
 import { Loader2, Star, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
-import logoImg from "@/assets/logo.png";
 
 export default function FounderSignup() {
   const { session, refreshProfile } = useAuth();
   const navigate = useNavigate();
+  const logoImg = "/logo.png";
   
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');

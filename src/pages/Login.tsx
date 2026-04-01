@@ -8,11 +8,11 @@ import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/PasswordInput';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import logoImg from "@/assets/logo.png";
 
 const Login = () => {
   const { session } = useAuth();
   const navigate = useNavigate();
+  const logoImg = "/logo.png";
   
   const [isLogin, setIsLogin] = useState(true);
   const [isRecovering, setIsRecovering] = useState(false);

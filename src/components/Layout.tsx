@@ -17,19 +17,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import logoImg from "@/assets/logo.png";
 import { InstallPWA } from "./InstallPWA";
-
-interface NavItem {
-  name: string;
-  path: string;
-  icon: React.ElementType;
-}
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
   const { user, profile, signOut } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const logoImg = "/logo.png";
 
   const handleSignOut = async () => {
     await signOut();
@@ -47,7 +41,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     return "US";
   };
 
-  const navItems: NavItem[] = [
+  const navItems = [
     { name: "Dashboard", path: "/", icon: LayoutDashboard },
     { name: "Oportunidades", path: "/oportunidades", icon: Target },
     { name: "Clientes", path: "/clientes", icon: Users },
@@ -98,10 +92,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="flex h-screen bg-[#e6e6e64c] overflow-hidden font-sans text-gray-900">
-      {/* Aviso de Instalação PWA */}
       <InstallPWA />
 
-      {/* Sidebar Desktop */}
       <aside className="w-64 bg-white border-r border-border flex-col hidden md:flex z-10">
         <div className="px-6 py-6 flex items-center justify-center">
           <img src={logoImg} alt="Frame Pro Logo" className="w-full max-w-[200px] h-auto object-contain" />
@@ -116,7 +108,6 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         </nav>
       </aside>
 
-      {/* Sidebar Mobile Overlay */}
       {isMobileMenuOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
           <div 
@@ -145,9 +136,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         </div>
       )}
 
-      {/* Main Content */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
-        {/* Header */}
         <header className="h-16 bg-white border-b border-border flex items-center justify-between px-4 sm:px-8 z-10 shrink-0">
           <div className="flex items-center gap-3 md:hidden">
             <button 
@@ -192,7 +181,6 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           </div>
         </header>
 
-        {/* Page Content */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-8">
           {children}
         </div>

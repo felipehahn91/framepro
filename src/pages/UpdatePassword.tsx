@@ -6,12 +6,12 @@ import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/PasswordInput';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import logoImg from "@/assets/logo.png";
 
 export default function UpdatePassword() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const logoImg = "/logo.png";
 
   useEffect(() => {
     // O Supabase Auth lida com o token automaticamente no cliente

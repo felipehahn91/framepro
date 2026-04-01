@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { useAuth } from "@/contexts/AuthContext";
 import { Check, Loader2, Star, ShieldCheck, ArrowRight } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
-import logoImg from "@/assets/logo.png";
 
 export default function FounderPack() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const logoImg = "/logo.png";
 
   const handleSubscribe = async () => {
     setLoading(true);
