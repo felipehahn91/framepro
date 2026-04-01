@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Layout } from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { sendTextMessage } from "@/lib/evolution";
+import { sendTextMessage, sendMediaMessage } from "@/lib/evolution";
 import { 
   Wallet, TrendingDown, TrendingUp, Plus, Filter, 
   Edit2, Trash2, CheckCircle2, Loader2, X, DollarSign,
@@ -488,11 +488,33 @@ export default function Financeiro() {
 
       const amount = inst ? inst.amount : tx.amount;
       const pixCode = inst ? inst.pix_code : tx.pix_code;
+      const pixUrl = inst ? inst.pix_url : tx.pix_url;
       const description = inst ? `${tx.description} (Parcela ${inst.number})` : tx.description;
 
-      const message = `Olá ${clientName.split(' ')[0]}!\n\nAqui está a chave Pix (Copia e Cola) referente a:\n*${description}*\nValor: *${formatCurrency(amount)}*\n\n\`\`\`${pixCode}\`\`\`\n\nQualquer dúvida, estou à disposição!`;
+      const message1 = `Olá ${clientName.split(' ')[0]}!\n\nAqui está a cobrança referente a:\n*${description}*\nValor: *${formatCurrency(amount)}*\n\nAbaixo estão os dados para pagamento via Pix:`;
 
-      await sendTextMessage(instanceData.instance_name, phone, message);
+      // 1. Enviar mensagem de texto introdutória
+      await sendTextMessage(instanceData.instance_name, phone, message1);
+
+      // 2. Se tiver QR Code, envia a imagem
+      if (pixUrl) {
+        await new Promise(r => setTimeout(r, 1000));
+        await sendMediaMessage(
+          instanceData.instance_name, 
+          phone, 
+          pixUrl, 
+          'image', 
+          'image/png', 
+          'QR Code Pix'
+        );
+      }
+
+      // 3. Enviar apenas o código Copia e Cola para facilitar a cópia
+      if (pixCode) {
+        await new Promise(r => setTimeout(r, 1500));
+        await sendTextMessage(instanceData.instance_name, phone, pixCode);
+      }
+
       toast.success("Cobrança enviada por WhatsApp!");
     } catch(e) {
       toast.error("Erro ao enviar mensagem via WhatsApp.");
