@@ -526,7 +526,7 @@ export default function SettingsPage() {
                     </div>
                     <div>
                       <h2 className="text-2xl font-bold">Integração PagHiper</h2>
-                      <p className="text-blue-100 text-sm">Configure suas chaves para gerar Pix pelo CRM.</p>
+                      <p className="text-blue-100 text-sm">Configure suas chaves para gerar boletos e Pix pelo CRM.</p>
                     </div>
                   </div>
                 </div>
@@ -536,14 +536,14 @@ export default function SettingsPage() {
                     <p>
                       <strong>Como obter suas chaves?</strong><br />
                       1. Acesse sua conta em <a href="https://www.paghiper.com/" target="_blank" rel="noreferrer" className="underline font-bold">paghiper.com</a>.<br />
-                      2. Vá no menu <strong>"Minha Conta"</strong> e depois em <strong>"Dados da Conta"</strong> para pegar a API Key.<br />
-                      3. Vá no menu <strong>"Ferramentas"</strong>, depois em <strong>"Token"</strong> e gere/copie seu Token.
+                      2. Vá no menu lateral <strong>"Minha Conta"</strong> e depois em <strong>"Dados da conta"</strong> para obter a API Key.<br />
+                      3. Vá no menu <strong>"Ferramentas"</strong>, clique em <strong>"Token"</strong>, gere e copie o Token.
                     </p>
                     <div className="bg-white/60 p-3 rounded-lg border border-blue-200 flex flex-col gap-2">
                       <p className="font-bold text-blue-900 flex items-center gap-1.5">
                         <Webhook className="w-4 h-4" /> Configuração do Retorno Automático (Webhook)
                       </p>
-                      <p className="text-xs">Para que o CRM saiba quando seu cliente pagou e dê baixa automática na cobrança, cole este link na página de <strong>Retorno de Dados</strong> do PagHiper:</p>
+                      <p className="text-xs">Para que o CRM saiba quando seu cliente pagou e dê baixa automática na cobrança, vá em <strong>Ferramentas {'>'} Retorno automático</strong> no PagHiper, cole este link na URL e marque <strong>Sim</strong> na caixa de Status:</p>
                       <div className="flex items-center gap-2">
                         <Input value={paghiperWebhookUrl} readOnly className="bg-white font-mono text-xs text-gray-500 h-8" />
                         <Button 
