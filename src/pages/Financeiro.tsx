@@ -5,13 +5,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { 
   Wallet, TrendingDown, TrendingUp, Plus, Filter, 
   Edit2, Trash2, CheckCircle2, Loader2, X, DollarSign,
-  AlertCircle, Calendar as CalendarIcon, ChevronDown, ChevronUp
+  AlertCircle, Calendar as CalendarIcon, ChevronDown, ChevronUp, Link as LinkIcon, Copy
 } from "lucide-react";
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, 
   ResponsiveContainer, Legend 
 } from "recharts";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 interface Client {
   id: string;
@@ -25,6 +26,8 @@ interface Installment {
   amount: number;
   status: string;
   paidDate: string | null;
+  paghiper_url?: string;
+  paghiper_linha?: string;
 }
 
 interface Transaction {
@@ -39,6 +42,8 @@ interface Transaction {
   installment_count: number;
   installments: Installment[] | null | any; 
   clients?: { name: string };
+  paghiper_url?: string;
+  paghiper_linha?: string;
 }
 
 const getInstallments = (t: Transaction): Installment[] => {
@@ -50,7 +55,7 @@ const getInstallments = (t: Transaction): Installment[] => {
 };
 
 export default function Financeiro() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("faturamento");
   const [listStatusTab, setListStatusTab] = useState("pendentes");
@@ -58,9 +63,7 @@ export default function Financeiro() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   
-  // Accordion State
   const [expandedTxIds, setExpandedTxIds] = useState<Set<string>>(new Set());
-
   const [period, setPeriod] = useState("this_month");
   const [customDateRange, setCustomDateRange] = useState({ start: "", end: "" });
 
@@ -76,6 +79,11 @@ export default function Financeiro() {
     client_id: "none",
     installment_count: "1"
   });
+
+  // PagHiper States
+  const [paghiperModalOpen, setPaghiperModalOpen] = useState(false);
+  const [paghiperLoading, setPaghiperLoading] = useState(false);
+  const [paghiperData, setPaghiperData] = useState<any>(null); // { tx, inst }
 
   useEffect(() => {
     if (user) fetchData();
@@ -378,6 +386,89 @@ export default function Financeiro() {
     }
   };
 
+  // --- PAGHIPER HANDLERS ---
+  const handleOpenPaghiperModal = async (tx: Transaction, inst?: Installment) => {
+    // Buscar o CPF se houver oportunidade vinculada
+    let cpf = "";
+    let email = "";
+    let name = tx.clients?.name || "Cliente";
+
+    if (tx.client_id) {
+      const { data } = await supabase.from('opportunities').select('cpf, email').eq('id', tx.client_id).single();
+      if (data) {
+        cpf = data.cpf || "";
+        email = data.email || "";
+      }
+    }
+
+    setPaghiperData({
+      tx,
+      inst,
+      amount: inst ? inst.amount : tx.amount,
+      dueDate: inst ? inst.dueDate : tx.date,
+      description: inst ? `${tx.description} (Parcela ${inst.number}/${tx.installment_count})` : tx.description,
+      payer_name: name,
+      payer_cpf: cpf,
+      payer_email: email
+    });
+    setPaghiperModalOpen(true);
+  };
+
+  const handleGeneratePaghiper = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!paghiperData.payer_cpf) return toast.error("O CPF/CNPJ é obrigatório para emissão de boleto.");
+    setPaghiperLoading(true);
+
+    try {
+      const response = await fetch('https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/paghiper-create-boleto', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({
+          transaction_id: paghiperData.tx.id,
+          installment_id: paghiperData.inst?.id,
+          amount: paghiperData.amount,
+          description: paghiperData.description,
+          payer_name: paghiperData.payer_name,
+          payer_email: paghiperData.payer_email,
+          payer_cpf: paghiperData.payer_cpf,
+          due_date: paghiperData.dueDate
+        })
+      });
+
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Erro desconhecido na API.");
+
+      const { url_slip, linha_digitavel } = result;
+
+      // Update Supabase and Local State
+      if (paghiperData.inst) {
+        // Atualiza a parcela específica
+        const insts = getInstallments(paghiperData.tx);
+        const updatedInsts = insts.map(i => i.id === paghiperData.inst.id ? { ...i, paghiper_url: url_slip, paghiper_linha: linha_digitavel } : i);
+        await supabase.from('transactions').update({ installments: updatedInsts }).eq('id', paghiperData.tx.id);
+        
+        setTransactions(prev => prev.map(t => t.id === paghiperData.tx.id ? { ...t, installments: updatedInsts } : t));
+      } else {
+        // Atualiza a transação inteira
+        await supabase.from('transactions').update({ paghiper_url: url_slip, paghiper_linha: linha_digitavel }).eq('id', paghiperData.tx.id);
+        
+        setTransactions(prev => prev.map(t => t.id === paghiperData.tx.id ? { ...t, paghiper_url: url_slip, paghiper_linha: linha_digitavel } : t));
+      }
+
+      toast.success("Boleto gerado com sucesso!");
+      setPaghiperModalOpen(false);
+
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao gerar boleto.");
+    } finally {
+      setPaghiperLoading(false);
+    }
+  };
+
+
   const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   
   const getStatusBadge = (status: string, dateStr?: string) => {
@@ -559,7 +650,6 @@ export default function Financeiro() {
                     <div key={tx.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
                       {insts.length > 0 ? (
                         <div className="space-y-1">
-                          {/* Cabeçalho da transação que atua como trigger do Accordion */}
                           <div 
                             className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 cursor-pointer hover:bg-gray-50 -mx-4 px-4 pt-1 rounded-t-xl transition-colors"
                             onClick={() => toggleExpand(tx.id)}
@@ -585,7 +675,6 @@ export default function Financeiro() {
                             </div>
                           </div>
 
-                          {/* Lista de parcelas expandidas */}
                           {isExpanded && (
                             <div className="space-y-2 pl-4 sm:pl-10 border-l-2 border-orange-100 pt-3 pb-1 animate-in fade-in slide-in-from-top-2">
                               {insts.map((inst: Installment) => (
@@ -599,14 +688,34 @@ export default function Financeiro() {
                                       <p className="text-[11px] text-gray-500">Vence: {new Date(inst.dueDate).toLocaleDateString('pt-BR')}</p>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-3 self-end sm:self-auto">
+                                  <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto">
                                     {getStatusBadge(inst.status, inst.dueDate)}
+                                    
+                                    {inst.paghiper_url ? (
+                                      <div className="flex items-center gap-1">
+                                        <a href={inst.paghiper_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 rounded-md text-[11px] font-semibold transition-colors">
+                                          <LinkIcon className="w-3 h-3" /> Ver Boleto
+                                        </a>
+                                        {inst.paghiper_linha && (
+                                          <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(inst.paghiper_linha!); toast.success("Linha copiada!"); }} className="p-1.5 text-blue-500 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-md" title="Copiar código">
+                                            <Copy className="w-3.5 h-3.5" />
+                                          </button>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      inst.status !== 'Pago' && (
+                                        <button onClick={(e) => { e.stopPropagation(); handleOpenPaghiperModal(tx, inst); }} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-md text-[11px] font-semibold transition-colors">
+                                          <DollarSign className="w-3 h-3 text-blue-500" /> Gerar Boleto/Pix
+                                        </button>
+                                      )
+                                    )}
+
                                     {inst.status !== 'Pago' && (
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); handleMarkInstallmentPaid(tx, inst.id); }}
-                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-green-200 text-green-600 hover:bg-green-50 rounded-md text-xs font-semibold transition-colors shadow-sm"
+                                        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-green-200 text-green-600 hover:bg-green-50 rounded-md text-[11px] font-semibold transition-colors shadow-sm"
                                       >
-                                        <CheckCircle2 className="w-3.5 h-3.5" /> Pago
+                                        <CheckCircle2 className="w-3.5 h-3.5" /> Receber
                                       </button>
                                     )}
                                   </div>
@@ -621,17 +730,36 @@ export default function Financeiro() {
                             <p className="font-bold text-gray-900">{tx.description}</p>
                             <p className="text-xs text-gray-500 mt-0.5">{tx.clients?.name || 'Sem cliente'} • {new Date(tx.date).toLocaleDateString('pt-BR')}</p>
                           </div>
-                          <div className="flex items-center gap-4 self-end sm:self-auto">
+                          <div className="flex flex-wrap items-center gap-4 self-end sm:self-auto">
                             <span className="font-bold text-gray-900">{formatCurrency(tx.amount)}</span>
                             {getStatusBadge(tx.status, tx.date)}
                             
                             <div className="flex items-center gap-1.5 ml-2">
+                              {tx.paghiper_url ? (
+                                <div className="flex items-center gap-1">
+                                  <a href={tx.paghiper_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 border border-blue-200 text-blue-600 hover:bg-blue-100 rounded-md text-[11px] font-semibold transition-colors">
+                                    <LinkIcon className="w-3 h-3" /> Ver Boleto
+                                  </a>
+                                  {tx.paghiper_linha && (
+                                    <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(tx.paghiper_linha!); toast.success("Linha copiada!"); }} className="p-1.5 text-blue-500 bg-blue-50 border border-blue-200 hover:bg-blue-100 rounded-md" title="Copiar código">
+                                      <Copy className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              ) : (
+                                (tx.status !== 'Recebido' && tx.status !== 'Pago' && tx.status !== 'Cancelado') && (
+                                  <button onClick={() => handleOpenPaghiperModal(tx)} className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 rounded-md text-[11px] font-semibold transition-colors">
+                                    <DollarSign className="w-3 h-3 text-blue-500" /> Gerar Boleto
+                                  </button>
+                                )
+                              )}
+
                               {(tx.status !== 'Recebido' && tx.status !== 'Pago' && tx.status !== 'Cancelado') && (
                                 <button 
                                   onClick={() => handleMarkPaid(tx)}
-                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-green-200 text-green-600 hover:bg-green-50 rounded-md text-xs font-semibold transition-colors shadow-sm"
+                                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-green-200 text-green-600 hover:bg-green-50 rounded-md text-[11px] font-semibold transition-colors shadow-sm"
                                 >
-                                  <CheckCircle2 className="w-3.5 h-3.5" /> Pago
+                                  <CheckCircle2 className="w-3.5 h-3.5" /> Receber
                                 </button>
                               )}
                               <button onClick={() => handleOpenModal(tx)} className="p-1.5 text-gray-400 hover:text-orange-500 hover:bg-orange-50 rounded-md transition-colors">
@@ -670,6 +798,7 @@ export default function Financeiro() {
         )}
       </div>
 
+      {/* Modal Nova Transação / Editar */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsModalOpen(false)} />
@@ -767,6 +896,60 @@ export default function Financeiro() {
           </div>
         </div>
       )}
+
+      {/* Modal PagHiper */}
+      <Dialog open={paghiperModalOpen} onOpenChange={(open) => !open && setPaghiperModalOpen(false)}>
+        <DialogContent className="sm:max-w-[400px] bg-white rounded-3xl p-0 overflow-hidden shadow-2xl">
+          <div className="px-6 py-6 border-b border-gray-100 bg-blue-50/50">
+            <DialogTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-blue-500" />
+              Gerar Boleto / Pix
+            </DialogTitle>
+          </div>
+
+          <form onSubmit={handleGeneratePaghiper} className="p-6 space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-bold text-gray-700">Nome do Pagador *</label>
+              <input 
+                required type="text"
+                value={paghiperData?.payer_name || ''} 
+                onChange={e => setPaghiperData({...paghiperData, payer_name: e.target.value})}
+                className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+              />
+            </div>
+            
+            <div className="space-y-1.5">
+              <label className="text-sm font-bold text-gray-700">CPF do Pagador *</label>
+              <input 
+                required type="text" placeholder="000.000.000-00"
+                value={paghiperData?.payer_cpf || ''} 
+                onChange={e => setPaghiperData({...paghiperData, payer_cpf: e.target.value})}
+                className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+              />
+              <p className="text-[10px] text-gray-500 font-medium">Requisito obrigatório do banco emissor.</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-sm font-bold text-gray-700">E-mail do Pagador</label>
+              <input 
+                type="email" placeholder="Para enviar o boleto (opcional)"
+                value={paghiperData?.payer_email || ''} 
+                onChange={e => setPaghiperData({...paghiperData, payer_email: e.target.value})}
+                className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none"
+              />
+            </div>
+
+            <DialogFooter className="mt-6">
+              <button type="button" onClick={() => setPaghiperModalOpen(false)} className="px-5 py-2.5 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition-colors">
+                Cancelar
+              </button>
+              <button type="submit" disabled={paghiperLoading} className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 shadow-sm flex items-center gap-2 disabled:opacity-50">
+                {paghiperLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Emitir Cobrança'}
+              </button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

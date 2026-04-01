@@ -11,7 +11,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { 
   Camera, Save, Loader2, Palette, Check, MessageSquare, QrCode, 
-  Smartphone, LogOut, RefreshCw, Webhook, CreditCard, ShieldCheck, FileText, ExternalLink
+  Smartphone, LogOut, RefreshCw, Webhook, CreditCard, ShieldCheck, FileText, ExternalLink,
+  Banknote
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import * as evolutionApi from '@/lib/evolution';
@@ -31,6 +32,10 @@ export default function SettingsPage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   
   const [activeTheme, setActiveTheme] = useState(getActiveTheme());
+
+  // --- PAGHIPER STATES ---
+  const [paghiperKey, setPaghiperKey] = useState('');
+  const [paghiperToken, setPaghiperToken] = useState('');
 
   // --- WHATSAPP STATES ---
   const [waInstance, setWaInstance] = useState<any>(null);
@@ -53,8 +58,26 @@ export default function SettingsPage() {
 
     if (user) {
       fetchWaInstance();
+      fetchPaghiperSettings();
     }
   }, [user, profile]);
+
+  const fetchPaghiperSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('paghiper_api_key, paghiper_token')
+        .eq('id', user?.id)
+        .single();
+      
+      if (!error && data) {
+        setPaghiperKey(data.paghiper_api_key || '');
+        setPaghiperToken(data.paghiper_token || '');
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const fetchWaInstance = async () => {
     setWaLoading(true);
@@ -272,6 +295,25 @@ export default function SettingsPage() {
     }
   };
 
+  const savePaghiperSettings = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      const { error } = await supabase.from('profiles').update({
+        paghiper_api_key: paghiperKey,
+        paghiper_token: paghiperToken
+      }).eq('id', user.id);
+
+      if (error) throw error;
+      toast.success("Credenciais do PagHiper salvas com sucesso!");
+      showAutoSave();
+    } catch (error) {
+      toast.error("Erro ao salvar as credenciais.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleManageSubscription = async () => {
     setLoadingPortal(true);
     try {
@@ -340,11 +382,12 @@ export default function SettingsPage() {
         </div>
 
         <Tabs defaultValue="profile" className="w-full flex-1 flex flex-col">
-          <TabsList className="grid w-full max-w-[800px] grid-cols-2 sm:grid-cols-4 mb-4 bg-gray-100 p-1 h-auto sm:h-12">
+          <TabsList className="grid w-full max-w-[800px] grid-cols-2 sm:grid-cols-5 mb-4 bg-gray-100 p-1 h-auto sm:h-12">
             <TabsTrigger value="profile" className="py-2 sm:py-1.5">Perfil</TabsTrigger>
             <TabsTrigger value="appearance" className="py-2 sm:py-1.5">Aparência</TabsTrigger>
             <TabsTrigger value="subscription" className="py-2 sm:py-1.5">Assinatura</TabsTrigger>
             <TabsTrigger value="whatsapp" className="py-2 sm:py-1.5">WhatsApp</TabsTrigger>
+            <TabsTrigger value="payments" className="py-2 sm:py-1.5">Pagamentos</TabsTrigger>
           </TabsList>
 
           <div className="flex-1 overflow-y-auto pb-6">
@@ -361,7 +404,7 @@ export default function SettingsPage() {
                     <div className="flex flex-col items-center gap-3">
                       <Avatar className="w-24 h-24 border-2 border-gray-200 shadow-sm">
                         <AvatarImage src={avatarPreview || ''} />
-                        <AvatarFallback className="text-2xl bg-orange-100 text-orange-600 font-bold">
+                        <AvatarFallback className="bg-orange-100 text-orange-600 font-bold text-2xl">
                           {profile?.first_name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
                         </AvatarFallback>
                       </Avatar>
@@ -468,6 +511,63 @@ export default function SettingsPage() {
                       </Button>
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* ABA PAGAMENTOS (PAGHIPER) */}
+            <TabsContent value="payments" className="mt-0">
+              <Card className="border-gray-200 shadow-sm overflow-hidden">
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 sm:p-8 text-white">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                      <Banknote className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold">Integração PagHiper</h2>
+                      <p className="text-blue-100 text-sm">Configure suas chaves para gerar boletos e Pix pelo CRM.</p>
+                    </div>
+                  </div>
+                </div>
+
+                <CardContent className="p-6 sm:p-8 space-y-6">
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-sm text-blue-800">
+                    <strong>Como obter suas chaves?</strong><br />
+                    1. Acesse sua conta em <a href="https://www.paghiper.com/" target="_blank" rel="noreferrer" className="underline font-bold">paghiper.com</a>.<br />
+                    2. Vá no menu lateral <strong>"Minha Conta"</strong> e depois em <strong>"Credenciais"</strong>.<br />
+                    3. Copie o <strong>ApiKey</strong> e o <strong>Token</strong> e cole abaixo.
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="apiKey" className="font-bold text-gray-700">API Key</Label>
+                      <Input 
+                        id="apiKey" 
+                        value={paghiperKey} 
+                        onChange={(e) => setPaghiperKey(e.target.value)} 
+                        placeholder="Ex: apik_xxxxxxxxxxxxxxxx"
+                        className="bg-gray-50 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="token" className="font-bold text-gray-700">Token</Label>
+                      <Input 
+                        id="token" 
+                        type="password"
+                        value={paghiperToken} 
+                        onChange={(e) => setPaghiperToken(e.target.value)} 
+                        placeholder="••••••••••••••••••••••••••••"
+                        className="bg-gray-50 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-4 border-t border-gray-100">
+                    <Button onClick={savePaghiperSettings} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6">
+                      {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                      Salvar Integração
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             </TabsContent>
