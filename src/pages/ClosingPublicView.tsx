@@ -55,7 +55,7 @@ export default function ClosingPublicView() {
       if (link.contract_template_id) {
         const { data: tpl } = await supabase
           .from('contracts')
-          .select('description')
+          .select('description, supplier_signature')
           .eq('id', link.contract_template_id)
           .single();
         setTemplate(tpl);
@@ -116,7 +116,7 @@ export default function ClosingPublicView() {
         });
       }
 
-      await supabase.from('transactions').insert({
+      const { data: newTx, error: txError } = await supabase.from('transactions').insert({
         user_id: linkData.user_id,
         client_id: opportunity.id,
         date: new Date().toISOString().split('T')[0],
@@ -126,7 +126,9 @@ export default function ClosingPublicView() {
         is_installment: count > 1,
         installment_count: count,
         installments: count > 1 ? installments : null
-      });
+      }).select('id').single();
+
+      if (txError) throw txError;
 
       // 3. Monta e Cria o Contrato
       let contractText = template?.description || 'Contrato Padrão';
@@ -151,7 +153,8 @@ export default function ClosingPublicView() {
         start_date: new Date().toISOString().split('T')[0],
         description: contractText,
         client_signature: signatureImage,
-        signature_status: 'Assinado 1/2',
+        supplier_signature: template?.supplier_signature || null,
+        signature_status: 'Assinado 2/2',
         status: 'Ativo',
         share_token: crypto.randomUUID() // token próprio para o contrato
       });
@@ -170,6 +173,28 @@ export default function ClosingPublicView() {
 
       // 5. Invalida o Link de Fechamento
       await supabase.from('closing_links').update({ status: 'completed' }).eq('id', linkData.id);
+
+      // 6. Gerar Pix e Enviar WhatsApp via Edge Function
+      if (newTx?.id) {
+        const firstInstallmentId = count > 1 ? installments[0].id : null;
+        const firstAmount = count > 1 ? installments[0].amount : amount;
+
+        // Fire and forget edge function
+        fetch('https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/public-closing-success', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            link_token: token,
+            transaction_id: newTx.id,
+            installment_id: firstInstallmentId,
+            amount: firstAmount,
+            payer_name: opportunity.name,
+            payer_cpf: clientData.cpf,
+            due_date: new Date().toISOString(),
+            client_phone: opportunity.phone
+          })
+        }).catch(console.error);
+      }
 
       setStep(4); // Sucesso!
     } catch (error) {

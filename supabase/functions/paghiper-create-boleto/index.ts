@@ -13,26 +13,40 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization')!;
+    const authHeader = req.headers.get('Authorization');
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
-    // Autenticando o usuário que fez a requisição
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
-
     const payload = await req.json();
-    const { transaction_id, installment_id, amount, description, payer_name, payer_email, payer_cpf, due_date } = payload;
+    const { transaction_id, installment_id, amount, description, payer_name, payer_email, payer_cpf, due_date, link_token } = payload;
 
-    // Buscar credenciais do usuário logado
-    const { data: profile } = await supabase
+    let targetUserId = null;
+
+    if (link_token) {
+      // If called from public view with a link token, use service role to find the user
+      const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+      const { data: link } = await supabaseAdmin.from('closing_links').select('user_id').eq('token', link_token).single();
+      if (!link) return new Response("Invalid link token", { status: 400, headers: corsHeaders });
+      targetUserId = link.user_id;
+    } else if (authHeader) {
+      // Autenticando o usuário que fez a requisição
+      const supabase = createClient(supabaseUrl, supabaseKey, {
+        global: { headers: { Authorization: authHeader } }
+      });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return new Response("Unauthorized", { status: 401, headers: corsHeaders });
+      targetUserId = user.id;
+    } else {
+      return new Response("Unauthorized or missing token", { status: 401, headers: corsHeaders });
+    }
+
+    // Buscar credenciais do usuário logado (usando admin para ignorar RLS se for via link_token, ou mesmo pra usuário logado)
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+    const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('paghiper_api_key, paghiper_token')
-      .eq('id', user.id)
+      .eq('id', targetUserId)
       .single();
 
     if (!profile?.paghiper_api_key || !profile?.paghiper_token) {
