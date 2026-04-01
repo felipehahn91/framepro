@@ -56,10 +56,30 @@ const Index = () => {
       setGoal(currentGoal);
       setNewGoal(currentGoal.toString());
 
-      const { data: transactions } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', user?.id);
+      const step = 1000;
+
+      // 1. Busca em Lotes das Transações Financeiras (Para evitar limite de 1000 do Supabase)
+      let allTransactions: any[] = [];
+      let hasMoreTx = true;
+      let txFrom = 0;
+
+      while (hasMoreTx) {
+        const { data } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('user_id', user?.id)
+          .range(txFrom, txFrom + step - 1);
+
+        if (data && data.length > 0) {
+          allTransactions = [...allTransactions, ...data];
+          if (data.length < step) hasMoreTx = false;
+          else txFrom += step;
+        } else {
+          hasMoreTx = false;
+        }
+      }
+
+      const transactions = allTransactions;
 
       const now = new Date();
       const currentMonth = now.getMonth();
@@ -72,7 +92,7 @@ const Index = () => {
       let calcPendingRevenue = 0;
       let calcOverdueRevenue = 0;
 
-      if (transactions) {
+      if (transactions.length > 0) {
         transactions.forEach(tx => {
           let insts: any[] = [];
           if (tx.is_installment && tx.installments) {
@@ -126,12 +146,38 @@ const Index = () => {
       setPendingRevenue(calcPendingRevenue);
       setOverdueRevenue(calcOverdueRevenue);
 
-      const { data: opsData } = await supabase
-        .from('opportunities')
-        .select('id, is_client, column_id, columns:column_id(name)')
-        .eq('user_id', user?.id);
+      // 2. Busca em Lotes das Oportunidades e Clientes
+      let allOpsData: any[] = [];
+      let hasMoreOps = true;
+      let opsFrom = 0;
 
-      if (opsData) {
+      while (hasMoreOps) {
+        const { data, error } = await supabase
+          .from('opportunities')
+          .select('id, is_client, column_id, columns:column_id(name)')
+          .eq('user_id', user?.id)
+          .range(opsFrom, opsFrom + step - 1);
+
+        if (error) {
+          console.error("Ops fetch error:", error);
+          break;
+        }
+
+        if (data && data.length > 0) {
+          allOpsData = [...allOpsData, ...data];
+          if (data.length < step) {
+            hasMoreOps = false;
+          } else {
+            opsFrom += step;
+          }
+        } else {
+          hasMoreOps = false;
+        }
+      }
+
+      const opsData = allOpsData;
+
+      if (opsData && opsData.length > 0) {
         setTotalClients(opsData.filter(op => op.is_client).length);
         const openOps = opsData.filter(op => !op.is_client);
         setOpenOpportunities(openOps.length);
@@ -150,14 +196,16 @@ const Index = () => {
         setPipelineData(chartData);
       }
 
-      const { data: contractsData } = await supabase
+      // 3. Busca de Contratos Ativos (Apenas a contagem via banco para ser mais rápido)
+      const { count: contractsCount } = await supabase
         .from('contracts')
-        .select('id')
+        .select('id', { count: 'exact', head: true })
         .eq('user_id', user?.id)
-        .eq('status', 'active');
+        .in('status', ['active', 'Ativo']);
         
-      if (contractsData) setActiveContracts(contractsData.length);
+      if (contractsCount !== null) setActiveContracts(contractsCount);
 
+      // 4. Últimas 5 tarefas (Limite de 5, não precisa de lote)
       const { data: tasksData } = await supabase
         .from('tasks')
         .select('id, title, status, created_at')
