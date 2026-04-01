@@ -309,8 +309,22 @@ export default function ClosingPublicView() {
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1.5">CPF / CNPJ *</label>
                 <input 
-                  type="text" required
-                  value={clientData.cpf} onChange={e => setClientData({...clientData, cpf: e.target.value})}
+                  type="text" required maxLength={18}
+                  value={clientData.cpf} 
+                  onChange={e => {
+                    let v = e.target.value.replace(/\D/g, '');
+                    if (v.length <= 11) {
+                      v = v.replace(/(\d{3})(\d)/, '$1.$2');
+                      v = v.replace(/(\d{3})(\d)/, '$1.$2');
+                      v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+                    } else {
+                      v = v.replace(/^(\d{2})(\d)/, '$1.$2');
+                      v = v.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+                      v = v.replace(/\.(\d{3})(\d)/, '.$1/$2');
+                      v = v.replace(/(\d{4})(\d)/, '$1-$2');
+                    }
+                    setClientData({...clientData, cpf: v});
+                  }}
                   className="w-full px-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-400 outline-none transition-all font-medium"
                 />
               </div>
