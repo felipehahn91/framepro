@@ -515,29 +515,43 @@ export default function ClosingPublicView() {
             <div className="bg-gray-50 rounded-2xl p-4 sm:p-6 mb-8 border border-gray-200">
               <h3 className="font-bold text-sm text-gray-400 uppercase tracking-widest mb-4">Resumo do Contrato</h3>
               
-              <div className="space-y-3 mb-6 bg-white p-4 rounded-xl border border-gray-100">
-                <p className="text-sm"><strong className="text-gray-900">Nome:</strong> <span className="text-gray-600">{opportunity.name}</span></p>
-                <p className="text-sm"><strong className="text-gray-900">CPF:</strong> <span className="text-gray-600">{clientData.cpf}</span></p>
-                <p className="text-sm"><strong className="text-gray-900">Total:</strong> <span className="text-gray-600">{formatCurrency(linkData.value)} em {selectedInstallments}x</span></p>
-                {linkData.event_date && <p className="text-sm"><strong className="text-gray-900">Data:</strong> <span className="text-gray-600">{formatDate(linkData.event_date)}</span></p>}
+              <div className="space-y-3 mb-6 bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
+                <p className="text-sm flex justify-between border-b border-gray-50 pb-2"><strong className="text-gray-900">Nome:</strong> <span className="text-gray-600">{opportunity.name}</span></p>
+                <p className="text-sm flex justify-between border-b border-gray-50 pb-2"><strong className="text-gray-900">CPF:</strong> <span className="text-gray-600">{clientData.cpf}</span></p>
+                <p className="text-sm flex justify-between border-b border-gray-50 pb-2"><strong className="text-gray-900">Total:</strong> <span className="text-gray-600">{formatCurrency(linkData.value)} em {selectedInstallments}x</span></p>
+                {linkData.event_date && <p className="text-sm flex justify-between"><strong className="text-gray-900">Data do Evento:</strong> <span className="text-gray-600">{formatDate(linkData.event_date)}</span></p>}
               </div>
 
-              <div className="text-sm text-gray-700 leading-relaxed text-justify max-h-[300px] overflow-y-auto custom-scrollbar pr-4 mb-2 bg-white p-4 rounded-xl border border-gray-100 shadow-inner prose max-w-none">
-                <div dangerouslySetInnerHTML={{ __html: contractPreview }} />
+              <div className="mt-4">
+                <h4 className="font-bold text-gray-900 mb-3 text-sm">Termos do Contrato</h4>
+                <div className="bg-white rounded-xl border border-gray-200 shadow-inner overflow-hidden relative">
+                  <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-white to-transparent pointer-events-none z-10"></div>
+                  <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent pointer-events-none z-10"></div>
+                  <div className="text-sm text-gray-700 leading-relaxed text-justify max-h-[500px] overflow-y-auto custom-scrollbar p-6 pt-5 pb-10 prose max-w-none prose-sm prose-p:my-2 prose-headings:my-4">
+                    <div dangerouslySetInnerHTML={{ __html: contractPreview }} />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 mt-2 text-center">Role para baixo para ler o contrato completo</p>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">Desenhe sua assinatura abaixo:</label>
-              <div className="border-2 border-dashed border-gray-300 rounded-2xl bg-gray-50 flex items-center justify-center overflow-hidden h-40">
-                <SignaturePad ref={sigCanvas} canvasProps={{ className: "w-full h-full" }} />
+              <label className="block text-sm font-bold text-gray-900 mb-3 text-center">Ao assinar abaixo você concorda com os termos acima:</label>
+              <div className="border-2 border-dashed border-gray-300 rounded-2xl bg-white flex flex-col items-center justify-center overflow-hidden h-48 relative mx-auto max-w-md shadow-sm">
+                <SignaturePad ref={sigCanvas} canvasProps={{ className: "w-full h-full absolute inset-0 cursor-crosshair" }} />
+                <div className="pointer-events-none opacity-20 w-full px-8 absolute bottom-8 flex flex-col items-center">
+                  <div className="w-full border-b-2 border-gray-400"></div>
+                  <span className="text-xs uppercase font-bold mt-1 tracking-widest">{opportunity.name}</span>
+                </div>
               </div>
-              <button onClick={() => sigCanvas.current?.clear()} className="mt-2 text-xs font-bold text-gray-500 hover:text-gray-800">
-                Limpar assinatura
-              </button>
+              <div className="flex justify-center mt-3">
+                <button onClick={() => sigCanvas.current?.clear()} className="text-xs font-bold text-gray-500 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full transition-colors">
+                  Limpar assinatura
+                </button>
+              </div>
             </div>
 
-            <div className="flex gap-3 mt-8">
+            <div className="flex gap-3 mt-8 pt-6 border-t border-gray-100">
               <button 
                 onClick={() => setStep(2)}
                 disabled={submitting}
