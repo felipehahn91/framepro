@@ -41,6 +41,7 @@ interface Opportunity {
   company: string; 
   avatar_url: string;
   order_index?: number;
+  user_id: string;
 }
 interface LinkForm {
   id: string; name: string; tag: string; whatsapp_number: string; whatsapp_text: string;
@@ -406,7 +407,7 @@ export default function Oportunidades() {
       await supabase.from('pipelines').update({ name: editingPipelineName }).eq('id', id);
       setPipelines(prev => prev.map(p => p.id === id ? { ...p, name: editingPipelineName } : p));
       setEditingPipelineId(null);
-      toast.success('Funil renomeado!');
+      toast.success('Funil renomeada!');
     } catch (error) {
       toast.error('Erro ao renomear funil.');
     }
@@ -1144,7 +1145,19 @@ export default function Oportunidades() {
       </div>
 
       <LeadImportModal isOpen={isImportOpen} onClose={() => setIsImportOpen(false)} pipelines={pipelines} columns={columns} userId={user?.id} onImportSuccess={handleImportSuccess} />
-      <OpportunityDetailModal isOpen={isDetailModalOpen} onClose={() => setIsDetailModalOpen(false)} opportunity={selectedOppToView} onSave={handleSaveDetailModal} onDelete={handleDeleteDetailModal} />
+      
+      <OpportunityDetailModal 
+        isOpen={isDetailModalOpen} 
+        onClose={() => setIsDetailModalOpen(false)} 
+        opportunity={selectedOppToView} 
+        onSave={handleSaveDetailModal} 
+        onDelete={handleDeleteDetailModal}
+        onOpenCadence={(opp) => {
+          setIsDetailModalOpen(false);
+          setSelectedOppForCadencia(opp);
+          setIsCadenciaModalOpen(true);
+        }}
+      />
 
       {/* MODAL: Gerenciar Pipelines */}
       <Dialog open={isManagePipelinesOpen} onOpenChange={setIsManagePipelinesOpen}>
