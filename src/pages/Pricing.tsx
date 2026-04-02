@@ -80,9 +80,9 @@ export default function Pricing() {
                 </li>
               ))}
               {[
-                "Integração WhatsApp (Evolution)",
+                "Integração WhatsApp",
                 "Integração Google Calendar",
-                "Boletos e Pix (PagHiper)",
+                "Boletos e Pix",
                 "Fluxo de Cadência Automático"
               ].map((item, i) => (
                 <li key={`x-${i}`} className="flex items-start gap-3 text-gray-400 font-medium text-sm opacity-60 line-through">
