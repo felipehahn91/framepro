@@ -144,21 +144,18 @@ export default function Oportunidades() {
     email: true, phone: true, instagram: true, date: false, local: false, description: false
   });
 
-  // Busca de dados estruturais (Pipelines, Colunas, etc) no Load
   useEffect(() => {
     if (!user) return;
     fetchBaseData();
   }, [user]);
 
-  // Busca de oportunidades apenas quando a Pipeline muda
   useEffect(() => {
     if (activePipelineId) {
-      setVisibleCounts({}); // Reseta o contador de lazy load ao trocar de pipeline
+      setVisibleCounts({});
       fetchOpportunitiesForPipeline(activePipelineId);
     }
   }, [activePipelineId]);
 
-  // Listener Real-time escopo a pipeline ativa
   useEffect(() => {
     if (!user || !activePipelineId) return;
 
@@ -182,7 +179,6 @@ export default function Oportunidades() {
                 return exists ? prev.map(o => o.id === newOpp.id ? newOpp : o) : [...prev, newOpp];
               });
             } else {
-              // Foi movido para outro funil
               setOpportunities(prev => prev.filter(o => o.id !== newOpp.id));
               setSelectedOpps(prev => prev.filter(id => id !== newOpp.id));
             }
@@ -212,7 +208,6 @@ export default function Oportunidades() {
       let pipes = pipesRes.data || [];
       let cols = colsRes.data || [];
 
-      // Criar pipeline padrão se não existir
       if (pipes.length === 0) {
         const newPipe = await supabase.from('pipelines').insert({ name: 'Vendas Principais', user_id: user?.id, order_index: 0 }).select().single();
         if (newPipe.data) {
@@ -263,7 +258,6 @@ export default function Oportunidades() {
       let from = 0;
       const step = 1000;
 
-      // Loop para garantir que carrega todos os milhares de leads sem bater no limite da API
       while (hasMore) {
         const { data, error } = await supabase
           .from('opportunities')
@@ -278,7 +272,7 @@ export default function Oportunidades() {
         if (data && data.length > 0) {
           allData = [...allData, ...(data as Opportunity[])];
           if (data.length < step) {
-            hasMore = false; // Última página
+            hasMore = false;
           } else {
             from += step;
           }
@@ -299,12 +293,10 @@ export default function Oportunidades() {
     fetchBaseData(newPipelineId);
   };
 
-  // Lida com o Scroll em uma coluna para carregar mais itens
   const handleScrollColumn = (e: React.UIEvent<HTMLDivElement>, colId: string, totalInCol: number) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
     const currentVisible = visibleCounts[colId] || 10;
     
-    // Se a rolagem chegar perto do final (50px de margem), carrega mais 10 itens
     if (currentVisible < totalInCol && scrollHeight - scrollTop <= clientHeight + 50) {
       setVisibleCounts(prev => ({
         ...prev,
@@ -336,13 +328,11 @@ export default function Oportunidades() {
     });
   }, [opportunities, activePipelineId, searchQuery, selectedTags]);
 
-  // Drag and Drop (Colunas e Cards)
   const onDragEnd = async (result: any) => {
     const { destination, source, draggableId, type } = result;
     if (!destination) return;
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
 
-    // Movimentação de Colunas
     if (type === "column") {
       const newCols = Array.from(activeColumns);
       const [removed] = newCols.splice(source.index, 1);
@@ -357,59 +347,93 @@ export default function Oportunidades() {
       return;
     }
 
-    // Movimentação de Cards
     const sourceColId = source.droppableId;
     const destColId = destination.droppableId;
 
-    if (sourceColId === destColId) {
-      const colOpps = opportunities.filter(o => o.column_id === sourceColId).sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
-      const otherOpps = opportunities.filter(o => o.column_id !== sourceColId);
+    const movedOppIndex = opportunities.findIndex(o => o.id === draggableId);
+    if (movedOppIndex === -1) return;
 
-      const reorderedOpps = Array.from(colOpps);
-      const [movedOpp] = reorderedOpps.splice(source.index, 1);
-      reorderedOpps.splice(destination.index, 0, movedOpp);
+    const movedOpp = { ...opportunities[movedOppIndex], column_id: destColId };
 
-      const updatedColOpps = reorderedOpps.map((o, idx) => ({ ...o, order_index: idx }));
-      setOpportunities([...otherOpps, ...updatedColOpps]);
+    const isFiltered = searchQuery || selectedTags.length > 0;
+    
+    const destColOppsUnfiltered = opportunities
+      .filter(o => o.column_id === destColId && o.id !== draggableId)
+      .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
 
-      try {
-        for (const opp of updatedColOpps) {
-          const { error } = await supabase.from('opportunities').update({ order_index: opp.order_index }).eq('id', opp.id);
-          if (error && !error.message?.includes('order_index') && error.code !== 'PGRST204') throw error;
-        }
-      } catch (e) {
-        console.warn("A coluna order_index pode não existir em opportunities.");
+    let realInsertIndex = destination.index;
+
+    if (isFiltered) {
+      const filteredDestColOpps = filteredOpportunities
+        .filter(o => o.column_id === destColId && o.id !== draggableId)
+        .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+        
+      const itemAtDest = filteredDestColOpps[destination.index];
+
+      if (itemAtDest) {
+        realInsertIndex = destColOppsUnfiltered.findIndex(o => o.id === itemAtDest.id);
+        if (realInsertIndex === -1) realInsertIndex = destColOppsUnfiltered.length;
+      } else {
+        realInsertIndex = destColOppsUnfiltered.length;
       }
-      return;
     }
 
-    // Mover entre colunas diferentes
-    const sourceColOpps = opportunities.filter(o => o.column_id === sourceColId).sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
-    const destColOpps = opportunities.filter(o => o.column_id === destColId).sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
-    const otherOpps = opportunities.filter(o => o.column_id !== sourceColId && o.column_id !== destColId);
+    destColOppsUnfiltered.splice(realInsertIndex, 0, movedOpp);
+    const updatedDestColOpps = destColOppsUnfiltered.map((o, idx) => ({ ...o, order_index: idx }));
 
-    const [movedOpp] = sourceColOpps.splice(source.index, 1);
-    movedOpp.column_id = destColId;
-    destColOpps.splice(destination.index, 0, movedOpp);
+    let updatedSourceColOpps: Opportunity[] = [];
+    if (sourceColId !== destColId) {
+      const sourceColOppsUnfiltered = opportunities
+        .filter(o => o.column_id === sourceColId && o.id !== draggableId)
+        .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+      updatedSourceColOpps = sourceColOppsUnfiltered.map((o, idx) => ({ ...o, order_index: idx }));
+    }
 
-    const updatedSourceOpps = sourceColOpps.map((o, idx) => ({ ...o, order_index: idx }));
-    const updatedDestOpps = destColOpps.map((o, idx) => ({ ...o, order_index: idx }));
-
-    setOpportunities([...otherOpps, ...updatedSourceOpps, ...updatedDestOpps]);
+    setOpportunities(prev => {
+      const otherOpps = prev.filter(o => o.column_id !== sourceColId && o.column_id !== destColId && o.id !== draggableId);
+      return [...otherOpps, ...updatedSourceColOpps, ...updatedDestColOpps];
+    });
 
     try {
-      await supabase.from('opportunities').update({ column_id: destColId, order_index: destination.index }).eq('id', draggableId);
+      await supabase.from('opportunities').update({ column_id: destColId, order_index: realInsertIndex }).eq('id', draggableId);
       
-      for (const opp of updatedDestOpps) {
+      for (const opp of updatedDestColOpps) {
+        if (opp.id === draggableId) continue;
         const { error } = await supabase.from('opportunities').update({ order_index: opp.order_index }).eq('id', opp.id);
         if (error && !error.message?.includes('order_index') && error.code !== 'PGRST204') throw error;
       }
     } catch (e) {
-      console.warn("A coluna order_index pode não existir.");
+      console.warn("A coluna order_index pode não existir.", e);
     }
   };
 
-  // Gerenciamento de Pipelines (Renomear, Deletar, Reordenar)
+  const moveCard = (oppId: string, colId: string, direction: 'up' | 'down', e: React.MouseEvent) => {
+    e.stopPropagation();
+    const colOpps = opportunities.filter(o => o.column_id === colId).sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+    const otherOpps = opportunities.filter(o => o.column_id !== colId);
+    const index = colOpps.findIndex(o => o.id === oppId);
+    
+    if (direction === 'up' && index > 0) {
+      const temp = colOpps[index];
+      colOpps[index] = colOpps[index - 1];
+      colOpps[index - 1] = temp;
+    } else if (direction === 'down' && index < colOpps.length - 1) {
+      const temp = colOpps[index];
+      colOpps[index] = colOpps[index + 1];
+      colOpps[index + 1] = temp;
+    } else {
+      return; 
+    }
+
+    const updatedColOpps = colOpps.map((o, idx) => ({ ...o, order_index: idx }));
+    setOpportunities([...otherOpps, ...updatedColOpps]);
+
+    Promise.all(updatedColOpps.map(opp => 
+      supabase.from('opportunities').update({ order_index: opp.order_index }).eq('id', opp.id)
+    )).catch(err => console.warn("Error updating order", err));
+  };
+
+
   const handleUpdatePipelineName = async (id: string) => {
     if (!editingPipelineName.trim()) {
       setEditingPipelineId(null);
@@ -463,8 +487,6 @@ export default function Oportunidades() {
     }
   };
 
-
-  // Seleções
   const toggleColumnSelection = (colId: string, colOppsIds: string[]) => {
     const allSelectedInCol = colOppsIds.length > 0 && colOppsIds.every(id => selectedOpps.includes(id));
     if (allSelectedInCol) {
@@ -522,7 +544,6 @@ export default function Oportunidades() {
     }
   };
 
-  // Mover Card Individual (Mobile UX)
   const handleMoveSingleCard = async () => {
     if (!oppToMoveSingle || !moveSingleTargetCol) return;
 
@@ -537,7 +558,6 @@ export default function Oportunidades() {
     }
   };
 
-  // Ações nos Cards
   const handleToggleClient = async (e: React.MouseEvent, opp: Opportunity) => {
     e.stopPropagation();
     try {
@@ -678,7 +698,6 @@ export default function Oportunidades() {
     }
   };
 
-  // Criação de Leads e Link Forms
   const handleCreateNew = async () => {
     if (activeTab === 'opp' && !formData.name) return toast.error("Nome é obrigatório.");
     if (activeTab === 'link' && !formData.name) return toast.error("Nome é obrigatório.");
