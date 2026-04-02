@@ -2,12 +2,14 @@ import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, ShieldCheck, CheckCircle2, ArrowRight, User, CreditCard, PenTool, Calendar, DollarSign, PartyPopper } from "lucide-react";
+import { Loader2, ShieldCheck, CheckCircle2, ArrowRight, User, CreditCard, PenTool, Calendar, DollarSign, PartyPopper, AlertCircle } from "lucide-react";
 import SignaturePad from "react-signature-canvas";
 
 const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+
 const formatDate = (dateStr: string) => {
   if (!dateStr) return '';
+  if (dateStr.includes('T')) dateStr = dateStr.split('T')[0];
   const [y, m, d] = dateStr.split('-');
   return `${d}/${m}/${y}`;
 };
@@ -40,7 +42,12 @@ export default function ClosingPublicView() {
   
   const [fetchingCep, setFetchingCep] = useState(false);
 
-  // Condições Comerciais
+  // Condições Comerciais (Custom Installments)
+  const [isCustomPlan, setIsCustomPlan] = useState(false);
+  const [clientCanEdit, setClientCanEdit] = useState(false);
+  const [customInstallments, setCustomInstallments] = useState<any[]>([]);
+  
+  // Legacy Fallback
   const [selectedInstallments, setSelectedInstallments] = useState(1);
   const [contractPreview, setContractPreview] = useState<string>("");
 
@@ -59,6 +66,13 @@ export default function ClosingPublicView() {
       setLinkData(data.link);
       setOpportunity(data.opportunity);
       setTemplate(data.template);
+
+      if (data.link.installments && data.link.installments.length > 0) {
+        setIsCustomPlan(true);
+        setCustomInstallments(data.link.installments);
+        setClientCanEdit(data.link.client_can_edit_installments || false);
+        setSelectedInstallments(data.link.installments.length);
+      }
 
     } catch (error) {
       console.error(error);
@@ -96,6 +110,9 @@ export default function ClosingPublicView() {
     }
   };
 
+  const customInstSum = customInstallments.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+  const isSumValid = Math.abs(Number(linkData?.value || 0) - customInstSum) < 0.05;
+
   const handleNextStep = () => {
     if (step === 1) {
       if (!clientData.cpf || !clientData.profession || !clientData.cep || !clientData.street || !clientData.number || !clientData.neighborhood || !clientData.city || !clientData.state) {
@@ -103,11 +120,14 @@ export default function ClosingPublicView() {
       }
     }
     if (step === 2) {
+      if (isCustomPlan && clientCanEdit && !isSumValid) {
+        return toast.error("A soma das parcelas deve ser igual ao valor total do contrato.");
+      }
+
       try {
-        // Gerar a pré-visualização do contrato
         const fullAddress = `${clientData.street}, ${clientData.number}${clientData.complement ? ` - ${clientData.complement}` : ''}, ${clientData.neighborhood}, ${clientData.city} - ${clientData.state}, CEP: ${clientData.cep}`;
         const amount = Number(linkData?.value || 0);
-        const count = selectedInstallments;
+        const count = isCustomPlan ? customInstallments.length : selectedInstallments;
         
         let contractText = template?.description || 'Contrato Padrão';
         const oppName = opportunity?.name || 'Cliente';
@@ -139,40 +159,51 @@ export default function ClosingPublicView() {
       return toast.error("Preencha todos os campos obrigatórios na Etapa 1.");
     }
 
-    if (sigCanvas.current.isEmpty()) {
+    if (sigCanvas.current?.isEmpty()) {
       return toast.error("Por favor, assine o contrato para finalizar.");
     }
 
     setSubmitting(true);
     try {
-      const signatureImage = sigCanvas.current.getCanvas().toDataURL('image/png');
+      const signatureImage = sigCanvas.current!.getCanvas().toDataURL('image/png');
 
-      const count = selectedInstallments;
       const amount = Number(linkData.value);
-      const baseAmount = Math.floor((amount / count) * 100) / 100;
-      const remainder = amount - (baseAmount * count);
+      const count = isCustomPlan ? customInstallments.length : selectedInstallments;
       
-      const installments = [];
-      for (let i = 0; i < count; i++) {
-        const d = new Date();
-        d.setMonth(d.getMonth() + i);
-        installments.push({
+      let finalInstallments = [];
+
+      if (isCustomPlan) {
+        finalInstallments = customInstallments.map((inst, i) => ({
+          ...inst,
           id: `inst_${i + 1}_${Date.now()}`,
           number: i + 1,
-          dueDate: d.toISOString(),
-          amount: i === count - 1 ? Number((baseAmount + remainder).toFixed(2)) : baseAmount,
           status: 'Pendente',
           paidDate: null
-        });
+        }));
+      } else {
+        const baseAmount = Math.floor((amount / count) * 100) / 100;
+        const remainder = amount - (baseAmount * count);
+        
+        for (let i = 0; i < count; i++) {
+          const d = new Date();
+          d.setMonth(d.getMonth() + i);
+          finalInstallments.push({
+            id: `inst_${i + 1}_${Date.now()}`,
+            number: i + 1,
+            dueDate: d.toISOString(),
+            amount: i === count - 1 ? Number((baseAmount + remainder).toFixed(2)) : baseAmount,
+            status: 'Pendente',
+            paidDate: null
+          });
+        }
       }
 
-      // Call secure RPC to bypass RLS and create everything
       const { data: result, error: rpcError } = await supabase.rpc('finalize_closing_link', {
         p_token: token,
         p_client_data: clientData,
         p_amount: amount,
         p_installment_count: count,
-        p_installments: count > 1 ? installments : null,
+        p_installments: count > 1 ? finalInstallments : null,
         p_contract_preview: contractPreview,
         p_signature_image: signatureImage
       });
@@ -181,12 +212,10 @@ export default function ClosingPublicView() {
 
       const { transaction_id, contract_id, opportunity_name, opportunity_phone } = result as any;
 
-      // 6. Gerar Pix e Enviar WhatsApp via Edge Function
       if (transaction_id) {
-        const firstInstallmentId = count > 1 ? installments[0].id : null;
-        const firstAmount = count > 1 ? installments[0].amount : amount;
+        const firstInstallmentId = count > 1 ? finalInstallments[0].id : null;
+        const firstAmount = count > 1 ? finalInstallments[0].amount : amount;
 
-        // Fire and forget edge function
         fetch('https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/public-closing-success', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -198,13 +227,13 @@ export default function ClosingPublicView() {
             amount: firstAmount,
             payer_name: opportunity_name,
             payer_cpf: clientData.cpf,
-            due_date: new Date().toISOString(),
+            due_date: finalInstallments.length > 0 ? finalInstallments[0].dueDate : new Date().toISOString(),
             client_phone: opportunity_phone
           })
         }).catch(console.error);
       }
 
-      setStep(4); // Sucesso!
+      setStep(4); 
     } catch (error) {
       console.error(error);
       toast.error("Erro ao finalizar processo. Tente novamente.");
@@ -226,7 +255,6 @@ export default function ClosingPublicView() {
     );
   }
 
-  // Opções de parcelamento permitidas
   const installmentOptions = Array.from({ length: linkData.max_installments }, (_, i) => i + 1);
 
   return (
@@ -417,40 +445,107 @@ export default function ClosingPublicView() {
               <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
                 <CreditCard className="w-5 h-5" />
               </div>
-              <h2 className="text-xl font-bold">Forma de Pagamento</h2>
+              <h2 className="text-xl font-bold">Plano de Pagamento</h2>
             </div>
 
-            <div className="space-y-4">
-              <label className="block text-sm font-bold text-gray-700 mb-1.5">Como prefere realizar o pagamento?</label>
-              <div className="grid gap-3">
-                {installmentOptions.map(num => {
-                  const instValue = linkData.value / num;
-                  return (
-                    <label 
-                      key={num} 
-                      className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${selectedInstallments === num ? 'border-orange-500 bg-orange-50/50 shadow-sm' : 'border-gray-100 hover:border-gray-300'}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <input 
-                          type="radio" 
-                          name="installment" 
-                          checked={selectedInstallments === num}
-                          onChange={() => setSelectedInstallments(num)}
-                          className="w-5 h-5 accent-orange-500"
-                        />
-                        <div>
-                          <span className="font-bold text-gray-900 block">{num === 1 ? 'À vista' : `Parcelado em ${num}x`}</span>
-                          {num > 1 && <span className="text-xs text-gray-500 font-medium">Sem juros</span>}
+            {isCustomPlan ? (
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-2">
+                    <p className="text-sm font-bold text-gray-700">Valores e Datas das Parcelas</p>
+                    {clientCanEdit && <span className="text-[11px] bg-orange-100 text-orange-700 px-2 py-1 rounded-md font-bold uppercase tracking-wider">Você pode editar os dados</span>}
+                </div>
+                
+                <div className="space-y-3">
+                    {customInstallments.map((inst, idx) => (
+                        <div key={idx} className="flex flex-col sm:flex-row gap-3 items-start sm:items-center bg-gray-50 p-4 rounded-xl border border-gray-200">
+                            <div className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center font-bold text-gray-500 shrink-0">
+                              {idx + 1}
+                            </div>
+                            
+                            {clientCanEdit ? (
+                                <div className="flex gap-3 w-full">
+                                    <div className="flex-1">
+                                        <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Vencimento</label>
+                                        <input 
+                                            type="date" 
+                                            value={inst.dueDate} 
+                                            onChange={(e) => {
+                                                const newInsts = [...customInstallments];
+                                                newInsts[idx].dueDate = e.target.value;
+                                                setCustomInstallments(newInsts);
+                                            }}
+                                            className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm font-medium focus:ring-2 focus:ring-orange-400 outline-none"
+                                        />
+                                    </div>
+                                    <div className="flex-1">
+                                        <label className="text-[10px] uppercase font-bold text-gray-400 mb-1 block">Valor (R$)</label>
+                                        <input 
+                                            type="number" 
+                                            step="0.01"
+                                            value={inst.amount} 
+                                            onChange={(e) => {
+                                                const newInsts = [...customInstallments];
+                                                newInsts[idx].amount = e.target.value;
+                                                setCustomInstallments(newInsts);
+                                            }}
+                                            className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm font-bold focus:ring-2 focus:ring-orange-400 outline-none"
+                                        />
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex flex-1 w-full items-center justify-between pl-1">
+                                    <span className="text-sm font-medium text-gray-600">Vencimento: <strong>{formatDate(inst.dueDate)}</strong></span>
+                                    <span className="text-lg font-black text-gray-900">{formatCurrency(Number(inst.amount))}</span>
+                                </div>
+                            )}
                         </div>
-                      </div>
-                      <span className="font-black text-gray-900 text-lg">{formatCurrency(instValue)}</span>
-                    </label>
-                  )
-                })}
-              </div>
-            </div>
+                    ))}
+                </div>
 
-            <div className="flex gap-3 mt-8">
+                {clientCanEdit && (
+                    <div className={`mt-6 p-4 rounded-xl border flex justify-between items-center text-sm font-bold transition-colors ${isSumValid ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-600'}`}>
+                        <span>Soma Total: {formatCurrency(customInstSum)}</span>
+                        {!isSumValid && (
+                          <span className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-lg border border-red-100 shadow-sm">
+                            <AlertCircle className="w-4 h-4" /> Diferença: {formatCurrency(Number(linkData.value) - customInstSum)}
+                          </span>
+                        )}
+                    </div>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1.5">Como prefere realizar o pagamento?</label>
+                <div className="grid gap-3">
+                  {Array.from({ length: linkData.max_installments }, (_, i) => i + 1).map(num => {
+                    const instValue = linkData.value / num;
+                    return (
+                      <label 
+                        key={num} 
+                        className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${selectedInstallments === num ? 'border-orange-500 bg-orange-50/50 shadow-sm' : 'border-gray-100 hover:border-gray-300'}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input 
+                            type="radio" 
+                            name="installment" 
+                            checked={selectedInstallments === num}
+                            onChange={() => setSelectedInstallments(num)}
+                            className="w-5 h-5 accent-orange-500"
+                          />
+                          <div>
+                            <span className="font-bold text-gray-900 block">{num === 1 ? 'À vista' : `Parcelado em ${num}x`}</span>
+                            {num > 1 && <span className="text-xs text-gray-500 font-medium">Sem juros</span>}
+                          </div>
+                        </div>
+                        <span className="font-black text-gray-900 text-lg">{formatCurrency(instValue)}</span>
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3 mt-8 pt-6 border-t border-gray-100">
               <button 
                 onClick={() => setStep(1)}
                 className="w-1/3 bg-gray-100 text-gray-700 font-bold py-4 rounded-xl hover:bg-gray-200 transition-all"
@@ -459,7 +554,8 @@ export default function ClosingPublicView() {
               </button>
               <button 
                 onClick={handleNextStep}
-                className="w-2/3 bg-gray-900 text-white font-bold py-4 rounded-xl hover:bg-black transition-all flex items-center justify-center gap-2 active:scale-95"
+                disabled={isCustomPlan && clientCanEdit && !isSumValid}
+                className="w-2/3 bg-gray-900 text-white font-bold py-4 rounded-xl hover:bg-black transition-all flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
               >
                 Ir para Assinatura <ArrowRight className="w-5 h-5" />
               </button>
@@ -483,7 +579,7 @@ export default function ClosingPublicView() {
               <div className="space-y-3 mb-6 bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
                 <p className="text-sm flex justify-between border-b border-gray-50 pb-2"><strong className="text-gray-900">Nome:</strong> <span className="text-gray-600">{opportunity?.name || 'Cliente'}</span></p>
                 <p className="text-sm flex justify-between border-b border-gray-50 pb-2"><strong className="text-gray-900">CPF:</strong> <span className="text-gray-600">{clientData.cpf}</span></p>
-                <p className="text-sm flex justify-between border-b border-gray-50 pb-2"><strong className="text-gray-900">Total:</strong> <span className="text-gray-600">{formatCurrency(linkData?.value || 0)} em {selectedInstallments}x</span></p>
+                <p className="text-sm flex justify-between border-b border-gray-50 pb-2"><strong className="text-gray-900">Total:</strong> <span className="text-gray-600">{formatCurrency(linkData?.value || 0)} em {isCustomPlan ? customInstallments.length : selectedInstallments}x</span></p>
                 {linkData?.event_date && <p className="text-sm flex justify-between"><strong className="text-gray-900">Data do Evento:</strong> <span className="text-gray-600">{formatDate(linkData.event_date)}</span></p>}
               </div>
 
