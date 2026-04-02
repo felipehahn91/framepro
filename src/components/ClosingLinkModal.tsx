@@ -151,15 +151,15 @@ export default function ClosingLinkModal({ isOpen, onClose, opportunity }: Closi
             </div>
             <h2 className="text-2xl font-black text-gray-900 mb-2">Link Gerado!</h2>
             <p className="text-gray-500 font-medium mb-8 text-sm">
-              O link de fechamento foi gerado com sucesso para <strong>{opportunity.name}</strong>.
+              O link de fechamento foi gerado com sucesso para <strong className="break-words">{opportunity.name}</strong>.
             </p>
 
-            <div className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 sm:p-4 mb-6 relative flex items-center gap-2 sm:gap-3 overflow-hidden">
-              <div className="truncate flex-1 text-xs sm:text-sm font-medium text-gray-600 text-left select-all overflow-hidden">
+            <div className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 sm:p-4 mb-6 relative flex flex-col sm:flex-row items-center gap-3 overflow-hidden">
+              <div className="flex-1 w-full text-xs sm:text-sm font-medium text-gray-600 text-center sm:text-left break-all select-all">
                 {generatedLink}
               </div>
-              <Button size="icon" variant="ghost" onClick={handleCopyLink} className="shrink-0 h-8 w-8 hover:bg-gray-200 text-gray-500 hover:text-gray-900">
-                <Copy className="w-4 h-4" />
+              <Button variant="outline" onClick={handleCopyLink} className="shrink-0 h-10 w-full sm:w-auto bg-white hover:bg-gray-100 text-gray-700 font-bold border-gray-200 shadow-sm rounded-lg flex items-center gap-2">
+                <Copy className="w-4 h-4" /> Copiar
               </Button>
             </div>
 
