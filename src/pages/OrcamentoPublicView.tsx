@@ -329,7 +329,7 @@ export default function OrcamentoPublicView() {
             style={{
               maxWidth: globalSettings.maxWidth || '900px',
               backgroundColor: globalSettings.backgroundColor || '#ffffff',
-              minHeight: '1000px'
+              minHeight: pdfSection?.fileUrl ? 'auto' : '1000px'
             }}
           >
             {pdfSection?.fileUrl ? (

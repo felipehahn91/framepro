@@ -1440,7 +1440,7 @@ export default function OrcamentoEditor() {
           >
             
             <div
-              className={`w-full shadow-2xl border border-gray-200 flex flex-col relative transition-all overflow-hidden shrink-0 ${isPDFMode ? 'min-h-[1000px] mb-4' : 'min-h-[1000px] h-fit mb-20'}`}
+              className={`w-full shadow-2xl border border-gray-200 flex flex-col relative transition-all overflow-hidden shrink-0 ${isPDFMode && pdfSection?.fileUrl ? 'h-fit mb-4' : 'min-h-[1000px] h-fit mb-20'}`}
               style={{
                 maxWidth: globalSettings.maxWidth,
                 backgroundColor: globalSettings.backgroundColor
