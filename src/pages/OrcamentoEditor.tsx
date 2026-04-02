@@ -756,48 +756,21 @@ export default function OrcamentoEditor() {
                   
                   {/* BOTÕES CTA */}
                   <div className="space-y-4 pt-2">
-                    <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                    <div className="flex flex-col gap-3 border-b border-gray-100 pb-4">
                       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Botões de Ação (CTAs)</h3>
-                      <button onClick={() => {
-                        if (pdfSection) {
-                          // Calcula uma posição exata no terço superior do trecho visível do PDF
-                          const scrollArea = document.getElementById('pdf-scroll-area');
-                          const proposal = document.getElementById('proposal-container');
-                          let topPercent = 50;
-                          
-                          if (scrollArea && proposal) {
-                            const scrollRect = scrollArea.getBoundingClientRect();
-                            const propRect = proposal.getBoundingClientRect();
-                            
-                            // Define o botão para nascer 150px abaixo do topo exato da área de rolagem visível
-                            const targetY = scrollRect.top + 150;
-                            const relativeY = targetY - propRect.top;
-                            
-                            topPercent = (relativeY / propRect.height) * 100;
-                            // Garante que o botão não passe dos limites da folha
-                            topPercent = Math.max(1, Math.min(99, topPercent));
-                          }
-
-                          const ctas = pdfSection.ctas || [];
-                          updateSection(pdfSection.id, {
-                            ctas: [...ctas, {
-                              id: crypto.randomUUID(),
-                              label: 'Aprovar Orçamento',
-                              link: '',
-                              color: '#f97316',
-                              textColor: '#ffffff',
-                              borderRadius: '9999px',
-                              fontFamily: 'inherit',
-                              isBold: true,
-                              isUppercase: false,
-                              isGrouped: false, // Agora vem como posicionamento livre por padrão
-                              top: `${topPercent.toFixed(2)}%`, // Nasce onde você está olhando
-                              left: '50%'
-                            }]
-                          });
-                          setExpandedCtaIndex(ctas.length);
-                        }
-                      }} className="p-1.5 bg-orange-100 text-orange-600 rounded hover:bg-orange-200"><Plus className="w-4 h-4" /></button>
+                      
+                      <div
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('text/plain', 'new-cta');
+                          e.dataTransfer.effectAllowed = 'copy';
+                        }}
+                        className="flex items-center justify-center gap-2 w-full py-3 bg-orange-50 text-orange-600 border-2 border-orange-200 border-dashed rounded-lg cursor-grab active:cursor-grabbing hover:bg-orange-100 transition-colors shadow-sm text-xs font-bold"
+                        title="Clique, segure e arraste para o PDF ao lado"
+                      >
+                        <MousePointerClick className="w-4 h-4 animate-bounce" />
+                        Arraste-me para o PDF
+                      </div>
                     </div>
                     
                     <div className="space-y-4">
@@ -1480,6 +1453,44 @@ export default function OrcamentoEditor() {
                   onMouseMove={handleDragMouseMove}
                   onMouseUp={() => setDraggingCtaIndex(null)}
                   onMouseLeave={() => setDraggingCtaIndex(null)}
+                  onDragOver={(e) => {
+                    e.preventDefault(); // Permite que a área aceite o "drop"
+                    e.dataTransfer.dropEffect = 'copy';
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const data = e.dataTransfer.getData('text/plain');
+                    
+                    if (data === 'new-cta' && pdfSection) {
+                      // Calcula a porcentagem exata com base em onde o mouse foi solto
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      let x = ((e.clientX - rect.left) / rect.width) * 100;
+                      let y = ((e.clientY - rect.top) / rect.height) * 100;
+                      
+                      // Mantém o botão dentro dos limites
+                      x = Math.max(0, Math.min(100, x));
+                      y = Math.max(0, Math.min(100, y));
+
+                      const ctas = pdfSection.ctas || [];
+                      updateSection(pdfSection.id, {
+                        ctas: [...ctas, {
+                          id: crypto.randomUUID(),
+                          label: 'Novo Botão',
+                          link: '',
+                          color: '#f97316',
+                          textColor: '#ffffff',
+                          borderRadius: '9999px',
+                          fontFamily: 'inherit',
+                          isBold: true,
+                          isUppercase: false,
+                          isGrouped: false,
+                          top: `${y.toFixed(2)}%`,
+                          left: `${x.toFixed(2)}%`
+                        }]
+                      });
+                      setExpandedCtaIndex(ctas.length);
+                    }
+                  }}
                 >
                   {pdfSection?.fileUrl ? (
                     <>
