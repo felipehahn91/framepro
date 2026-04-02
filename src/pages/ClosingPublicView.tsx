@@ -110,24 +110,31 @@ export default function ClosingPublicView() {
       }
     }
     if (step === 2) {
-      // Gerar a pré-visualização do contrato
-      const fullAddress = `${clientData.street}, ${clientData.number}${clientData.complement ? ` - ${clientData.complement}` : ''}, ${clientData.neighborhood}, ${clientData.city} - ${clientData.state}, CEP: ${clientData.cep}`;
-      const amount = Number(linkData.value);
-      const count = selectedInstallments;
-      
-      let contractText = template?.description || 'Contrato Padrão';
-      contractText = contractText.replace(/\{\{nome\}\}/gi, opportunity.name);
-      contractText = contractText.replace(/\{\{cpf\}\}/gi, clientData.cpf);
-      contractText = contractText.replace(/\{\{endereco\}\}/gi, fullAddress);
-      contractText = contractText.replace(/\{\{estado_civil\}\}/gi, clientData.civil_status);
-      contractText = contractText.replace(/\{\{profissao\}\}/gi, clientData.profession);
-      contractText = contractText.replace(/\{\{valor\}\}/gi, formatCurrency(amount));
-      contractText = contractText.replace(/\{\{parcelas\}\}/gi, String(count));
-      if (linkData.event_date) {
-        contractText = contractText.replace(/\{\{data_evento\}\}/gi, formatDate(linkData.event_date));
+      try {
+        // Gerar a pré-visualização do contrato
+        const fullAddress = `${clientData.street}, ${clientData.number}${clientData.complement ? ` - ${clientData.complement}` : ''}, ${clientData.neighborhood}, ${clientData.city} - ${clientData.state}, CEP: ${clientData.cep}`;
+        const amount = Number(linkData?.value || 0);
+        const count = selectedInstallments;
+        
+        let contractText = template?.description || 'Contrato Padrão';
+        const oppName = opportunity?.name || 'Cliente';
+        
+        contractText = contractText.replace(/\{\{nome\}\}/gi, oppName);
+        contractText = contractText.replace(/\{\{cpf\}\}/gi, clientData.cpf);
+        contractText = contractText.replace(/\{\{endereco\}\}/gi, fullAddress);
+        contractText = contractText.replace(/\{\{estado_civil\}\}/gi, clientData.civil_status);
+        contractText = contractText.replace(/\{\{profissao\}\}/gi, clientData.profession);
+        contractText = contractText.replace(/\{\{valor\}\}/gi, formatCurrency(amount));
+        contractText = contractText.replace(/\{\{parcelas\}\}/gi, String(count));
+        if (linkData?.event_date) {
+          contractText = contractText.replace(/\{\{data_evento\}\}/gi, formatDate(linkData.event_date));
+        }
+        
+        setContractPreview(contractText);
+      } catch (err) {
+        console.error("Error generating preview", err);
+        setContractPreview('Contrato Padrão');
       }
-      
-      setContractPreview(contractText);
     }
     
     setStep(prev => prev + 1);
@@ -271,7 +278,7 @@ export default function ClosingPublicView() {
         {/* Header Resumo */}
         {step < 4 && (
           <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 text-center animate-in fade-in slide-in-from-top-4">
-            <h1 className="text-2xl font-black text-gray-900 mb-1">Olá, {opportunity?.name.split(' ')[0]}!</h1>
+            <h1 className="text-2xl font-black text-gray-900 mb-1">Olá{opportunity?.name ? `, ${opportunity.name.split(' ')[0]}` : ''}!</h1>
             <p className="text-gray-500 font-medium mb-6">Falta pouco para garantirmos a data do seu evento.</p>
             
             <div className="grid grid-cols-2 gap-4">
