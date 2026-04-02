@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
 import { 
   Camera, Video, LayoutTemplate, PenTool, CheckCircle2, 
-  MessageSquare, Zap, Target, ArrowRight, ShieldCheck 
+  MessageSquare, Zap, Target, ArrowRight, ShieldCheck, 
+  Star, DollarSign, BarChart3, Users, Check, Eye
 } from 'lucide-react';
 
 export default function LandingPage() {
@@ -16,28 +16,28 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#fafafa] font-sans text-gray-900 selection:bg-orange-500/30">
+    <div className="min-h-screen bg-gray-50 font-sans text-gray-900 selection:bg-orange-500 selection:text-white">
       {/* NAVBAR */}
-      <nav className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-md border-b border-gray-100 z-50">
+      <nav className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-b border-gray-200/50 z-50 transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/20">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/20">
               <span className="text-white font-black text-xl">F</span>
             </div>
             <span className="font-black text-xl tracking-tight text-gray-900">Frame Pro</span>
           </div>
           
-          <div className="hidden md:flex items-center gap-8 font-semibold text-sm text-gray-600">
-            <a href="#recursos" className="hover:text-orange-500 transition-colors">Recursos</a>
-            <a href="#propostas" className="hover:text-orange-500 transition-colors">Propostas</a>
-            <a href="#contratos" className="hover:text-orange-500 transition-colors">Contratos</a>
+          <div className="hidden md:flex items-center gap-8 font-bold text-sm text-gray-500">
+            <a href="#recursos" className="hover:text-gray-900 transition-colors">Como Funciona</a>
+            <a href="#propostas" className="hover:text-gray-900 transition-colors">Propostas</a>
+            <a href="#planos" className="hover:text-gray-900 transition-colors">Planos</a>
           </div>
 
-          <div className="flex items-center gap-3">
-            <Link to="/login" className="hidden sm:block text-sm font-bold text-gray-600 hover:text-gray-900 px-4 py-2">
+          <div className="flex items-center gap-4">
+            <Link to="/login" className="hidden sm:block text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors">
               Entrar
             </Link>
-            <Link to="/signup" className="bg-gray-900 hover:bg-black text-white text-sm font-bold px-6 py-2.5 rounded-xl shadow-lg transition-all active:scale-95 flex items-center gap-2">
+            <Link to="/signup" className="bg-gray-900 hover:bg-black text-white text-sm font-bold px-6 py-3 rounded-2xl shadow-lg shadow-gray-900/20 transition-all active:scale-95 flex items-center gap-2">
               Teste Grátis
             </Link>
           </div>
@@ -45,123 +45,152 @@ export default function LandingPage() {
       </nav>
 
       {/* HERO SECTION */}
-      <section className="pt-40 pb-20 px-4 sm:px-6 relative overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-orange-400/10 rounded-full blur-3xl -z-10"></div>
-        
-        <div className="max-w-4xl mx-auto text-center relative z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-50 border border-orange-200 text-orange-600 font-bold text-xs uppercase tracking-wider mb-8 shadow-sm">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
-            </span>
-            Feito para profissionais do audiovisual
+      <section className="pt-32 pb-12 sm:pt-40 sm:pb-20 px-4 sm:px-6 relative flex flex-col items-center text-center">
+        <div className="max-w-5xl mx-auto relative z-10 flex flex-col items-center">
+          
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-100/50 border border-orange-200 text-orange-600 font-bold text-xs uppercase tracking-wider mb-8">
+            <Star className="w-3.5 h-3.5 fill-orange-500 text-orange-500" />
+            O CRM nº1 para o mercado Audiovisual
           </div>
 
-          <h1 className="text-5xl sm:text-6xl md:text-7xl font-black text-gray-900 tracking-tight leading-[1.1] mb-6">
-            Pare de perder clientes para profissionais <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-500">menos talentosos</span> que você.
+          <h1 className="text-5xl sm:text-6xl md:text-7xl font-black text-gray-900 tracking-tight leading-[1.05] mb-6">
+            Pare de perder clientes para quem tem <span className="text-orange-500">menos talento</span> que você.
           </h1>
           
-          <p className="text-lg sm:text-xl text-gray-500 font-medium mb-10 max-w-2xl mx-auto leading-relaxed">
-            O Frame Pro é o CRM que organiza seus leads, envia orçamentos irresistíveis e automatiza seus contratos. Foque na sua arte, nós cuidamos das suas vendas.
+          <p className="text-lg sm:text-xl text-gray-500 font-medium mb-10 max-w-2xl leading-relaxed">
+            Feche mais orçamentos com propostas interativas, organize sua agenda e automatize seus contratos. Mostre o valor da sua arte desde o primeiro "Olá".
           </p>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link to="/signup" className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white text-lg font-black px-8 py-4 rounded-2xl shadow-xl shadow-orange-500/20 transition-all hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2">
-              COMEÇAR TESTE GRÁTIS <ArrowRight className="w-5 h-5" />
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto">
+            <Link to="/signup" className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white text-lg font-black px-8 py-4.5 rounded-2xl shadow-xl shadow-orange-500/25 transition-all hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2">
+              COMEÇAR 14 DIAS GRÁTIS <ArrowRight className="w-5 h-5" />
             </Link>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-widest sm:hidden">Sem cartão de crédito</p>
+            <Link to="#recursos" className="w-full sm:w-auto bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 text-lg font-bold px-8 py-4 rounded-2xl transition-all flex items-center justify-center">
+              Ver recursos
+            </Link>
           </div>
-          <p className="hidden sm:block text-xs font-bold text-gray-400 uppercase tracking-widest mt-4">14 dias grátis • Sem cartão de crédito</p>
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-6">Sem necessidade de cartão de crédito</p>
         </div>
 
-        {/* HERO MOCKUP */}
-        <div className="max-w-6xl mx-auto mt-20 relative">
-          <div className="absolute inset-0 bg-gradient-to-t from-[#fafafa] via-transparent to-transparent z-10 h-full w-full bottom-0"></div>
-          <img 
-            src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2426&auto=format&fit=crop" 
-            alt="Dashboard Frame Pro" 
-            className="rounded-t-3xl shadow-2xl border border-gray-200 object-cover h-[400px] w-full object-top opacity-90"
-          />
+        {/* HERO IMAGE APP PREVIEW */}
+        <div className="max-w-6xl mx-auto mt-16 w-full px-4 sm:px-0">
+          <div className="bg-gray-900 rounded-[2.5rem] p-2 sm:p-4 shadow-2xl overflow-hidden relative">
+            <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 to-transparent z-10 pointer-events-none"></div>
+            <img 
+              src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2426&auto=format&fit=crop" 
+              alt="Dashboard Frame Pro" 
+              className="rounded-[2rem] border border-gray-800 w-full h-[300px] sm:h-[500px] object-cover object-top opacity-90"
+            />
+          </div>
         </div>
       </section>
 
-      {/* FEATURES GRID */}
-      <section id="recursos" className="py-24 px-4 sm:px-6 bg-white relative z-20">
+      {/* BENTO GRID FEATURES */}
+      <section id="recursos" className="py-24 px-4 sm:px-6 bg-white">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16 max-w-3xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-4">Você é um artista, não um robô de planilhas.</h2>
-            <p className="text-gray-500 font-medium">Reunimos todas as ferramentas que um fotógrafo ou videomaker precisa para fechar negócios com postura premium.</p>
+          <div className="mb-16 md:flex md:items-end md:justify-between">
+            <div className="max-w-2xl">
+              <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">Tudo que seu estúdio precisa.</h2>
+              <p className="text-xl text-gray-500 font-medium">Deixe as planilhas no passado e gerencie seu negócio como um verdadeiro profissional.</p>
+            </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-gray-50 border border-gray-100 p-8 rounded-3xl hover:border-orange-200 transition-colors group">
-              <div className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Target className="w-7 h-7 text-orange-500" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[300px]">
+            {/* Box 1 - Kanban (Span 2) */}
+            <div className="md:col-span-2 bg-gray-50 rounded-3xl p-8 border border-gray-100 flex flex-col justify-between relative overflow-hidden group hover:border-orange-200 transition-colors">
+              <div className="relative z-10 max-w-sm">
+                <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center mb-6">
+                  <Target className="w-6 h-6 text-orange-500" />
+                </div>
+                <h3 className="text-2xl font-black text-gray-900 mb-2">Pipeline Visual</h3>
+                <p className="text-gray-500 font-medium">Saiba exatamente em que etapa cada noiva ou empresa está. Nunca mais esqueça um follow-up.</p>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Funil de Vendas (Kanban)</h3>
-              <p className="text-gray-500 font-medium leading-relaxed">
-                Acompanhe cada noiva, debutante ou empresa em um painel visual. Nunca mais esqueça de fazer aquele follow-up no WhatsApp.
-              </p>
+              <img src="https://images.unsplash.com/photo-1512314889357-e157c22f938d?q=80&w=800&auto=format&fit=crop" alt="Kanban" className="absolute -bottom-20 -right-20 w-2/3 rounded-tl-2xl shadow-2xl opacity-50 group-hover:opacity-80 transition-opacity rotate-12" />
             </div>
 
-            <div className="bg-gray-50 border border-gray-100 p-8 rounded-3xl hover:border-blue-200 transition-colors group">
-              <div className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <LayoutTemplate className="w-7 h-7 text-blue-500" />
+            {/* Box 2 - Financeiro */}
+            <div className="bg-gray-900 rounded-3xl p-8 flex flex-col justify-between relative overflow-hidden group">
+              <div className="relative z-10">
+                <div className="w-12 h-12 bg-gray-800 rounded-xl flex items-center justify-center mb-6 border border-gray-700">
+                  <DollarSign className="w-6 h-6 text-green-400" />
+                </div>
+                <h3 className="text-2xl font-black text-white mb-2">Controle Financeiro</h3>
+                <p className="text-gray-400 font-medium">Previsão de receitas, contas a receber e parcelamentos geridos de forma inteligente.</p>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Propostas Interativas</h3>
-              <p className="text-gray-500 font-medium leading-relaxed">
-                Crie orçamentos em formato de landing page. Saiba exatamente quando o cliente abriu sua proposta e quanto tempo ele passou lendo.
-              </p>
             </div>
 
-            <div className="bg-gray-50 border border-gray-100 p-8 rounded-3xl hover:border-green-200 transition-colors group">
-              <div className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <PenTool className="w-7 h-7 text-green-500" />
+            {/* Box 3 - Contratos */}
+            <div className="bg-blue-50 rounded-3xl p-8 border border-blue-100 flex flex-col justify-between relative overflow-hidden group hover:border-blue-300 transition-colors">
+              <div className="relative z-10">
+                <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center mb-6">
+                  <PenTool className="w-6 h-6 text-blue-500" />
+                </div>
+                <h3 className="text-2xl font-black text-gray-900 mb-2">Assinatura Digital</h3>
+                <p className="text-gray-500 font-medium">Contratos com validade jurídica assinados com o dedo pelo celular do cliente.</p>
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Contratos com Assinatura</h3>
-              <p className="text-gray-500 font-medium leading-relaxed">
-                Modelos de contrato com variáveis automáticas. Seu cliente assina direto pelo celular com o dedo, garantindo validade jurídica.
-              </p>
+            </div>
+
+            {/* Box 4 - Automação Whatsapp (Span 2) */}
+            <div className="md:col-span-2 bg-orange-50 rounded-3xl p-8 border border-orange-100 flex flex-col justify-between relative overflow-hidden group hover:border-orange-300 transition-colors">
+              <div className="relative z-10 max-w-sm">
+                <div className="w-12 h-12 bg-white rounded-xl shadow-sm flex items-center justify-center mb-6">
+                  <MessageSquare className="w-6 h-6 text-green-500" />
+                </div>
+                <h3 className="text-2xl font-black text-gray-900 mb-2">Automação de WhatsApp</h3>
+                <p className="text-gray-600 font-medium">Envie lembretes de vencimento, links de propostas e cadências de follow-up direto do CRM para o número do cliente.</p>
+              </div>
+              <img src="https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=800&auto=format&fit=crop" alt="Automação" className="absolute -right-10 top-1/2 -translate-y-1/2 w-1/2 rounded-l-2xl shadow-xl opacity-60 group-hover:opacity-100 transition-opacity" />
             </div>
           </div>
         </div>
       </section>
 
-      {/* DEEP DIVE: PROPOSALS */}
-      <section id="propostas" className="py-24 px-4 sm:px-6 bg-gray-900 text-white overflow-hidden relative">
-        <div className="absolute top-0 left-0 w-full h-full bg-[url('https://images.unsplash.com/photo-1600880292203-757bb62b4baf?q=80&w=2000&auto=format&fit=crop')] opacity-10 bg-cover bg-center mix-blend-overlay"></div>
-        
-        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-16 items-center relative z-10">
-          <div className="space-y-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-white font-bold text-xs uppercase tracking-wider">
-              <Camera className="w-4 h-4" /> Orçamentos que convertem
+      {/* SHOWCASE: PROPOSTAS */}
+      <section id="propostas" className="py-24 px-4 sm:px-6 bg-gray-900 text-white overflow-hidden">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <div className="space-y-8">
+              <div className="inline-flex items-center gap-2 bg-gray-800 border border-gray-700 px-4 py-2 rounded-full text-sm font-bold text-gray-300">
+                <LayoutTemplate className="w-4 h-4 text-orange-500" /> Landing Pages de Vendas
+              </div>
+              <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
+                Seus orçamentos em formato de experiência.
+              </h2>
+              <p className="text-gray-400 text-xl leading-relaxed font-medium">
+                Abandone os PDFs frios. Crie propostas ricas com galerias, vídeos e tabelas de preço interativas. Seu cliente pode aprovar a proposta e fechar negócio com um clique.
+              </p>
+              
+              <ul className="space-y-5 pt-4">
+                <li className="flex items-start gap-4">
+                  <div className="w-8 h-8 rounded-full bg-orange-500/20 flex items-center justify-center shrink-0 mt-1">
+                    <Eye className="w-4 h-4 text-orange-500" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-lg">Avisos de Leitura</h4>
+                    <p className="text-gray-400 font-medium">Receba uma notificação no exato momento que o cliente abrir seu orçamento.</p>
+                  </div>
+                </li>
+                <li className="flex items-start gap-4">
+                  <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center shrink-0 mt-1">
+                    <BarChart3 className="w-4 h-4 text-blue-500" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-lg">Mapa de Calor (Heatmap)</h4>
+                    <p className="text-gray-400 font-medium">Veja as gravações da tela do cliente para descobrir qual pacote chamou mais atenção.</p>
+                  </div>
+                </li>
+              </ul>
             </div>
-            <h2 className="text-4xl md:text-5xl font-black leading-tight">
-              Pare de enviar PDFs chatos pelo WhatsApp.
-            </h2>
-            <p className="text-gray-400 text-lg leading-relaxed">
-              Com o Frame Pro, seu orçamento se torna uma experiência. Mostre seu portfólio, insira vídeos, crie tabelas de preços claras e permita que o cliente aprove a proposta com um clique.
-            </p>
-            <ul className="space-y-4">
-              <li className="flex items-center gap-3 text-gray-300 font-medium">
-                <CheckCircle2 className="w-6 h-6 text-orange-500 shrink-0" />
-                Receba alertas quando o cliente abrir a proposta
-              </li>
-              <li className="flex items-center gap-3 text-gray-300 font-medium">
-                <CheckCircle2 className="w-6 h-6 text-orange-500 shrink-0" />
-                Mapa de calor (Heatmap) para saber onde ele mais clicou
-              </li>
-              <li className="flex items-center gap-3 text-gray-300 font-medium">
-                <CheckCircle2 className="w-6 h-6 text-orange-500 shrink-0" />
-                Aprovação via WhatsApp a um toque de distância
-              </li>
-            </ul>
-          </div>
-          
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-tr from-orange-500 to-purple-600 rounded-3xl transform rotate-3 scale-105 opacity-50 blur-lg"></div>
-            <div className="bg-white rounded-3xl p-2 relative shadow-2xl">
-               <img src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=1000&auto=format&fit=crop" alt="Proposta" className="rounded-2xl w-full h-auto object-cover border border-gray-100" />
+            
+            <div className="relative lg:h-[600px] flex items-center justify-center">
+              {/* Efeitos de fundo */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 bg-orange-500/30 rounded-full blur-[100px]"></div>
+              
+              <img 
+                src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=1000&auto=format&fit=crop" 
+                alt="Orçamentos Interativos" 
+                className="relative z-10 w-full max-w-md rounded-3xl shadow-2xl border-8 border-gray-800 rotate-3 hover:rotate-0 transition-transform duration-500"
+              />
             </div>
           </div>
         </div>
@@ -214,36 +243,133 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* PLANOS / PRICING */}
+      <section id="planos" className="py-32 px-4 sm:px-6 bg-gray-50">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16 max-w-3xl mx-auto">
+            <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-6 tracking-tight">Um investimento que se paga no primeiro fechamento.</h2>
+            <p className="text-xl text-gray-500 font-medium">Comece hoje mesmo com 14 dias de teste gratuito. Cancele quando quiser.</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            {/* STARTER */}
+            <div className="bg-white border-2 border-gray-100 rounded-[2rem] p-8 sm:p-10 shadow-lg hover:shadow-xl transition-shadow flex flex-col relative">
+              <h3 className="text-2xl font-black text-gray-900 mb-2 uppercase tracking-widest">Starter</h3>
+              <p className="text-gray-500 font-medium mb-8">O essencial para organizar suas vendas e crescer.</p>
+              
+              <div className="flex items-baseline gap-2 mb-8">
+                <span className="text-6xl font-black text-gray-900 tracking-tighter">R$ 97</span>
+                <span className="text-gray-500 font-bold">/mês</span>
+              </div>
+
+              <div className="h-px bg-gray-100 w-full mb-8"></div>
+
+              <ul className="space-y-5 mb-10 flex-1">
+                {[
+                  "14 dias de teste GRÁTIS",
+                  "Gestão ilimitada de clientes (CRM)",
+                  "Criador de Propostas (Páginas)",
+                  "Contratos com assinatura digital",
+                  "Gestão Financeira Básica",
+                  "Suporte por e-mail"
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-3 text-gray-700 font-bold">
+                    <div className="w-5 h-5 bg-gray-100 text-gray-900 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                      <Check className="w-3 h-3" />
+                    </div>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+
+              <Link to="/signup" className="w-full py-4 bg-gray-100 text-gray-900 hover:bg-gray-200 font-black rounded-2xl transition-all flex items-center justify-center">
+                ASSINAR STARTER
+              </Link>
+            </div>
+
+            {/* PLUS */}
+            <div className="bg-gray-900 rounded-[2rem] p-8 sm:p-10 shadow-2xl relative overflow-hidden flex flex-col transform md:-translate-y-4">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500 rounded-full blur-3xl opacity-20 -mr-20 -mt-20"></div>
+              
+              <div className="absolute top-6 right-6 bg-orange-500 text-white px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-sm">
+                Mais Completo
+              </div>
+              
+              <h3 className="text-2xl font-black text-orange-400 mb-2 uppercase tracking-widest">Plus</h3>
+              <p className="text-gray-400 font-medium mb-8 relative z-10">Tudo do Starter + Automação total de comunicação e pagamentos.</p>
+              
+              <div className="flex items-baseline gap-2 mb-8 relative z-10">
+                <span className="text-6xl font-black text-white tracking-tighter">R$ 147</span>
+                <span className="text-gray-500 font-bold">/mês</span>
+              </div>
+
+              <div className="h-px bg-gray-800 w-full mb-8 relative z-10"></div>
+
+              <ul className="space-y-5 mb-10 flex-1 relative z-10">
+                {[
+                  "Integração WhatsApp (Evolution API)",
+                  "Sincronização Google Calendar",
+                  "Emissão de Boletos e Pix (PagHiper)",
+                  "Fluxo de Cadência Automático",
+                  "Análise de Calor (Heatmaps) das propostas",
+                  "Suporte prioritário via WhatsApp"
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-3 text-gray-200 font-bold">
+                    <div className="w-5 h-5 bg-orange-500/20 text-orange-400 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                      <Check className="w-3 h-3" />
+                    </div>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+
+              <Link to="/signup" className="w-full py-4 bg-orange-500 text-white font-black rounded-2xl shadow-lg hover:bg-orange-600 transition-all flex items-center justify-center gap-2 relative z-10">
+                COMEÇAR TESTE DE 14 DIAS
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* CTA FINAL */}
-      <section className="py-24 px-4 sm:px-6 relative">
-        <div className="absolute inset-0 bg-orange-500"></div>
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=2000&auto=format&fit=crop')] opacity-10 bg-cover bg-center mix-blend-multiply"></div>
-        
-        <div className="max-w-4xl mx-auto text-center relative z-10 text-white">
-          <h2 className="text-4xl md:text-6xl font-black mb-6 leading-tight">
-            Pronto para profissionalizar seu estúdio?
-          </h2>
-          <p className="text-xl font-medium mb-10 text-orange-100 max-w-2xl mx-auto">
-            Junte-se a dezenas de fotógrafos e videomakers que pararam de perder tempo com planilhas e começaram a focar na arte.
-          </p>
-          <Link to="/signup" className="inline-flex items-center justify-center gap-2 bg-gray-900 hover:bg-black text-white text-lg font-black px-10 py-5 rounded-2xl shadow-2xl transition-all hover:-translate-y-1 active:scale-95 w-full sm:w-auto">
-            CRIAR CONTA GRÁTIS <ArrowRight className="w-5 h-5" />
-          </Link>
-          <p className="mt-6 text-sm font-bold text-orange-200">14 dias de teste grátis • Cancele quando quiser</p>
+      <section className="py-24 px-4 sm:px-6 relative bg-white">
+        <div className="max-w-5xl mx-auto bg-orange-500 rounded-[3rem] p-10 md:p-20 text-center relative overflow-hidden shadow-2xl">
+          <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1516035069371-29a1b244cc32?q=80&w=2000&auto=format&fit=crop')] opacity-10 bg-cover bg-center mix-blend-multiply"></div>
+          
+          <div className="relative z-10">
+            <h2 className="text-4xl md:text-6xl font-black text-white mb-6 leading-tight tracking-tight">
+              Sua arte merece um negócio organizado.
+            </h2>
+            <p className="text-xl font-medium mb-10 text-orange-100 max-w-2xl mx-auto">
+              Leve exatamente 2 minutos para criar sua conta e configurar seu primeiro orçamento interativo.
+            </p>
+            <Link to="/signup" className="inline-flex items-center justify-center gap-2 bg-gray-900 hover:bg-black text-white text-lg font-black px-10 py-5 rounded-2xl shadow-xl transition-all hover:-translate-y-1 active:scale-95 w-full sm:w-auto">
+              CRIAR MINHA CONTA AGORA <ArrowRight className="w-5 h-5" />
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* FOOTER */}
-      <footer className="bg-gray-900 py-12 px-4 text-center border-t border-gray-800">
-        <div className="flex items-center justify-center gap-2 mb-6">
-          <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
-            <span className="text-white font-black">F</span>
+      <footer className="bg-white py-12 px-4 border-t border-gray-200">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center">
+              <span className="text-white font-black">F</span>
+            </div>
+            <span className="font-black text-xl tracking-tight text-gray-900">Frame Pro</span>
           </div>
-          <span className="font-black text-xl tracking-tight text-white">Frame Pro</span>
+          
+          <div className="flex items-center gap-6 text-sm font-bold text-gray-500">
+            <Link to="/login" className="hover:text-gray-900 transition-colors">Login</Link>
+            <Link to="/signup" className="hover:text-gray-900 transition-colors">Criar Conta</Link>
+            <a href="#" className="hover:text-gray-900 transition-colors">Termos de Uso</a>
+          </div>
+
+          <p className="text-gray-400 font-medium text-sm">
+            © {new Date().getFullYear()} Frame Pro CRM. Todos os direitos reservados.
+          </p>
         </div>
-        <p className="text-gray-500 font-medium text-sm">
-          © {new Date().getFullYear()} Frame Pro CRM. Todos os direitos reservados.
-        </p>
       </footer>
     </div>
   );
