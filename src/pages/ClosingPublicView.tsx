@@ -135,26 +135,18 @@ export default function ClosingPublicView() {
   };
 
   const handleFinish = async () => {
-    if (!sigCanvas.current || sigCanvas.current.isEmpty()) {
-      return toast.error("Por favor, desenhe sua assinatura para concluir.");
+    if (!clientData.cpf || !clientData.profession || !clientData.cep || !clientData.street || !clientData.number || !clientData.neighborhood || !clientData.city || !clientData.state) {
+      return toast.error("Preencha todos os campos obrigatórios na Etapa 1.");
+    }
+
+    if (sigCanvas.current.isEmpty()) {
+      return toast.error("Por favor, assine o contrato para finalizar.");
     }
 
     setSubmitting(true);
     try {
       const signatureImage = sigCanvas.current.getCanvas().toDataURL('image/png');
 
-      const fullAddress = `${clientData.street}, ${clientData.number}${clientData.complement ? ` - ${clientData.complement}` : ''}, ${clientData.neighborhood}, ${clientData.city} - ${clientData.state}, CEP: ${clientData.cep}`;
-
-      // 1. Atualiza Oportunidade (Torna Cliente e salva documentos)
-      await supabase.from('opportunities').update({
-        is_client: true,
-        cpf: clientData.cpf,
-        civil_status: clientData.civil_status,
-        profession: clientData.profession,
-        address: fullAddress
-      }).eq('id', opportunity.id);
-
-      // 2. Gera as Parcelas e cria no Financeiro (Transações)
       const count = selectedInstallments;
       const amount = Number(linkData.value);
       const baseAmount = Math.floor((amount / count) * 100) / 100;
@@ -174,51 +166,23 @@ export default function ClosingPublicView() {
         });
       }
 
-      const { data: newTx, error: txError } = await supabase.from('transactions').insert({
-        user_id: linkData.user_id,
-        client_id: opportunity.id,
-        date: new Date().toISOString().split('T')[0],
-        description: `Fechamento: ${opportunity.name}`,
-        amount: amount,
-        status: 'Pendente',
-        is_installment: count > 1,
-        installment_count: count,
-        installments: count > 1 ? installments : null
-      }).select('id').single();
-
-      if (txError) throw txError;
-
-      // 3. Monta e Cria o Contrato
-      await supabase.from('contracts').insert({
-        user_id: linkData.user_id,
-        client_id: opportunity.id,
-        value: amount,
-        start_date: new Date().toISOString().split('T')[0],
-        description: contractPreview,
-        client_signature: signatureImage,
-        supplier_signature: template?.supplier_signature || null,
-        signature_status: 'Assinado 2/2',
-        status: 'Ativo',
-        share_token: crypto.randomUUID() // token próprio para o contrato
+      // Call secure RPC to bypass RLS and create everything
+      const { data: result, error: rpcError } = await supabase.rpc('finalize_closing_link', {
+        p_token: token,
+        p_client_data: clientData,
+        p_amount: amount,
+        p_installment_count: count,
+        p_installments: count > 1 ? installments : null,
+        p_contract_preview: contractPreview,
+        p_signature_image: signatureImage
       });
 
-      // 4. Adiciona na Agenda (Tarefas)
-      if (linkData.event_date) {
-        await supabase.from('tasks').insert({
-          user_id: linkData.user_id,
-          title: `🎉 EVENTO: ${opportunity.name}`,
-          description: `Evento fechado automaticamente via link.\n\nLocal/Endereço: ${fullAddress || opportunity.address || 'Não informado'}\nTelefone: ${opportunity.phone}`,
-          status: 'Pendente',
-          priority: 'Alta',
-          due_date: linkData.event_date
-        });
-      }
+      if (rpcError) throw rpcError;
 
-      // 5. Invalida o Link de Fechamento
-      await supabase.from('closing_links').update({ status: 'completed' }).eq('id', linkData.id);
+      const { transaction_id, contract_id, opportunity_name, opportunity_phone } = result as any;
 
       // 6. Gerar Pix e Enviar WhatsApp via Edge Function
-      if (newTx?.id) {
+      if (transaction_id) {
         const firstInstallmentId = count > 1 ? installments[0].id : null;
         const firstAmount = count > 1 ? installments[0].amount : amount;
 
@@ -228,13 +192,14 @@ export default function ClosingPublicView() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             link_token: token,
-            transaction_id: newTx.id,
+            transaction_id: transaction_id,
+            contract_id: contract_id,
             installment_id: firstInstallmentId,
             amount: firstAmount,
-            payer_name: opportunity.name,
+            payer_name: opportunity_name,
             payer_cpf: clientData.cpf,
             due_date: new Date().toISOString(),
-            client_phone: opportunity.phone
+            client_phone: opportunity_phone
           })
         }).catch(console.error);
       }

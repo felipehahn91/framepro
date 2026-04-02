@@ -17,7 +17,7 @@ serve(async (req) => {
 
   try {
     const payload = await req.json();
-    const { link_token, transaction_id, installment_id, amount, payer_name, payer_cpf, due_date, client_phone } = payload;
+    const { link_token, transaction_id, installment_id, amount, payer_name, payer_cpf, due_date, client_phone, contract_id } = payload;
 
     if (!link_token) {
       return new Response("Missing link_token", { status: 400, headers: corsHeaders });
@@ -101,41 +101,19 @@ serve(async (req) => {
       }
     }
 
-    // 3. Monta e Cria o Contrato
-    const { data: opportunity, error: opportunityError } = await supabaseAdmin
-      .from('opportunities')
-      .select('id, name, email')
-      .eq('user_id', userId)
-      .eq('status', 'active')
-      .single();
-
-    if (opportunityError) throw opportunityError;
-
-    const contractPreview = `Contrato de ${opportunity.name} - ${formatCurrency(amount)}`;
+    // Removed duplicate opportunity fetch and contract creation since RPC handles it
     
-    const { data: newContract, error: contractError } = await supabaseAdmin.from('contracts').insert({
-      user_id: link.user_id,
-      client_id: opportunity.id,
-      value: amount,
-      start_date: new Date().toISOString().split('T')[0],
-      description: contractPreview,
-      client_signature: null,
-      supplier_signature: null,
-      signature_status: 'Pendente',
-      status: 'Ativo'
-    }).select().single();
-
-    if (contractError) throw contractError;
-
     // Notify user about contract signed
-    await supabaseAdmin.from('notifications').insert({
-      user_id: link.user_id,
-      title: 'Novo Contrato Assinado',
-      content: `O cliente ${opportunity.name} assinou o contrato no valor de ${formatCurrency(amount)}.`,
-      type: 'success',
-      related_entity_type: 'contract',
-      related_entity_id: newContract.id
-    });
+    if (payload.contract_id) {
+      await supabaseAdmin.from('notifications').insert({
+        user_id: link.user_id,
+        title: 'Novo Contrato Assinado',
+        content: `O cliente ${payer_name} assinou o contrato no valor de ${formatCurrency(amount)}.`,
+        type: 'success',
+        related_entity_type: 'contract',
+        related_entity_id: payload.contract_id
+      });
+    }
 
     // 3. Send WhatsApp via Evolution API
     const { data: settings } = await supabaseAdmin.from('platform_settings').select('evo_api_url, evo_api_key').single();
@@ -231,34 +209,15 @@ serve(async (req) => {
       }
     }
 
-    // Disparar WhatsApp se configurado
-    const { data: tx, error: txError } = await supabaseAdmin.from('transactions').insert({
-      user_id: userId,
-      transaction_id: transaction_id,
-      amount: amount,
-      currency: 'BRL',
-      status: 'Pendente',
-      client_phone: client_phone,
-      client_name: payer_name,
-      client_cpf: payer_cpf,
-      due_date: due_date,
-      installment_id: installment_id,
-      pix_url: pixUrl,
-      pix_code: pixCode,
-      contract_id: newContract.id
-    }).select().single();
-
-    if (txError) throw txError;
-    
     // Notify user about PIX generated
     if (pixCode) {
       await supabaseAdmin.from('notifications').insert({
         user_id: link.user_id,
         title: 'Cobrança via Pix Gerada e Enviada',
-        content: `Pix automático no valor de ${formatCurrency(amount)} foi gerado e enviado para ${opportunity.name} via WhatsApp.`,
+        content: `Pix automático no valor de ${formatCurrency(amount)} foi gerado e enviado para ${payer_name} via WhatsApp.`,
         type: 'info',
         related_entity_type: 'transaction',
-        related_entity_id: tx.id
+        related_entity_id: transaction_id
       });
     }
 
