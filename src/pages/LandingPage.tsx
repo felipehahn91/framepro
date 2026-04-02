@@ -1,18 +1,18 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, Variants } from 'framer-motion';
 import { 
   Camera, Video, LayoutTemplate, PenTool, CheckCircle2, 
   MessageSquare, Zap, Target, ArrowRight, ShieldCheck, 
   Star, DollarSign, BarChart3, Users, Check, Eye
 } from 'lucide-react';
 
-const fadeInUp = {
+const fadeInUp: Variants = {
   hidden: { opacity: 0, y: 40 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }
 };
 
-const staggerContainer = {
+const staggerContainer: Variants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -22,10 +22,10 @@ const staggerContainer = {
 
 export default function LandingPage() {
   useEffect(() => {
-    document.title = "Frame Pro | O CRM definitivo para Fotógrafos e Filmmakers";
+    document.title = "Frame Pro | O CRM definitivo para Fotógrafos de Eventos";
     const metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {
-      metaDescription.setAttribute("content", "Organize seus leads, envie propostas irresistíveis e assine contratos digitalmente. O sistema de gestão focado no mercado audiovisual.");
+      metaDescription.setAttribute("content", "Organize seus leads, envie propostas irresistíveis e assine contratos digitalmente. O sistema de gestão feito para fotógrafos de casamento e eventos.");
     }
   }, []);
 
@@ -87,12 +87,12 @@ export default function LandingPage() {
           className="max-w-5xl mx-auto relative z-10 flex flex-col items-center"
         >
           <motion.div variants={fadeInUp} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 text-gray-700 font-bold text-xs uppercase tracking-wider mb-8 shadow-sm">
-            <Star className="w-3.5 h-3.5 fill-orange-500 text-orange-500" />
-            O CRM nº1 para o mercado Audiovisual
+            <Camera className="w-3.5 h-3.5 text-orange-500" />
+            O CRM nº1 para Fotógrafos de Casamento e Eventos
           </motion.div>
 
           <motion.h1 variants={fadeInUp} className="text-5xl sm:text-6xl md:text-7xl font-black text-gray-900 tracking-tight leading-[1.05] mb-6">
-            Pare de perder clientes para quem tem <span className="text-orange-500 relative">
+            Pare de perder datas na agenda para fotógrafos com <span className="text-orange-500 relative">
               menos talento
               <motion.span 
                 initial={{ width: 0 }}
@@ -104,7 +104,7 @@ export default function LandingPage() {
           </motion.h1>
           
           <motion.p variants={fadeInUp} className="text-lg sm:text-xl text-gray-500 font-medium mb-10 max-w-2xl leading-relaxed">
-            Feche mais orçamentos com propostas interativas, organize sua agenda e automatize seus contratos. Mostre o valor da sua arte desde o primeiro "Olá".
+            Transforme noivas apenas "curiosas" em clientes apaixonadas. Envie orçamentos de cair o queixo, acompanhe seus leads e assine contratos digitalmente em minutos.
           </motion.p>
 
           <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto">
@@ -149,8 +149,8 @@ export default function LandingPage() {
             className="mb-16 md:flex md:items-end md:justify-between"
           >
             <div className="max-w-2xl">
-              <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">Tudo que seu estúdio precisa.</h2>
-              <p className="text-xl text-gray-500 font-medium">Deixe as planilhas no passado e gerencie seu negócio como um verdadeiro profissional.</p>
+              <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">Feito para a rotina do fotógrafo.</h2>
+              <p className="text-xl text-gray-500 font-medium">Livre-se de planilhas desorganizadas e PDFs esquecidos. Tenha total controle do seu estúdio de fotografia.</p>
             </div>
           </motion.div>
 
@@ -164,8 +164,8 @@ export default function LandingPage() {
                 <div className="w-12 h-12 bg-white rounded-xl shadow-sm border border-gray-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <Target className="w-6 h-6 text-orange-500" />
                 </div>
-                <h3 className="text-2xl font-black text-gray-900 mb-2">Pipeline Visual</h3>
-                <p className="text-gray-500 font-medium leading-relaxed">Saiba exatamente em que etapa cada noiva ou empresa está. Nunca mais esqueça um follow-up importante.</p>
+                <h3 className="text-2xl font-black text-gray-900 mb-2">Pipeline Visual (Kanban)</h3>
+                <p className="text-gray-500 font-medium leading-relaxed">Saiba exatamente em que etapa cada noivo, debutante ou empresa está. Nunca mais perca o timing de um follow-up para fechar o evento.</p>
               </div>
               <motion.img 
                 whileHover={{ scale: 1.05, rotate: 10 }}
@@ -182,8 +182,8 @@ export default function LandingPage() {
                 <div className="w-12 h-12 bg-gray-800 rounded-xl flex items-center justify-center mb-6 border border-gray-700 group-hover:scale-110 transition-transform">
                   <DollarSign className="w-6 h-6 text-green-400" />
                 </div>
-                <h3 className="text-2xl font-black text-white mb-2">Controle Financeiro</h3>
-                <p className="text-gray-400 font-medium leading-relaxed">Previsão de receitas, contas a receber e parcelamentos geridos de forma inteligente.</p>
+                <h3 className="text-2xl font-black text-white mb-2">Previsibilidade de Caixa</h3>
+                <p className="text-gray-400 font-medium leading-relaxed">Chega de calotes. Controle parcelamentos pré-evento, envie cobranças via PIX e saiba exatamente o que tem a receber.</p>
               </div>
             </motion.div>
 
@@ -193,8 +193,8 @@ export default function LandingPage() {
                 <div className="w-12 h-12 bg-white rounded-xl shadow-sm border border-blue-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <PenTool className="w-6 h-6 text-blue-500" />
                 </div>
-                <h3 className="text-2xl font-black text-gray-900 mb-2">Assinatura Digital</h3>
-                <p className="text-gray-500 font-medium leading-relaxed">Contratos com validade jurídica assinados com o dedo pelo celular do seu cliente.</p>
+                <h3 className="text-2xl font-black text-gray-900 mb-2">Contratos sem Cartório</h3>
+                <p className="text-gray-500 font-medium leading-relaxed">Contratos preenchidos sozinhos. O casal assina com o dedo na tela do celular e você recebe o PDF com validade jurídica.</p>
               </div>
             </motion.div>
 
@@ -204,8 +204,8 @@ export default function LandingPage() {
                 <div className="w-12 h-12 bg-white rounded-xl shadow-sm border border-orange-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <MessageSquare className="w-6 h-6 text-green-500" />
                 </div>
-                <h3 className="text-2xl font-black text-gray-900 mb-2">Automação de WhatsApp</h3>
-                <p className="text-gray-600 font-medium leading-relaxed">Envie lembretes de vencimento, links de propostas e cadências de follow-up direto do CRM para o número do cliente.</p>
+                <h3 className="text-2xl font-black text-gray-900 mb-2">WhatsApp no Piloto Automático</h3>
+                <p className="text-gray-600 font-medium leading-relaxed">Crie "Fluxos de Cadência" para enviar mensagens de follow-up, lembretes de ensaio e boletos automaticamente para o WhatsApp do cliente.</p>
               </div>
               <motion.img 
                 whileHover={{ scale: 1.05 }}
@@ -220,7 +220,7 @@ export default function LandingPage() {
 
       {/* SHOWCASE: PROPOSTAS */}
       <section id="propostas" className="py-32 px-4 sm:px-6 bg-gray-900 text-white overflow-hidden relative">
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=2000&auto=format&fit=crop')] opacity-5 bg-cover bg-center mix-blend-overlay pointer-events-none"></div>
+        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=2000&auto=format&fit=crop')] opacity-[0.03] bg-cover bg-center mix-blend-overlay pointer-events-none"></div>
         
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
@@ -232,13 +232,13 @@ export default function LandingPage() {
               className="space-y-8"
             >
               <div className="inline-flex items-center gap-2 bg-gray-800/50 backdrop-blur-md border border-gray-700 px-4 py-2 rounded-full text-sm font-bold text-gray-300">
-                <LayoutTemplate className="w-4 h-4 text-orange-500" /> Landing Pages de Vendas
+                <LayoutTemplate className="w-4 h-4 text-orange-500" /> Propostas que vendem sozinhas
               </div>
               <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
-                Seus orçamentos em formato de experiência.
+                Apresente seu trabalho como uma experiência.
               </h2>
               <p className="text-gray-400 text-xl leading-relaxed font-medium">
-                Abandone os PDFs frios. Crie propostas ricas com galerias, vídeos e tabelas de preço interativas. Seu cliente pode aprovar a proposta e fechar negócio com um clique.
+                Sua fotografia é linda, seu orçamento em PDF não. Crie propostas em formato de site com as suas melhores fotos de portfólio, vídeos highlight e pacotes interativos. Os noivos aprovam a proposta com um clique.
               </p>
               
               <ul className="space-y-5 pt-4">
@@ -247,8 +247,8 @@ export default function LandingPage() {
                     <Eye className="w-5 h-5 text-orange-500" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-lg mb-1">Avisos de Leitura</h4>
-                    <p className="text-gray-400 font-medium">Receba uma notificação no exato momento que o cliente abrir seu orçamento.</p>
+                    <h4 className="font-bold text-lg mb-1">Aviso de Leitura Instantâneo</h4>
+                    <p className="text-gray-400 font-medium">Receba uma notificação no CRM no exato momento em que o casal abrir o seu link de orçamento.</p>
                   </div>
                 </li>
                 <li className="flex items-start gap-4 p-4 rounded-2xl hover:bg-gray-800/50 transition-colors border border-transparent hover:border-gray-700">
@@ -256,8 +256,8 @@ export default function LandingPage() {
                     <BarChart3 className="w-5 h-5 text-blue-500" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-lg mb-1">Mapa de Calor (Heatmap)</h4>
-                    <p className="text-gray-400 font-medium">Veja as gravações da tela do cliente para descobrir qual pacote chamou mais atenção.</p>
+                    <h4 className="font-bold text-lg mb-1">Mapa de Calor Oculto</h4>
+                    <p className="text-gray-400 font-medium">Temos uma tecnologia que grava a tela do cliente anonimamente. Descubra exatamente qual pacote e quais fotos chamaram mais a atenção deles.</p>
                   </div>
                 </li>
               </ul>
@@ -273,7 +273,7 @@ export default function LandingPage() {
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 bg-orange-500/30 rounded-full blur-[120px] group-hover:bg-orange-500/40 transition-colors duration-700"></div>
               
               <img 
-                src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=1000&auto=format&fit=crop" 
+                src="https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=1000&auto=format&fit=crop" 
                 alt="Orçamentos Interativos" 
                 className="relative z-10 w-full max-w-md rounded-3xl shadow-2xl border-8 border-gray-800 group-hover:rotate-0 group-hover:scale-105 transition-all duration-500"
               />
@@ -303,7 +303,7 @@ export default function LandingPage() {
                  <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Signature_of_John_Hancock.svg" alt="Assinatura" className="h-24 mx-auto opacity-80" />
                </div>
                <p className="font-bold text-gray-900 text-lg">João da Silva</p>
-               <p className="text-xs text-gray-500 uppercase tracking-widest mt-1 font-bold">Contratante</p>
+               <p className="text-xs text-gray-500 uppercase tracking-widest mt-1 font-bold">Contratante / Noivo</p>
                <div className="mt-8 w-full bg-green-50 border border-green-200 text-green-700 font-bold py-4 rounded-2xl flex justify-center items-center gap-2 shadow-sm">
                  <ShieldCheck className="w-6 h-6" /> Assinado Digitalmente
                </div>
@@ -318,19 +318,20 @@ export default function LandingPage() {
             className="space-y-8 order-1 lg:order-2"
           >
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-50 border border-blue-200 text-blue-600 font-bold text-xs uppercase tracking-wider">
-              <ShieldCheck className="w-4 h-4" /> Burocracia Zero
+              <ShieldCheck className="w-4 h-4" /> Fechamento Imediato
             </div>
             <h2 className="text-4xl md:text-5xl font-black text-gray-900 leading-tight tracking-tight">
-              Fechamento e pagamento no piloto automático.
+              Contrato e pagamento fechados na mesma tela.
             </h2>
             <p className="text-gray-500 text-xl leading-relaxed font-medium">
-              Esqueça o vai e vem de arquivos Word. Configure o modelo base, gere um "Link de Fechamento" e deixe o cliente preencher os dados, escolher a forma de pagamento e assinar na mesma tela.
+              Ao invés de mandar um documento no WhatsApp e pedir os dados do casal, você envia nosso "Link de Fechamento". O cliente preenche o CPF, escolhe como vai parcelar o pagamento e o seu contrato de fotografia é preenchido automaticamente com as "variáveis mágicas".
             </p>
             <ul className="space-y-5 pt-2">
               {[
-                "Variáveis que preenchem o contrato sozinhas",
-                "Geração de PIX integrado com seu financeiro",
-                "PDF gerado automaticamente após assinatura dupla"
+                "Variáveis mágicas preenchem o modelo do contrato",
+                "Você define em até quantas vezes o casal pode parcelar",
+                "O cliente assina com o dedo e um PDF é gerado e salvo",
+                "O primeiro PIX é gerado e mandado via WhatsApp na hora"
               ].map((item, i) => (
                 <li key={i} className="flex items-center gap-4 text-gray-800 font-bold text-lg">
                   <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
@@ -353,7 +354,7 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
               className="text-4xl md:text-5xl font-black text-gray-900 mb-6 tracking-tight"
             >
-              Um investimento que se paga no primeiro fechamento.
+              Um investimento que se paga com um único ensaio.
             </motion.h2>
             <motion.p 
               initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }}
@@ -370,7 +371,7 @@ export default function LandingPage() {
               className="bg-white border border-gray-200 rounded-[2.5rem] p-8 sm:p-10 shadow-xl hover:shadow-2xl transition-all flex flex-col relative h-[95%]"
             >
               <h3 className="text-2xl font-black text-gray-900 mb-2 uppercase tracking-widest">Starter</h3>
-              <p className="text-gray-500 font-medium mb-8">O essencial para organizar suas vendas e crescer.</p>
+              <p className="text-gray-500 font-medium mb-8">O essencial para fotógrafos organizarem o fluxo da agenda.</p>
               
               <div className="flex items-baseline gap-2 mb-8">
                 <span className="text-6xl font-black text-gray-900 tracking-tighter">R$ 97</span>
@@ -382,10 +383,10 @@ export default function LandingPage() {
               <ul className="space-y-5 mb-10 flex-1">
                 {[
                   "14 dias de teste GRÁTIS",
-                  "Gestão ilimitada de clientes (CRM)",
-                  "Criador de Propostas (Páginas)",
-                  "Contratos com assinatura digital",
-                  "Gestão Financeira Básica",
+                  "Gestão ilimitada de clientes (Kanban)",
+                  "Construtor de Orçamentos Interativos",
+                  "Contratos com assinatura digital na tela",
+                  "Controle de pagamentos (Financeiro)",
                   "Suporte por e-mail"
                 ].map((item, i) => (
                   <li key={i} className="flex items-start gap-3 text-gray-700 font-bold">
@@ -414,7 +415,7 @@ export default function LandingPage() {
               </div>
               
               <h3 className="text-2xl font-black text-orange-400 mb-2 uppercase tracking-widest">Plus</h3>
-              <p className="text-gray-300 font-medium mb-8 relative z-10">Tudo do Starter + Automação total de comunicação e pagamentos.</p>
+              <p className="text-gray-300 font-medium mb-8 relative z-10">Tudo do Starter + Automação de follow-up e mapa de calor.</p>
               
               <div className="flex items-baseline gap-2 mb-8 relative z-10">
                 <span className="text-6xl font-black text-white tracking-tighter">R$ 147</span>
@@ -425,11 +426,11 @@ export default function LandingPage() {
 
               <ul className="space-y-5 mb-10 flex-1 relative z-10">
                 {[
-                  "Integração WhatsApp (Evolution API)",
-                  "Sincronização Google Calendar",
-                  "Emissão de Boletos e Pix (PagHiper)",
-                  "Fluxo de Cadência Automático",
-                  "Análise de Calor (Heatmaps) das propostas",
+                  "Integração WhatsApp (Avisos de vencimento)",
+                  "Sincronização Google Calendar e Meet",
+                  "Geração automática de Pix e Boletos",
+                  "Fluxo de Cadência (Mensagens Agendadas)",
+                  "Mapa de Calor: Gravação de Tela nas propostas",
                   "Suporte prioritário via WhatsApp"
                 ].map((item, i) => (
                   <li key={i} className="flex items-start gap-3 text-white font-bold">
@@ -466,10 +467,10 @@ export default function LandingPage() {
           
           <div className="relative z-10">
             <h2 className="text-5xl md:text-7xl font-black text-white mb-8 leading-tight tracking-tight">
-              Sua arte merece um negócio organizado.
+              A sua fotografia merece um negócio organizado.
             </h2>
             <p className="text-2xl font-medium mb-12 text-orange-100 max-w-3xl mx-auto leading-relaxed">
-              Leve exatamente 2 minutos para criar sua conta e configurar seu primeiro orçamento interativo.
+              Leve exatamente 2 minutos para criar sua conta e configurar o seu primeiro orçamento interativo. O primeiro ensaio que o sistema te ajudar a fechar já paga o ano inteiro.
             </p>
             <Link to="/signup" className="inline-flex items-center justify-center gap-3 bg-gray-900 hover:bg-black text-white text-xl font-black px-12 py-6 rounded-2xl shadow-2xl transition-all hover:-translate-y-1 active:scale-95 w-full sm:w-auto group">
               CRIAR MINHA CONTA AGORA <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
