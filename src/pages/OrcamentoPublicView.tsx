@@ -365,7 +365,7 @@ export default function OrcamentoPublicView() {
                         textTransform: cta.isUppercase ? 'uppercase' : 'none',
                         zIndex: 51
                       }}
-                      className="px-6 py-3 shadow-xl hover:-translate-y-1 hover:shadow-2xl transition-all whitespace-nowrap"
+                      className="px-3 py-1.5 text-[10px] sm:px-4 sm:py-2 sm:text-xs md:px-5 md:py-2.5 md:text-sm lg:px-6 lg:py-3 lg:text-base shadow-xl hover:-translate-y-1 hover:shadow-2xl transition-all whitespace-nowrap"
                     >
                       {cta.label}
                     </button>
@@ -412,7 +412,7 @@ export default function OrcamentoPublicView() {
                     fontWeight: cta.isBold === false ? 'normal' : 'bold',
                     textTransform: cta.isUppercase ? 'uppercase' : 'none',
                   }}
-                  className="px-8 py-3.5 shadow-md hover:-translate-y-1 transition-transform flex-1 text-center min-w-[200px]"
+                  className="px-4 py-3 text-xs sm:px-8 sm:py-3.5 sm:text-base shadow-md hover:-translate-y-1 transition-transform flex-1 text-center min-w-[140px] sm:min-w-[200px]"
                 >
                   {cta.label}
                 </button>

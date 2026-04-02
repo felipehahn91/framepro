@@ -1530,7 +1530,7 @@ export default function OrcamentoEditor() {
                               cursor: draggingCtaIndex === i ? 'grabbing' : 'grab',
                               zIndex: 51
                             }}
-                            className="px-6 py-3 shadow-xl hover:ring-4 hover:ring-orange-400/30 transition-shadow select-none whitespace-nowrap"
+                            className="px-3 py-1.5 text-[10px] sm:px-4 sm:py-2 sm:text-xs md:px-5 md:py-2.5 md:text-sm lg:px-6 lg:py-3 lg:text-base shadow-xl hover:ring-4 hover:ring-orange-400/30 transition-shadow select-none whitespace-nowrap"
                           >
                             {cta.label}
                           </div>
@@ -1548,10 +1548,10 @@ export default function OrcamentoEditor() {
                     </div>
                   ) : (
                     sections.map(s => (
-                      <div 
-                        key={s.id} 
+                      <div
+                        key={s.id}
                         id={s.id}
-                        className={`w-full relative group cursor-pointer transition-all ${selectedId === s.id ? 'ring-[3px] ring-inset ring-orange-500 z-10 shadow-xl' : 'hover:ring-[3px] hover:ring-inset hover:ring-blue-400/50 z-0'}`} 
+                        className={`w-full relative group cursor-pointer transition-all ${selectedId === s.id ? 'ring-[3px] ring-inset ring-orange-500 z-10 shadow-xl' : 'hover:ring-[3px] hover:ring-inset hover:ring-blue-400/50 z-0'}`}
                         onClick={() => { setSelectedId(s.id); setActiveTab('content'); }}
                       >
                         <PreviewBlock section={s} />
@@ -1626,7 +1626,7 @@ export default function OrcamentoEditor() {
                         fontWeight: cta.isBold === false ? 'normal' : 'bold',
                         textTransform: cta.isUppercase ? 'uppercase' : 'none',
                       }}
-                      className="px-6 py-3 shadow-md transition-transform"
+                      className="px-4 py-3 sm:px-6 sm:py-3 text-xs sm:text-base shadow-md transition-transform flex-1 text-center min-w-[140px] sm:min-w-[200px]"
                     >
                       {cta.label}
                     </div>
