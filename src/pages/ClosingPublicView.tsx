@@ -272,6 +272,24 @@ export default function ClosingPublicView() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 font-sans text-gray-900 flex justify-center">
+      
+      {/* Estilo Global para forçar a quebra correta no texto do Quill */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .contract-document {
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+        }
+        .contract-document * {
+          max-width: 100% !important;
+          box-sizing: border-box !important;
+        }
+        .contract-document p, .contract-document span, .contract-document div {
+          white-space: normal !important;
+          word-break: normal !important;
+          overflow-wrap: break-word !important;
+        }
+      `}} />
+
       <div className="max-w-2xl w-full space-y-6">
         
         {/* Header Resumo */}
@@ -611,8 +629,8 @@ export default function ClosingPublicView() {
                 <div className="bg-white rounded-xl border border-gray-200 shadow-inner relative w-full overflow-hidden">
                   <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-white to-transparent pointer-events-none z-10"></div>
                   <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent pointer-events-none z-10"></div>
-                  <div className="text-sm text-gray-700 leading-relaxed text-justify max-h-[500px] overflow-y-auto overflow-x-hidden custom-scrollbar p-4 sm:p-6 pt-5 pb-10 prose max-w-none prose-sm prose-p:my-2 prose-headings:my-4 w-full">
-                    <div className="w-full break-words" dangerouslySetInnerHTML={{ __html: contractPreview }} />
+                  <div className="text-sm text-gray-700 leading-relaxed text-justify max-h-[500px] overflow-y-auto overflow-x-hidden custom-scrollbar p-4 sm:p-6 pt-5 pb-10 prose max-w-none prose-sm prose-p:my-2 prose-headings:my-4 w-full contract-document">
+                    <div className="w-full" dangerouslySetInnerHTML={{ __html: contractPreview }} />
                   </div>
                 </div>
                 <p className="text-xs text-gray-400 mt-2 text-center">Role para baixo para ler o contrato completo</p>

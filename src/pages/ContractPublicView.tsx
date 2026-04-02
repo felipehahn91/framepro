@@ -129,6 +129,24 @@ export default function ContractPublicView() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 font-sans text-gray-900">
+      
+      {/* Estilo Global para forçar a quebra correta no texto do Quill */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .contract-document {
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+        }
+        .contract-document * {
+          max-width: 100% !important;
+          box-sizing: border-box !important;
+        }
+        .contract-document p, .contract-document span, .contract-document div {
+          white-space: normal !important;
+          word-break: normal !important;
+          overflow-wrap: break-word !important;
+        }
+      `}} />
+
       <div className="max-w-4xl mx-auto space-y-6">
         
         <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 no-print">
@@ -162,7 +180,7 @@ export default function ContractPublicView() {
               <img src={contract.contract_image} crossOrigin="anonymous" alt="Capa" className="w-full h-[280px] object-cover rounded-xl mb-8 border border-gray-200" />
             )}
             <div 
-              className="prose max-w-none mb-16 text-black text-justify leading-relaxed break-words" 
+              className="prose max-w-none mb-16 text-black text-justify leading-relaxed contract-document" 
               dangerouslySetInnerHTML={{ __html: contract.description }} 
             />
             

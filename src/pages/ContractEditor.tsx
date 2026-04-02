@@ -46,7 +46,6 @@ export default function ContractEditor() {
   const availableVariables = [
     { tag: '{{nome}}', desc: 'Nome do Cliente' },
     { tag: '{{cpf}}', desc: 'CPF ou CNPJ' },
-    { tag: '{{rg}}', desc: 'RG' },
     { tag: '{{estado_civil}}', desc: 'Estado Civil' },
     { tag: '{{profissao}}', desc: 'Profissão' },
     { tag: '{{endereco}}', desc: 'Endereço Completo' },
@@ -133,7 +132,7 @@ export default function ContractEditor() {
       <h2 style="text-align: center;"><strong>CONTRATO DE PRESTAÇÃO DE SERVIÇOS</strong></h2>
       <p><br></p>
       <p><strong>CLÁUSULA PRIMEIRA - DAS PARTES</strong></p>
-      <p><strong>CONTRATANTE:</strong> {{nome}}, {{estado_civil}}, {{profissao}}, portador(a) do RG nº {{rg}} e inscrito(a) no CPF/CNPJ sob o nº {{cpf}}, residente e domiciliado(a) em {{endereco}}.</p>
+      <p><strong>CONTRATANTE:</strong> {{nome}}, {{estado_civil}}, {{profissao}}, inscrito(a) no CPF/CNPJ sob o nº {{cpf}}, residente e domiciliado(a) em {{endereco}}.</p>
       <p><br></p>
       <p><strong>CONTRATADA:</strong> [SEU NOME / NOME DA SUA EMPRESA], inscrito(a) no CNPJ/CPF sob o nº [SEU CNPJ/CPF], com sede em [SEU ENDEREÇO].</p>
       <p><br></p>
