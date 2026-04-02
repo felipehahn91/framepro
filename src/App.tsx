@@ -34,6 +34,7 @@ import BillingSuccess from "./pages/BillingSuccess";
 import BillingCancel from "./pages/BillingCancel";
 import UpdatePassword from "./pages/UpdatePassword";
 import NotFound from "./pages/NotFound";
+import LandingPage from "./pages/LandingPage";
 
 applyTheme(getActiveTheme());
 
@@ -54,7 +55,10 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
+              {/* Páginas Públicas */}
+              <Route path="/landing" element={<LandingPage />} />
               <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Login />} />
               <Route path="/update-password" element={<UpdatePassword />} />
               <Route path="/founder-signup" element={<FounderSignup />} />
               
@@ -69,6 +73,7 @@ const App = () => (
               <Route path="/billing-success" element={<ProtectedRoute><BillingSuccess /></ProtectedRoute>} />
               <Route path="/billing-cancel" element={<ProtectedRoute><BillingCancel /></ProtectedRoute>} />
               
+              {/* Páginas Protegidas do Sistema */}
               <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
               <Route path="/oportunidades" element={<ProtectedRoute><Oportunidades /></ProtectedRoute>} />
               <Route path="/clientes" element={<ProtectedRoute><Clientes /></ProtectedRoute>} />
