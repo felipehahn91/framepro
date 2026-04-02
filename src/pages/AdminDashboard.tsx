@@ -439,37 +439,116 @@ export default function AdminDashboard() {
 
       {/* Modal Detalhes Usuário */}
       <Dialog open={!!selectedUser} onOpenChange={() => setSelectedUser(null)}>
-        <DialogContent className="sm:max-w-2xl bg-white rounded-3xl p-0 overflow-hidden">
-          <div className="p-6 bg-gray-50 border-b border-gray-100 flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-xl font-bold">
-              {selectedUser?.first_name?.substring(0,2).toUpperCase()}
+        <DialogContent className="sm:max-w-3xl bg-white rounded-3xl p-0 overflow-hidden shadow-2xl">
+          <div className="p-6 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100 flex items-center gap-5">
+            <div className="w-16 h-16 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center text-2xl font-bold shadow-sm">
+              {selectedUser?.first_name?.substring(0,2).toUpperCase() || 'US'}
+            </div>
+            <div className="flex-1">
+              <DialogTitle className="text-2xl font-bold text-gray-900 mb-1">
+                {selectedUser?.first_name} {selectedUser?.last_name}
+              </DialogTitle>
+              <div className="flex items-center gap-3 text-sm text-gray-500 font-medium">
+                <span className="flex items-center gap-1.5"><Mail className="w-4 h-4" /> {selectedUser?.email || 'Sem email'}</span>
+                {selectedUser?.phone && <span className="flex items-center gap-1.5"><Phone className="w-4 h-4" /> {selectedUser?.phone}</span>}
+              </div>
             </div>
             <div>
-              <DialogTitle className="text-xl font-bold">{selectedUser?.first_name} {selectedUser?.last_name}</DialogTitle>
-              <p className="text-sm text-gray-500">{selectedUser?.email}</p>
+              <span className={`px-3 py-1.5 text-xs font-bold rounded-xl border ${selectedUser?.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
+                {selectedUser?.role === 'admin' ? 'Administrador' : 'Usuário Padrão'}
+              </span>
             </div>
           </div>
-          <div className="p-6 space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                <Target className="w-4 h-4 text-orange-500 mb-2" />
-                <p className="text-2xl font-bold">{userStats.leads}</p>
-                <p className="text-xs text-gray-500 font-medium">Leads</p>
+          
+          <div className="p-6 space-y-8 bg-gray-50/30">
+            {/* Secão: Estatísticas de Uso */}
+            <div>
+              <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Activity className="w-4 h-4 text-gray-400" /> Métricas de Uso
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                  <Target className="w-5 h-5 text-orange-500 mb-3" />
+                  <p className="text-3xl font-black text-gray-900">{loadingStats ? <Loader2 className="w-6 h-6 animate-spin text-gray-300" /> : userStats.leads}</p>
+                  <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mt-1">Leads</p>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                  <Users className="w-5 h-5 text-blue-500 mb-3" />
+                  <p className="text-3xl font-black text-gray-900">{loadingStats ? <Loader2 className="w-6 h-6 animate-spin text-gray-300" /> : userStats.clients}</p>
+                  <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mt-1">Clientes</p>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                  <FileText className="w-5 h-5 text-purple-500 mb-3" />
+                  <p className="text-3xl font-black text-gray-900">{loadingStats ? <Loader2 className="w-6 h-6 animate-spin text-gray-300" /> : userStats.contracts}</p>
+                  <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mt-1">Contratos</p>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                  <Calculator className="w-5 h-5 text-green-500 mb-3" />
+                  <p className="text-3xl font-black text-gray-900">{loadingStats ? <Loader2 className="w-6 h-6 animate-spin text-gray-300" /> : userStats.orcamentos}</p>
+                  <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mt-1">Orçamentos</p>
+                </div>
               </div>
-              <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                <Users className="w-4 h-4 text-blue-500 mb-2" />
-                <p className="text-2xl font-bold">{userStats.clients}</p>
-                <p className="text-xs text-gray-500 font-medium">Clientes</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Secão: Detalhes da Conta */}
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-gray-400" /> Dados Pessoais
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-50">
+                    <span className="text-xs font-semibold text-gray-500">Empresa</span>
+                    <span className="text-sm font-bold text-gray-900">{selectedUser?.company || '-'}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-50">
+                    <span className="text-xs font-semibold text-gray-500">Data de Cadastro</span>
+                    <span className="text-sm font-bold text-gray-900">{selectedUser?.created_at ? new Date(selectedUser.created_at).toLocaleDateString('pt-BR') : '-'}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-50">
+                    <span className="text-xs font-semibold text-gray-500">Última Atualização</span>
+                    <span className="text-sm font-bold text-gray-900">{selectedUser?.updated_at ? new Date(selectedUser.updated_at).toLocaleDateString('pt-BR') : '-'}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-xs font-semibold text-gray-500">Meta Mensal</span>
+                    <span className="text-sm font-bold text-green-600">
+                      {selectedUser?.monthly_revenue_goal ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(selectedUser.monthly_revenue_goal) : 'Não definida'}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                <FileText className="w-4 h-4 text-purple-500 mb-2" />
-                <p className="text-2xl font-bold">{userStats.contracts}</p>
-                <p className="text-xs text-gray-500 font-medium">Contratos</p>
-              </div>
-              <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100">
-                <Calculator className="w-4 h-4 text-green-500 mb-2" />
-                <p className="text-2xl font-bold">{userStats.orcamentos}</p>
-                <p className="text-xs text-gray-500 font-medium">Orçamentos</p>
+
+              {/* Secão: Assinatura */}
+              <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+                <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-gray-400" /> Informações de Assinatura
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-50">
+                    <span className="text-xs font-semibold text-gray-500">Status</span>
+                    <span className={`px-2.5 py-1 text-[10px] font-bold rounded-full border ${
+                      selectedUser?.subscription_status === 'active' ? 'bg-green-50 text-green-700 border-green-200' :
+                      selectedUser?.subscription_status === 'trialing' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                      'bg-red-50 text-red-700 border-red-200'
+                    }`}>
+                      {selectedUser?.subscription_status?.toUpperCase() || 'INACTIVE'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-50">
+                    <span className="text-xs font-semibold text-gray-500">Plano</span>
+                    <span className="text-sm font-bold text-gray-900 uppercase">{selectedUser?.plan_type || '-'}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-50">
+                    <span className="text-xs font-semibold text-gray-500">Fim do Período de Teste</span>
+                    <span className="text-sm font-bold text-gray-900">{selectedUser?.trial_end ? new Date(selectedUser.trial_end).toLocaleDateString('pt-BR') : '-'}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-xs font-semibold text-gray-500">Stripe Customer ID</span>
+                    <span className="text-xs font-mono text-gray-600 bg-gray-100 px-2 py-1 rounded truncate max-w-[150px]">
+                      {selectedUser?.stripe_customer_id || 'Não vinculado'}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
