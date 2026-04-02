@@ -612,7 +612,7 @@ export default function ClosingPublicView() {
                   <div className="absolute top-0 left-0 right-0 h-4 bg-gradient-to-b from-white to-transparent pointer-events-none z-10"></div>
                   <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent pointer-events-none z-10"></div>
                   <div className="text-sm text-gray-700 leading-relaxed text-justify max-h-[500px] overflow-y-auto overflow-x-hidden custom-scrollbar p-4 sm:p-6 pt-5 pb-10 prose max-w-none prose-sm prose-p:my-2 prose-headings:my-4 w-full">
-                    <div className="w-full break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }} dangerouslySetInnerHTML={{ __html: contractPreview }} />
+                    <div className="w-full break-words" dangerouslySetInnerHTML={{ __html: contractPreview }} />
                   </div>
                 </div>
                 <p className="text-xs text-gray-400 mt-2 text-center">Role para baixo para ler o contrato completo</p>

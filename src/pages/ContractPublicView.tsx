@@ -163,7 +163,6 @@ export default function ContractPublicView() {
             )}
             <div 
               className="prose max-w-none mb-16 text-black text-justify leading-relaxed break-words" 
-              style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}
               dangerouslySetInnerHTML={{ __html: contract.description }} 
             />
             
