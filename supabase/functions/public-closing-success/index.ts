@@ -8,6 +8,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -110,17 +112,16 @@ serve(async (req) => {
     if (opportunityError) throw opportunityError;
 
     const contractPreview = `Contrato de ${opportunity.name} - ${formatCurrency(amount)}`;
-    const signatureImage = await generateSignatureImage(userId, opportunity.name, amount);
-
+    
     const { data: newContract, error: contractError } = await supabaseAdmin.from('contracts').insert({
       user_id: link.user_id,
       client_id: opportunity.id,
       value: amount,
       start_date: new Date().toISOString().split('T')[0],
       description: contractPreview,
-      client_signature: signatureImage,
-      supplier_signature: template?.supplier_signature || null,
-      signature_status: 'Assinado 2/2',
+      client_signature: null,
+      supplier_signature: null,
+      signature_status: 'Pendente',
       status: 'Ativo'
     }).select().single();
 
@@ -260,6 +261,16 @@ serve(async (req) => {
         related_entity_id: tx.id
       });
     }
+
+    // Trigger AI Insight update (Background)
+    fetch(`${supabaseUrl}/functions/v1/generate-ai-insight`, {
+      method: 'POST',
+      headers: { 
+        'Authorization': `Bearer ${serviceRoleKey}`,
+        'Content-Type': 'application/json' 
+      },
+      body: JSON.stringify({ user_id: userId })
+    }).catch(console.error);
 
     return new Response(JSON.stringify({ success: true, pixCode, pixUrl }), { 
       headers: { ...corsHeaders, "Content-Type": "application/json" }

@@ -29,7 +29,7 @@ const growthData = [
 
 export default function AdminDashboard() {
   const { profile } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'evolution' | 'notifications'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'evolution' | 'notifications' | 'ai'>('overview');
   const [usersList, setUsersList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -45,6 +45,9 @@ export default function AdminDashboard() {
   const [evolutionUrl, setEvolutionUrl] = useState("");
   const [evolutionKey, setEvolutionKey] = useState("");
 
+  // Estados para OpenAI
+  const [openaiKey, setOpenaiKey] = useState("");
+
   // Estados do Modal de Detalhes do Usuário
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [userStats, setUserStats] = useState({ leads: 0, clients: 0, contracts: 0, orcamentos: 0 });
@@ -56,6 +59,7 @@ export default function AdminDashboard() {
       if (data) {
         setEvolutionUrl(data.evo_api_url || "");
         setEvolutionKey(data.evo_api_key || "");
+        setOpenaiKey(data.openai_api_key || "");
       }
     };
     fetchSettings();
@@ -108,6 +112,26 @@ export default function AdminDashboard() {
       toast.success("Configurações da Evolution API salvas!");
     } catch (err) {
       toast.error("Erro ao salvar configurações.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveOpenAI = async () => {
+    setSaving(true);
+    try {
+      const { data } = await supabase.from('platform_settings').select('id').limit(1).maybeSingle();
+      
+      const payload = { openai_api_key: openaiKey };
+
+      if (data) {
+        await supabase.from('platform_settings').update(payload).eq('id', data.id);
+      } else {
+        await supabase.from('platform_settings').insert([payload]);
+      }
+      toast.success("Chave da OpenAI salva com sucesso!");
+    } catch (err) {
+      toast.error("Erro ao salvar chave da OpenAI.");
     } finally {
       setSaving(false);
     }
@@ -216,13 +240,16 @@ export default function AdminDashboard() {
             </div>
             
             <div className="flex flex-wrap gap-2 bg-gray-800/50 p-1.5 rounded-xl border border-gray-700 backdrop-blur-md">
-              {(['overview', 'users', 'evolution', 'notifications'] as const).map((tab) => (
+              {(['overview', 'users', 'evolution', 'notifications', 'ai'] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
                   className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === tab ? 'bg-white text-gray-900 shadow-md' : 'text-gray-400 hover:text-white'}`}
                 >
-                  {tab === 'overview' ? 'Visão Geral' : tab === 'users' ? 'Usuários' : tab === 'evolution' ? 'Evolution API' : 'Notificações'}
+                  {tab === 'overview' ? 'Visão Geral' : 
+                   tab === 'users' ? 'Usuários' : 
+                   tab === 'evolution' ? 'Evolution API' : 
+                   tab === 'notifications' ? 'Notificações' : 'OpenAI'}
                 </button>
               ))}
             </div>
@@ -342,6 +369,33 @@ export default function AdminDashboard() {
                 </div>
                 <button onClick={handleSaveEvolution} disabled={saving} className="w-full bg-gray-900 text-white font-bold py-4 rounded-xl hover:bg-black transition-all flex items-center justify-center gap-2">
                   {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />} Salvar Configurações Globais
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'ai' && (
+            <div className="max-w-4xl space-y-6 animate-in fade-in slide-in-from-bottom-4">
+              <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl p-8 text-white shadow-lg">
+                <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
+                  <Activity className="w-6 h-6" /> Inteligência Artificial
+                </h2>
+                <p className="opacity-90">Configure a OpenAI para gerar insights automáticos no Dashboard dos usuários.</p>
+              </div>
+              <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-8 space-y-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-gray-700">OpenAI API Key</label>
+                  <input 
+                    type="password" 
+                    placeholder="sk-..."
+                    value={openaiKey} 
+                    onChange={e => setOpenaiKey(e.target.value)} 
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none" 
+                  />
+                  <p className="text-[10px] text-gray-400">Esta chave será usada para gerar os resumos diários e mensagens de incentivo.</p>
+                </div>
+                <button onClick={handleSaveOpenAI} disabled={saving} className="w-full bg-gray-900 text-white font-bold py-4 rounded-xl hover:bg-black transition-all flex items-center justify-center gap-2">
+                  {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />} Salvar Configurações de IA
                 </button>
               </div>
             </div>

@@ -6,6 +6,7 @@ import {
   Edit2, TrendingUp, Clock, AlertCircle, Users, 
   Target, FileText, ChevronRight, Inbox, CheckSquare, Loader2
 } from "lucide-react";
+import { AIInsight } from "@/components/AIInsight";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ const Index = () => {
   const { user } = useAuth();
   
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<any>(null);
   const [goal, setGoal] = useState<number>(0);
   const [realized, setRealized] = useState<number>(0);
   
@@ -46,13 +48,14 @@ const Index = () => {
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const { data: profile } = await supabase
+      const { data: userProfile } = await supabase
         .from('profiles')
-        .select('monthly_revenue_goal')
+        .select('*')
         .eq('id', user?.id)
         .single();
         
-      const currentGoal = profile?.monthly_revenue_goal || 0;
+      setProfile(userProfile);
+      const currentGoal = userProfile?.monthly_revenue_goal || 0;
       setGoal(currentGoal);
       setNewGoal(currentGoal.toString());
 
@@ -256,10 +259,14 @@ const Index = () => {
       <div className="min-h-full -m-4 sm:-m-8 p-4 sm:p-8" style={{ backgroundColor: '#e6e6e64c' }}>
         <div className="max-w-7xl mx-auto space-y-6 pb-10">
           
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-gray-500 text-sm">Visão geral do seu negócio</p>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+              <p className="text-gray-500 text-sm">Bem-vindo de volta, {profile?.first_name || 'Usuário'}!</p>
+            </div>
           </div>
+
+          <AIInsight userId={user?.id || ''} initialData={profile?.ai_summary} />
 
           <div className="bg-white rounded-xl p-6 border border-gray-100 shadow-lg relative group">
             <div className="flex justify-between items-start mb-2">
