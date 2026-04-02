@@ -4,7 +4,8 @@ import { motion, Variants } from 'framer-motion';
 import { 
   Camera, Video, LayoutTemplate, PenTool, CheckCircle2, 
   MessageSquare, Zap, Target, ArrowRight, ShieldCheck, 
-  Star, DollarSign, BarChart3, Users, Check, Eye
+  Star, DollarSign, BarChart3, Users, Check, Eye,
+  Instagram, Youtube, Twitter
 } from 'lucide-react';
 
 const fadeInUp: Variants = {
@@ -227,13 +228,13 @@ export default function LandingPage() {
               className="space-y-8"
             >
               <div className="inline-flex items-center gap-2 bg-gray-800/50 backdrop-blur-md border border-gray-700 px-4 py-2 rounded-full text-sm font-bold text-gray-300">
-                <LayoutTemplate className="w-4 h-4 text-orange-500" /> Propostas que vendem sozinhas
+                <LayoutTemplate className="w-4 h-4 text-orange-500" /> Landing Pages de Vendas
               </div>
               <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
-                Apresente seu trabalho como uma experiência.
+                Seus orçamentos em formato de experiência.
               </h2>
               <p className="text-gray-400 text-xl leading-relaxed font-medium">
-                Sua fotografia é linda, seu orçamento em PDF não. Crie propostas em formato de site com as suas melhores fotos de portfólio, vídeos highlight e pacotes interativos. Os noivos aprovam a proposta com um clique.
+                Abandone os PDFs frios. Crie propostas ricas com galerias, vídeos e tabelas de preço interativas. Seu cliente pode aprovar a proposta e fechar negócio com um clique.
               </p>
               
               <ul className="space-y-5 pt-4">
@@ -242,8 +243,8 @@ export default function LandingPage() {
                     <Eye className="w-5 h-5 text-orange-500" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-lg mb-1">Aviso de Leitura Instantâneo</h4>
-                    <p className="text-gray-400 font-medium">Receba uma notificação no CRM no exato momento em que o casal abrir o seu link de orçamento.</p>
+                    <h4 className="font-bold text-lg mb-1">Avisos de Leitura</h4>
+                    <p className="text-gray-400 font-medium">Receba uma notificação no exato momento que o cliente abrir seu orçamento.</p>
                   </div>
                 </li>
                 <li className="flex items-start gap-4 p-4 rounded-2xl hover:bg-gray-800/50 transition-colors border border-transparent hover:border-gray-700">
@@ -251,8 +252,8 @@ export default function LandingPage() {
                     <BarChart3 className="w-5 h-5 text-blue-500" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-lg mb-1">Mapa de Calor Oculto</h4>
-                    <p className="text-gray-400 font-medium">Temos uma tecnologia que grava a tela do cliente anonimamente. Descubra exatamente qual pacote e quais fotos chamaram mais a atenção deles.</p>
+                    <h4 className="font-bold text-lg mb-1">Mapa de Calor (Heatmap)</h4>
+                    <p className="text-gray-400 font-medium">Veja as gravações da tela do cliente para descobrir qual pacote chamou mais atenção.</p>
                   </div>
                 </li>
               </ul>
@@ -268,7 +269,7 @@ export default function LandingPage() {
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 bg-orange-500/30 rounded-full blur-[120px] group-hover:bg-orange-500/40 transition-colors duration-700"></div>
               
               <img 
-                src="https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=1000&auto=format&fit=crop" 
+                src="https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=1000&auto=format&fit=crop" 
                 alt="Orçamentos Interativos" 
                 className="relative z-10 w-full max-w-md rounded-3xl shadow-2xl border-8 border-gray-800 group-hover:rotate-0 group-hover:scale-105 transition-all duration-500"
               />
@@ -298,7 +299,7 @@ export default function LandingPage() {
                  <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Signature_of_John_Hancock.svg" alt="Assinatura" className="h-24 mx-auto opacity-80" />
                </div>
                <p className="font-bold text-gray-900 text-lg">João da Silva</p>
-               <p className="text-xs text-gray-500 uppercase tracking-widest mt-1 font-bold">Contratante / Noivo</p>
+               <p className="text-xs text-gray-500 uppercase tracking-widest mt-1 font-bold">Contratante</p>
                <div className="mt-8 w-full bg-green-50 border border-green-200 text-green-700 font-bold py-4 rounded-2xl flex justify-center items-center gap-2 shadow-sm">
                  <ShieldCheck className="w-6 h-6" /> Assinado Digitalmente
                </div>
@@ -316,10 +317,10 @@ export default function LandingPage() {
               <ShieldCheck className="w-4 h-4" /> Fechamento Imediato
             </div>
             <h2 className="text-4xl md:text-5xl font-black text-gray-900 leading-tight tracking-tight">
-              Contrato e pagamento fechados na mesma tela.
+              Fechamento e pagamento no piloto automático.
             </h2>
             <p className="text-gray-500 text-xl leading-relaxed font-medium">
-              Ao invés de mandar um documento no WhatsApp e pedir os dados do casal, você envia nosso "Link de Fechamento". O cliente preenche o CPF, escolhe como vai parcelar o pagamento e o seu contrato de fotografia é preenchido automaticamente com as "variáveis mágicas".
+              Esqueça o vai e vem de arquivos Word. Configure o modelo base, gere um "Link de Fechamento" e deixe o cliente preencher os dados, escolher a forma de pagamento e assinar na mesma tela.
             </p>
             <ul className="space-y-5 pt-2">
               {[
@@ -378,8 +379,8 @@ export default function LandingPage() {
               <ul className="space-y-5 mb-10 flex-1">
                 {[
                   "14 dias de teste GRÁTIS",
-                  "Gestão ilimitada de clientes (CRM)",
-                  "Criador de Propostas (Páginas)",
+                  "Gestão ilimitada de clientes (Kanban)",
+                  "Construtor de Orçamentos Interativos",
                   "Contratos com assinatura digital na tela",
                   "Controle de pagamentos (Financeiro)",
                   "Suporte por e-mail"
@@ -410,7 +411,7 @@ export default function LandingPage() {
               </div>
               
               <h3 className="text-2xl font-black text-orange-400 mb-2 uppercase tracking-widest">Plus</h3>
-              <p className="text-gray-300 font-medium mb-8 relative z-10">Tudo do Starter + Automação total de comunicação e pagamentos.</p>
+              <p className="text-gray-300 font-medium mb-8 relative z-10">Tudo do Starter + Automação de follow-up e mapa de calor.</p>
               
               <div className="flex items-baseline gap-2 mb-8 relative z-10">
                 <span className="text-6xl font-black text-white tracking-tighter">R$ 147</span>
@@ -424,7 +425,7 @@ export default function LandingPage() {
                   "Integração WhatsApp (Avisos de vencimento)",
                   "Sincronização Google Calendar e Meet",
                   "Geração automática de Pix e Boletos",
-                  "Fluxo de Cadência Automático",
+                  "Fluxo de Cadência (Mensagens Agendadas)",
                   "Mapa de Calor: Gravação de Tela nas propostas",
                   "Suporte prioritário via WhatsApp"
                 ].map((item, i) => (
@@ -474,27 +475,83 @@ export default function LandingPage() {
         </motion.div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="bg-gray-50 py-16 px-4 border-t border-gray-200">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-500 rounded-2xl flex items-center justify-center shadow-sm">
-              <span className="text-white font-black text-xl">F</span>
+      {/* FOOTER PREMIUM */}
+      <motion.footer 
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ duration: 1 }}
+        className="bg-gray-950 pt-20 pb-10 px-4 sm:px-6 border-t border-gray-900"
+      >
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 mb-16">
+            {/* Logo & Brand Info */}
+            <div className="lg:col-span-2">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/20">
+                  <span className="text-white font-black text-xl">F</span>
+                </div>
+                <span className="font-black text-2xl tracking-tight text-white">Frame Pro</span>
+              </div>
+              <p className="text-gray-400 font-medium text-sm max-w-sm mb-8 leading-relaxed">
+                O CRM definitivo para fotógrafos e filmmakers. Organize sua agenda, crie propostas irresistíveis e feche contratos digitalmente sem dor de cabeça.
+              </p>
+              <div className="flex items-center gap-4">
+                <a href="#" className="w-10 h-10 rounded-full bg-gray-900 border border-gray-800 flex items-center justify-center text-gray-400 hover:bg-orange-500 hover:text-white hover:border-orange-500 transition-all">
+                  <Instagram className="w-4 h-4" />
+                </a>
+                <a href="#" className="w-10 h-10 rounded-full bg-gray-900 border border-gray-800 flex items-center justify-center text-gray-400 hover:bg-orange-500 hover:text-white hover:border-orange-500 transition-all">
+                  <Youtube className="w-4 h-4" />
+                </a>
+                <a href="#" className="w-10 h-10 rounded-full bg-gray-900 border border-gray-800 flex items-center justify-center text-gray-400 hover:bg-orange-500 hover:text-white hover:border-orange-500 transition-all">
+                  <Twitter className="w-4 h-4" />
+                </a>
+              </div>
             </div>
-            <span className="font-black text-2xl tracking-tight text-gray-900">Frame Pro</span>
-          </div>
-          
-          <div className="flex items-center gap-8 text-sm font-bold text-gray-500">
-            <Link to="/login" className="hover:text-gray-900 transition-colors">Login</Link>
-            <Link to="/signup" className="hover:text-gray-900 transition-colors">Criar Conta</Link>
-            <a href="#" className="hover:text-gray-900 transition-colors">Termos de Uso</a>
+            
+            {/* Produto */}
+            <div>
+              <h4 className="text-white font-bold mb-6 tracking-wide">Produto</h4>
+              <ul className="space-y-4 text-sm font-medium text-gray-400">
+                <li><a href="#recursos" className="hover:text-orange-400 transition-colors">Recursos</a></li>
+                <li><a href="#propostas" className="hover:text-orange-400 transition-colors">Propostas Interativas</a></li>
+                <li><a href="#contratos" className="hover:text-orange-400 transition-colors">Assinatura Digital</a></li>
+                <li><a href="#planos" className="hover:text-orange-400 transition-colors">Planos e Preços</a></li>
+              </ul>
+            </div>
+
+            {/* Plataforma */}
+            <div>
+              <h4 className="text-white font-bold mb-6 tracking-wide">Plataforma</h4>
+              <ul className="space-y-4 text-sm font-medium text-gray-400">
+                <li><Link to="/login" className="hover:text-orange-400 transition-colors">Fazer Login</Link></li>
+                <li><Link to="/signup" className="hover:text-orange-400 transition-colors">Criar Conta Grátis</Link></li>
+                <li><a href="#" className="hover:text-orange-400 transition-colors">Central de Ajuda</a></li>
+                <li><a href="#" className="hover:text-orange-400 transition-colors">Tutoriais em Vídeo</a></li>
+              </ul>
+            </div>
+
+            {/* Legal */}
+            <div>
+              <h4 className="text-white font-bold mb-6 tracking-wide">Legal</h4>
+              <ul className="space-y-4 text-sm font-medium text-gray-400">
+                <li><a href="#" className="hover:text-orange-400 transition-colors">Termos de Uso</a></li>
+                <li><a href="#" className="hover:text-orange-400 transition-colors">Política de Privacidade</a></li>
+                <li><a href="#" className="hover:text-orange-400 transition-colors">Contato</a></li>
+              </ul>
+            </div>
           </div>
 
-          <p className="text-gray-400 font-medium text-sm">
-            © {new Date().getFullYear()} Frame Pro CRM. Todos os direitos reservados.
-          </p>
+          <div className="pt-8 border-t border-gray-800/50 flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-gray-500 font-medium text-sm text-center md:text-left">
+              © {new Date().getFullYear()} Frame Pro CRM. Todos os direitos reservados.
+            </p>
+            <div className="flex items-center gap-2 text-sm font-bold text-gray-500 bg-gray-900 border border-gray-800 px-4 py-2 rounded-full">
+              Feito com <span className="text-red-500">♥</span> para criativos
+            </div>
+          </div>
         </div>
-      </footer>
+      </motion.footer>
     </div>
   );
 }
