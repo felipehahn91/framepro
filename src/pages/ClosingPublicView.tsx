@@ -50,25 +50,18 @@ export default function ClosingPublicView() {
 
   const fetchLinkData = async () => {
     try {
-      const { data: link, error } = await supabase
-        .from('closing_links')
-        .select('*, opportunities(*)')
-        .eq('token', token)
-        .single();
+      const { data, error } = await supabase.rpc('get_closing_link_data', {
+        p_token: token
+      });
 
-      if (error) throw error;
-      setLinkData(link);
-      setOpportunity(link.opportunities);
+      if (error || !data || !data.link) throw error || new Error("Link not found");
+      
+      setLinkData(data.link);
+      setOpportunity(data.opportunity);
+      setTemplate(data.template);
 
-      if (link.contract_template_id) {
-        const { data: tpl } = await supabase
-          .from('contracts')
-          .select('description, supplier_signature')
-          .eq('id', link.contract_template_id)
-          .single();
-        setTemplate(tpl);
-      }
     } catch (error) {
+      console.error(error);
       toast.error("Link de fechamento inválido ou indisponível.");
     } finally {
       setLoading(false);
