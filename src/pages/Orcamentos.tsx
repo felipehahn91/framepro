@@ -25,7 +25,7 @@ interface Orcamento {
   share_token: string;
   updated_at: string;
   opportunity_id?: string | null;
-  opportunities?: { name: string } | null;
+  opportunities?: { name: string; email?: string } | null;
   sections?: any[];
 }
 
@@ -62,7 +62,7 @@ export default function Orcamentos() {
     setLoading(true);
     try {
       const [orcRes, oppRes] = await Promise.all([
-        supabase.from('orcamentos').select('*, opportunities(name)').eq('user_id', user?.id).order('updated_at', { ascending: false }),
+        supabase.from('orcamentos').select('*, opportunities(name, email)').eq('user_id', user?.id).order('updated_at', { ascending: false }),
         supabase.from('opportunities').select('id, name').eq('user_id', user?.id).order('name')
       ]);
 
@@ -161,6 +161,15 @@ export default function Orcamentos() {
     const url = `${window.location.origin}/orcamentos/public/${token}`;
     navigator.clipboard.writeText(url);
     toast.success("Link copiado!");
+  };
+
+  const handleSendEmail = (orc: Orcamento) => {
+    const url = `${window.location.origin}/orcamentos/public/${orc.share_token}`;
+    const email = orc.opportunities?.email || '';
+    const subject = encodeURIComponent(`Proposta Comercial - ${orc.name}`);
+    const body = encodeURIComponent(`Olá!\n\nAqui está o link para acessar a nossa proposta comercial:\n\n${url}\n\nQualquer dúvida, estou à disposição!`);
+    
+    window.open(`mailto:${email}?subject=${subject}&body=${body}`);
   };
 
   const handleLinkLead = async () => {
@@ -305,6 +314,7 @@ export default function Orcamentos() {
                   </button>
 
                   <button 
+                    onClick={() => handleSendEmail(orc)}
                     className="w-10 h-10 flex items-center justify-center border border-gray-200 rounded-lg text-gray-400 hover:text-orange-500 hover:border-orange-200 hover:bg-orange-50 transition-all"
                     title="Enviar por Email"
                   >
