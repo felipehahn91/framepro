@@ -9,8 +9,6 @@ export default function FounderPack() {
   const [loading, setLoading] = useState(false);
   const logoImg = "/logo.png";
 
-  import { toast } from 'sonner';
-
   const handleSubscribe = async () => {
     setLoading(true);
     try {
