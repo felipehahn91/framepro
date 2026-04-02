@@ -477,10 +477,17 @@ export default function AdminDashboard() {
                     
                     setSelectedUser({ ...selectedUser, plan_type: newPlan, subscription_status: newStatus });
                     
-                    await supabase.from('profiles').update({
-                      plan_type: newPlan,
-                      subscription_status: newStatus
-                    }).eq('id', selectedUser.id);
+                    const { error } = await supabase.rpc('admin_update_user_plan', {
+                      p_user_id: selectedUser.id,
+                      p_plan_type: newPlan,
+                      p_status: newStatus
+                    });
+                    
+                    if (error) {
+                      toast.error("Erro ao salvar o plano no banco de dados.");
+                      console.error(error);
+                      return;
+                    }
                     
                     setUsersList(usersList.map(u => u.id === selectedUser.id ? { ...u, plan_type: newPlan, subscription_status: newStatus } : u));
                     toast.success(`Plano alterado para ${newPlan.toUpperCase()}`);
@@ -499,9 +506,17 @@ export default function AdminDashboard() {
                     
                     setSelectedUser({ ...selectedUser, subscription_status: newStatus });
                     
-                    await supabase.from('profiles').update({
-                      subscription_status: newStatus
-                    }).eq('id', selectedUser.id);
+                    const { error } = await supabase.rpc('admin_update_user_plan', {
+                      p_user_id: selectedUser.id,
+                      p_plan_type: selectedUser.plan_type || 'starter',
+                      p_status: newStatus
+                    });
+                    
+                    if (error) {
+                      toast.error("Erro ao salvar o status no banco de dados.");
+                      console.error(error);
+                      return;
+                    }
                     
                     setUsersList(usersList.map(u => u.id === selectedUser.id ? { ...u, subscription_status: newStatus } : u));
                     toast.success(`Status alterado para ${newStatus.toUpperCase()}`);
