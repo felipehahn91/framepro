@@ -9,10 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { 
-  Camera, Save, Loader2, Palette, Check, MessageSquare, QrCode, 
+import {
+  Camera, Save, Loader2, Palette, Check, MessageSquare, QrCode,
   Smartphone, LogOut, RefreshCw, Webhook, CreditCard, ShieldCheck, FileText, ExternalLink,
-  Banknote, Link as LinkIcon, Copy
+  Banknote, Link as LinkIcon, Copy, Zap
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import * as evolutionApi from '@/lib/evolution';
