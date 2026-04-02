@@ -25,6 +25,19 @@ interface Task {
 
 type FilterType = 'inbox' | 'today' | 'next_7' | 'in_progress' | 'completed' | string;
 
+// Função auxiliar para evitar problema de fuso horário
+const parseDateSafe = (dateStr: string | null) => {
+  if (!dateStr) return new Date();
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return new Date();
+  // Se for apenas a data ou se a hora for exata meia-noite (UTC), empurramos para o meio-dia
+  // Isso previne que a conversão pro fuso do Brasil (GMT-3) faça a data cair pro dia anterior
+  if (dateStr.length <= 10 || (d.getUTCHours() === 0 && d.getUTCMinutes() === 0)) {
+    d.setUTCHours(12);
+  }
+  return d;
+};
+
 export default function Tarefas() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -97,12 +110,12 @@ export default function Tarefas() {
       
       if (activeFilter === 'today') {
         if (!task.due_date) return false;
-        return isToday(new Date(task.due_date));
+        return isToday(parseDateSafe(task.due_date));
       }
 
       if (activeFilter === 'next_7') {
         if (!task.due_date) return false;
-        const d = new Date(task.due_date);
+        const d = parseDateSafe(task.due_date);
         return isWithinInterval(d, { start: today, end: next7 });
       }
 
@@ -119,7 +132,7 @@ export default function Tarefas() {
       if (sortBy === 'date_asc') {
         if (!a.due_date) return 1;
         if (!b.due_date) return -1;
-        return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+        return parseDateSafe(a.due_date).getTime() - parseDateSafe(b.due_date).getTime();
       }
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
@@ -141,8 +154,8 @@ export default function Tarefas() {
 
     return {
       inbox: tasks.filter(t => t.status !== 'Concluída').length,
-      today: tasks.filter(t => t.status !== 'Concluída' && t.due_date && isToday(new Date(t.due_date))).length,
-      next_7: tasks.filter(t => t.status !== 'Concluída' && t.due_date && isWithinInterval(new Date(t.due_date), { start: today, end: next7 })).length,
+      today: tasks.filter(t => t.status !== 'Concluída' && t.due_date && isToday(parseDateSafe(t.due_date))).length,
+      next_7: tasks.filter(t => t.status !== 'Concluída' && t.due_date && isWithinInterval(parseDateSafe(t.due_date), { start: today, end: next7 })).length,
       in_progress: tasks.filter(t => t.status === 'Em execução' || t.status === 'Em Progresso').length,
       completed: tasks.filter(t => t.status === 'Concluída').length,
       projectCounts
@@ -198,7 +211,8 @@ export default function Tarefas() {
         description: formData.description,
         status: formData.status,
         priority: formData.priority,
-        due_date: formData.due_date || null,
+        // Garante que é salvo pelo menos no meio-dia UTC
+        due_date: formData.due_date ? `${formData.due_date}T12:00:00Z` : null,
         project: formData.project || null
       };
 
@@ -470,9 +484,9 @@ export default function Tarefas() {
                             </div>
                           )}
                           {task.due_date && (
-                            <div className={`flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md border ${new Date(task.due_date) < new Date() && !completed ? 'text-red-600 bg-red-50 border-red-100' : 'text-gray-500 bg-gray-50 border-gray-100'}`}>
+                            <div className={`flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md border ${parseDateSafe(task.due_date) < new Date() && !completed ? 'text-red-600 bg-red-50 border-red-100' : 'text-gray-500 bg-gray-50 border-gray-100'}`}>
                               <CalendarIcon className="w-3 h-3" />
-                              {format(new Date(task.due_date), "dd 'de' MMM", { locale: ptBR })}
+                              {format(parseDateSafe(task.due_date), "dd 'de' MMM", { locale: ptBR })}
                             </div>
                           )}
                         </div>
