@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { initTracking } from "@/lib/tracking";
+import { PDFDocumentViewer } from "@/components/PDFDocumentViewer";
 
 const getDeviceType = () => {
   const width = window.innerWidth;
@@ -321,52 +322,27 @@ export default function OrcamentoPublicView() {
         className="min-h-screen font-sans text-gray-900 flex flex-col items-center justify-start sm:py-12 transition-colors"
         style={{ backgroundColor: globalSettings.pageBackgroundColor || '#f3f4f6' }}
       >
+      <div
+        className="min-h-screen font-sans text-gray-900 flex flex-col items-center justify-start sm:py-12 transition-colors relative overflow-y-auto custom-scrollbar"
+        style={{ backgroundColor: globalSettings.pageBackgroundColor || '#f3f4f6' }}
+      >
         {isPDFMode ? (
           <div
             id="proposal-container"
-            className="w-full h-[100dvh] sm:h-[90vh] sm:rounded-3xl sm:shadow-2xl overflow-hidden relative flex flex-col transition-all"
+            className="w-full sm:rounded-3xl sm:shadow-2xl overflow-hidden relative flex flex-col transition-all shrink-0"
             style={{
               maxWidth: globalSettings.maxWidth || '900px',
-              backgroundColor: globalSettings.backgroundColor || '#ffffff'
+              backgroundColor: globalSettings.backgroundColor || '#ffffff',
+              minHeight: '1000px'
             }}
           >
             {pdfSection?.fileUrl ? (
-              <iframe src={`${pdfSection.fileUrl}#toolbar=0`} className="w-full flex-1 border-0" title="Proposta PDF" />
+              <PDFDocumentViewer url={pdfSection.fileUrl} />
             ) : (
-              <div className="flex-1 flex items-center justify-center">O arquivo PDF não foi encontrado.</div>
-            )}
-            
-            {/* GROUPED CTAS */}
-            {pdfSection?.ctas?.length > 0 && pdfSection?.fileUrl && pdfSection.ctas.some((c: any) => c.isGrouped !== false) && (
-              <div className="absolute bottom-6 left-0 right-0 flex justify-center z-50 px-4 pointer-events-none">
-                <div className="bg-white/90 backdrop-blur-md px-6 py-4 rounded-2xl shadow-2xl border border-gray-200 flex flex-wrap justify-center gap-4 pointer-events-auto max-w-2xl w-full">
-                  {pdfSection.ctas.filter((c: any) => c.isGrouped !== false).map((cta: any, i: number) => (
-                    <button
-                      key={i}
-                      onClick={() => {
-                        if(cta.link) {
-                          const finalLink = cta.link.startsWith('http') ? cta.link : `https://${cta.link}`;
-                          window.open(finalLink, '_blank');
-                        }
-                      }}
-                      style={{
-                        backgroundColor: cta.color || '#f97316',
-                        color: cta.textColor || '#ffffff',
-                        borderRadius: cta.borderRadius || '9999px',
-                        fontFamily: cta.fontFamily || 'inherit',
-                        fontWeight: cta.isBold === false ? 'normal' : 'bold',
-                        textTransform: cta.isUppercase ? 'uppercase' : 'none',
-                      }}
-                      className="px-8 py-3.5 shadow-md hover:-translate-y-1 transition-transform flex-1 text-center min-w-[200px]"
-                    >
-                      {cta.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              <div className="flex-1 flex items-center justify-center p-20">O arquivo PDF não foi encontrado.</div>
             )}
 
-            {/* FREE CTAS */}
+            {/* FREE CTAS (Presos dentro do container que estica e rola a tela) */}
             {pdfSection?.ctas?.length > 0 && pdfSection?.fileUrl && (
               <>
                 {pdfSection.ctas.map((cta: any, i: number) => {
@@ -403,10 +379,10 @@ export default function OrcamentoPublicView() {
             )}
           </div>
         ) : (
-          <div 
+          <div
             id="proposal-container"
-            className="w-full sm:rounded-3xl shadow-2xl min-h-screen sm:min-h-0 flex flex-col overflow-hidden transition-all relative"
-            style={{ 
+            className="w-full sm:rounded-3xl shadow-2xl min-h-screen sm:min-h-0 flex flex-col overflow-hidden transition-all relative shrink-0"
+            style={{
               maxWidth: globalSettings.maxWidth,
               backgroundColor: globalSettings.backgroundColor
             }}
@@ -416,6 +392,36 @@ export default function OrcamentoPublicView() {
                 <PreviewBlock section={s} />
               </div>
             ))}
+          </div>
+        )}
+
+        {/* GROUPED CTAS (Fixo na viewport (tela), acompanhando o scroll) */}
+        {isPDFMode && pdfSection?.ctas?.length > 0 && pdfSection?.fileUrl && pdfSection.ctas.some((c: any) => c.isGrouped !== false) && (
+          <div className="sticky bottom-6 left-0 right-0 flex justify-center z-50 px-4 pointer-events-none mt-auto pb-6 w-full">
+            <div className="bg-white/90 backdrop-blur-md px-6 py-4 rounded-2xl shadow-2xl border border-gray-200 flex flex-wrap justify-center gap-4 pointer-events-auto max-w-2xl w-full">
+              {pdfSection.ctas.filter((c: any) => c.isGrouped !== false).map((cta: any, i: number) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    if(cta.link) {
+                      const finalLink = cta.link.startsWith('http') ? cta.link : `https://${cta.link}`;
+                      window.open(finalLink, '_blank');
+                    }
+                  }}
+                  style={{
+                    backgroundColor: cta.color || '#f97316',
+                    color: cta.textColor || '#ffffff',
+                    borderRadius: cta.borderRadius || '9999px',
+                    fontFamily: cta.fontFamily || 'inherit',
+                    fontWeight: cta.isBold === false ? 'normal' : 'bold',
+                    textTransform: cta.isUppercase ? 'uppercase' : 'none',
+                  }}
+                  className="px-8 py-3.5 shadow-md hover:-translate-y-1 transition-transform flex-1 text-center min-w-[200px]"
+                >
+                  {cta.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>

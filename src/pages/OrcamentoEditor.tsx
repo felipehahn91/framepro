@@ -18,6 +18,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { PDFDocumentViewer } from "@/components/PDFDocumentViewer";
 
 const SECTION_LABELS: Record<string, string> = {
   'cover': 'Capa',
@@ -1418,13 +1419,13 @@ export default function OrcamentoEditor() {
           </div>
 
           {/* CANVAS AREA (Centro - Preview da Folha) */}
-          <div 
-            className="flex-1 overflow-y-auto p-4 sm:p-8 flex justify-center items-start relative custom-scrollbar"
+          <div
+            className="flex-1 overflow-y-auto p-4 sm:p-8 flex flex-col items-center justify-start relative custom-scrollbar"
             style={{ backgroundColor: globalSettings.pageBackgroundColor || '#f3f4f6' }}
           >
             
-            <div 
-              className={`w-full min-h-[1000px] shadow-2xl border border-gray-200 flex flex-col relative transition-all mb-20 overflow-hidden ${isPDFMode ? 'h-full' : 'h-fit'}`}
+            <div
+              className={`w-full shadow-2xl border border-gray-200 flex flex-col relative transition-all overflow-hidden shrink-0 ${isPDFMode ? 'min-h-[1000px] mb-4' : 'min-h-[1000px] h-fit mb-20'}`}
               style={{
                 maxWidth: globalSettings.maxWidth,
                 backgroundColor: globalSettings.backgroundColor
@@ -1433,50 +1434,23 @@ export default function OrcamentoEditor() {
               
               {isPDFMode ? (
                 <div
-                  className="w-full h-full relative flex-1 flex flex-col"
+                  className="w-full h-full relative flex flex-col"
                   onMouseMove={handleDragMouseMove}
                   onMouseUp={() => setDraggingCtaIndex(null)}
                   onMouseLeave={() => setDraggingCtaIndex(null)}
                 >
                   {pdfSection?.fileUrl ? (
                     <>
-                      <iframe src={`${pdfSection.fileUrl}#toolbar=0`} className="w-full flex-1 border-0" title="PDF Preview" />
+                      <PDFDocumentViewer url={pdfSection.fileUrl} />
                       {/* Invisible overlay to capture mouse events while dragging */}
                       {draggingCtaIndex !== null && (
                         <div className="absolute inset-0 z-40 cursor-grabbing bg-transparent" />
                       )}
                     </>
                   ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-gray-400 bg-gray-50">
+                    <div className="flex-1 flex flex-col items-center justify-center text-gray-400 bg-gray-50 min-h-[500px]">
                       <FileUp className="w-16 h-16 mb-4 text-gray-300" />
                       <p className="font-medium text-lg text-gray-500">Faça upload de um PDF no menu lateral</p>
-                    </div>
-                  )}
-                  
-                  {/* GROUPED CTAS */}
-                  {pdfSection?.ctas?.length > 0 && pdfSection?.fileUrl && (
-                    <div className="absolute bottom-8 left-0 right-0 flex justify-center pointer-events-none z-50">
-                      <div className="bg-white/90 backdrop-blur-md px-6 py-4 rounded-2xl shadow-2xl border border-gray-200 flex gap-4 pointer-events-auto">
-                        {pdfSection.ctas.filter((c: any) => c.isGrouped !== false).map((cta: any, i: number) => (
-                          <div
-                            key={i}
-                            style={{
-                              backgroundColor: cta.color || '#f97316',
-                              color: cta.textColor || '#ffffff',
-                              borderRadius: cta.borderRadius || '9999px',
-                              fontFamily: cta.fontFamily || 'inherit',
-                              fontWeight: cta.isBold === false ? 'normal' : 'bold',
-                              textTransform: cta.isUppercase ? 'uppercase' : 'none',
-                            }}
-                            className="px-6 py-3 shadow-md transition-transform"
-                          >
-                            {cta.label}
-                          </div>
-                        ))}
-                        {pdfSection.ctas.filter((c: any) => c.isGrouped !== false).length === 0 && (
-                          <span className="text-sm text-gray-400 font-medium px-4">Sem botões agrupados</span>
-                        )}
-                      </div>
                     </div>
                   )}
 
@@ -1583,6 +1557,33 @@ export default function OrcamentoEditor() {
                 </div>
               )}
             </div>
+            
+            {/* GROUPED CTAS NO RODAPÉ DA ROLAGEM */}
+            {isPDFMode && pdfSection?.ctas?.length > 0 && pdfSection?.fileUrl && pdfSection.ctas.some((c: any) => c.isGrouped !== false) && (
+              <div className="sticky bottom-6 left-0 right-0 flex justify-center z-50 px-4 pointer-events-none w-full mt-auto shrink-0 pb-2">
+                <div className="bg-white/90 backdrop-blur-md px-6 py-4 rounded-2xl shadow-2xl border border-gray-200 flex gap-4 pointer-events-auto">
+                  {pdfSection.ctas.filter((c: any) => c.isGrouped !== false).map((cta: any, i: number) => (
+                    <div
+                      key={i}
+                      style={{
+                        backgroundColor: cta.color || '#f97316',
+                        color: cta.textColor || '#ffffff',
+                        borderRadius: cta.borderRadius || '9999px',
+                        fontFamily: cta.fontFamily || 'inherit',
+                        fontWeight: cta.isBold === false ? 'normal' : 'bold',
+                        textTransform: cta.isUppercase ? 'uppercase' : 'none',
+                      }}
+                      className="px-6 py-3 shadow-md transition-transform"
+                    >
+                      {cta.label}
+                    </div>
+                  ))}
+                  {pdfSection.ctas.filter((c: any) => c.isGrouped !== false).length === 0 && (
+                    <span className="text-sm text-gray-400 font-medium px-4">Sem botões agrupados</span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* SIDEBAR DIREITA (Camadas / Navigator) */}
