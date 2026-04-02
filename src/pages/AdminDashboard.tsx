@@ -151,21 +151,32 @@ export default function AdminDashboard() {
     setSelectedUser(u);
     setLoadingStats(true);
     try {
-      const [leads, clients, contracts, orcamentos] = await Promise.all([
-         supabase.from('opportunities').select('id', { count: 'exact', head: true }).eq('user_id', u.id).eq('is_client', false),
-         supabase.from('opportunities').select('id', { count: 'exact', head: true }).eq('user_id', u.id).eq('is_client', true),
-         supabase.from('contracts').select('id', { count: 'exact', head: true }).eq('user_id', u.id),
-         supabase.from('orcamentos').select('id', { count: 'exact', head: true }).eq('user_id', u.id)
-      ]);
+      const { data: { session } } = await supabase.auth.getSession();
       
-      setUserStats({
-        leads: leads.count || 0,
-        clients: clients.count || 0,
-        contracts: contracts.count || 0,
-        orcamentos: orcamentos.count || 0
+      const response = await fetch('https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/admin-get-user-stats', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({ target_user_id: u.id })
       });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        setUserStats({
+          leads: data.leads || 0,
+          clients: data.clients || 0,
+          contracts: data.contracts || 0,
+          orcamentos: data.orcamentos || 0
+        });
+      } else {
+        throw new Error(data.error);
+      }
     } catch (e) {
-      console.error(e);
+      console.error("Erro ao buscar métricas:", e);
+      toast.error("Erro ao carregar as métricas do usuário.");
     } finally {
       setLoadingStats(false);
     }
