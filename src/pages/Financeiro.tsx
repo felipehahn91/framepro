@@ -86,6 +86,12 @@ export default function Financeiro() {
   const [paghiperLoading, setPaghiperLoading] = useState(false);
   const [paghiperData, setPaghiperData] = useState<any>(null);
 
+  // Installment Date Edit States
+  const [isDateEditModalOpen, setIsDateEditModalOpen] = useState(false);
+  const [dateEditTarget, setDateEditTarget] = useState<{ tx: Transaction; inst: Installment } | null>(null);
+  const [newDateValue, setNewDateValue] = useState("");
+  const [isUpdatingDate, setIsUpdatingDate] = useState(false);
+
   useEffect(() => {
     if (user) fetchData();
   }, [user]);
@@ -164,13 +170,13 @@ export default function Financeiro() {
     let previsto = 0;
 
     transactions.forEach(t => {
-      const tDate = new Date(t.date);
+      const tDate = parseDateSafe(t.date);
       const isPaid = t.status === 'Recebido' || t.status === 'Pago';
       
       const insts = getInstallments(t);
       if (insts.length > 0) {
         insts.forEach(inst => {
-          const iDate = new Date(inst.dueDate);
+          const iDate = parseDateSafe(inst.dueDate);
           const iPaid = inst.status === 'Pago';
           
           if (iPaid) {
@@ -206,7 +212,7 @@ export default function Financeiro() {
       const insts = getInstallments(t);
       if (insts.length > 0) {
         insts.forEach(inst => {
-          const d = new Date(inst.dueDate);
+          const d = parseDateSafe(inst.dueDate);
           const key = `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
           if (months[key]) {
             if (inst.status === 'Pago') months[key].Pago += inst.amount;
@@ -215,7 +221,7 @@ export default function Financeiro() {
           }
         });
       } else {
-        const d = new Date(t.date);
+        const d = parseDateSafe(t.date);
         const key = `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
         if (months[key]) {
           if (t.status === 'Recebido' || t.status === 'Pago') months[key].Pago += t.amount;
@@ -409,6 +415,47 @@ export default function Financeiro() {
     }
   };
 
+  const handleOpenDateEdit = (tx: Transaction, inst: Installment) => {
+    setDateEditTarget({ tx, inst });
+    // Pegar a data da parcela (que é ISO) e converter para YYYY-MM-DD
+    // Usar split('T')[0] é o mais seguro para manter o dia correto vindo do banco
+    setNewDateValue(inst.dueDate.split('T')[0]);
+    setIsDateEditModalOpen(true);
+  };
+
+  const handleSaveNewDate = async () => {
+    if (!dateEditTarget || !newDateValue) return;
+    setIsUpdatingDate(true);
+    try {
+      const { tx, inst } = dateEditTarget;
+      const insts = getInstallments(tx);
+      
+      // Criar a nova data usando UTC para evitar o bug do "dia a menos"
+      // Ao salvar com meio-dia UTC (12:00:00), garantimos que o timezone local
+      // não mude o dia (que é o que acontece quando fica em 00:00:00)
+      const d = new Date(newDateValue);
+      d.setUTCHours(12);
+      const updatedIso = d.toISOString();
+
+      const updatedInsts = insts.map(i => i.id === inst.id ? { ...i, dueDate: updatedIso } : i);
+      
+      const { error } = await supabase
+        .from('transactions')
+        .update({ installments: updatedInsts })
+        .eq('id', tx.id);
+
+      if (error) throw error;
+
+      setTransactions(prev => prev.map(t => t.id === tx.id ? { ...t, installments: updatedInsts } : t));
+      toast.success("Vencimento atualizado!");
+      setIsDateEditModalOpen(false);
+    } catch (e) {
+      toast.error("Erro ao atualizar data.");
+    } finally {
+      setIsUpdatingDate(false);
+    }
+  };
+
   // --- PAGHIPER HANDLERS ---
   const handleOpenPaghiperModal = async (tx: Transaction, inst?: Installment) => {
     let cpf = "";
@@ -556,6 +603,38 @@ export default function Financeiro() {
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   
+  const formatDateBR = (dateStr: string) => {
+    if (!dateStr) return "-";
+    // If it's YYYY-MM-DD format (like from Supabase 'date' column)
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const [year, month, day] = dateStr.split('-');
+      return `${day}/${month}/${year}`;
+    }
+    // For ISO strings (like JSONB dueDate or timestamps)
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      // If it's at midnight UTC, it's probably a date-only intent
+      if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0) {
+        d.setUTCHours(12);
+      }
+      return d.toLocaleDateString('pt-BR');
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
+  const parseDateSafe = (dateStr: string) => {
+    if (!dateStr) return new Date();
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return new Date();
+    // For date-only strings (YYYY-MM-DD) or midnight UTC ISO strings
+    if (dateStr.length <= 10 || (d.getUTCHours() === 0 && d.getUTCMinutes() === 0)) {
+      d.setUTCHours(12);
+    }
+    return d;
+  };
+
   const getStatusBadge = (status: string, dateStr?: string) => {
     if (status === 'Recebido' || status === 'Pago') {
       return <span className="bg-green-50 text-green-600 px-2.5 py-1 rounded-md text-[11px] font-semibold border border-green-100">Pago</span>;
@@ -564,7 +643,7 @@ export default function Financeiro() {
       return <span className="bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md text-[11px] font-semibold border border-gray-200">Cancelado</span>;
     }
     
-    const isOverdue = dateStr && new Date(dateStr) < new Date(new Date().setHours(0,0,0,0));
+    const isOverdue = dateStr && parseDateSafe(dateStr) < new Date(new Date().setHours(0,0,0,0));
     if (status === 'Atrasado' || isOverdue) {
       return <span className="bg-red-50 text-red-600 px-2.5 py-1 rounded-md text-[11px] font-semibold border border-red-100">Atrasado</span>;
     }
@@ -770,7 +849,17 @@ export default function Financeiro() {
                                     </div>
                                     <div>
                                       <p className="font-semibold text-sm text-gray-900">{formatCurrency(inst.amount)}</p>
-                                      <p className="text-[11px] text-gray-500">Vence: {new Date(inst.dueDate).toLocaleDateString('pt-BR')}</p>
+                                      <div className="flex items-center gap-1.5">
+                                        <p className="text-[11px] text-gray-500">Vence: {formatDateBR(inst.dueDate)}</p>
+                                        {inst.status !== 'Pago' && (
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); handleOpenDateEdit(tx, inst); }}
+                                            className="p-1 text-gray-400 hover:text-orange-500 hover:bg-white rounded transition-colors"
+                                          >
+                                            <Edit2 className="w-3 h-3" />
+                                          </button>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
                                   <div className="flex flex-wrap items-center gap-2 self-end sm:self-auto">
@@ -811,7 +900,7 @@ export default function Financeiro() {
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                           <div>
                             <p className="font-bold text-gray-900">{tx.description}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">{tx.clients?.name || 'Sem cliente'} • {new Date(tx.date).toLocaleDateString('pt-BR')}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">{tx.clients?.name || 'Sem cliente'} • {formatDateBR(tx.date)}</p>
                           </div>
                           <div className="flex flex-wrap items-center gap-4 self-end sm:self-auto">
                             <span className="font-bold text-gray-900">{formatCurrency(tx.amount)}</span>
@@ -1029,6 +1118,49 @@ export default function Financeiro() {
               </button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Alterar Data da Parcela */}
+      <Dialog open={isDateEditModalOpen} onOpenChange={(open) => !open && setIsDateEditModalOpen(false)}>
+        <DialogContent className="sm:max-w-[400px] bg-white rounded-3xl p-0 overflow-hidden shadow-2xl">
+          <div className="px-6 py-6 border-b border-gray-100 bg-orange-50/50">
+            <DialogTitle className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <CalendarIcon className="w-5 h-5 text-orange-500" />
+              Alterar Data da Parcela
+            </DialogTitle>
+          </div>
+
+          <div className="p-6 space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-sm font-bold text-gray-700">Nova Data de Vencimento</label>
+              <input
+                type="date"
+                value={newDateValue}
+                onChange={e => setNewDateValue(e.target.value)}
+                className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none"
+              />
+              <p className="text-[10px] text-gray-500 font-medium">A data será atualizada mantendo todos os outros dados da parcela.</p>
+            </div>
+
+            <DialogFooter className="mt-6">
+              <button
+                type="button"
+                onClick={() => setIsDateEditModalOpen(false)}
+                className="px-5 py-2.5 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveNewDate}
+                disabled={isUpdatingDate || !newDateValue}
+                className="px-6 py-2.5 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 shadow-sm flex items-center gap-2 disabled:opacity-50"
+              >
+                {isUpdatingDate ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar Alteração'}
+              </button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </Layout>
