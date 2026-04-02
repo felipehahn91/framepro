@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PasswordInput } from '@/components/PasswordInput';
-import { Loader2, Star, ShieldCheck } from 'lucide-react';
+import { Loader2, Star, ShieldCheck, MailCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function FounderSignup() {
@@ -19,6 +19,7 @@ export default function FounderSignup() {
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [phone, setPhone] = useState('');
+  const [isRegistered, setIsRegistered] = useState(false);
 
   useEffect(() => {
     if (session) navigate('/');
@@ -44,24 +45,21 @@ export default function FounderSignup() {
         options: {
           data: {
             first_name: firstName,
-            phone: phone, // Passando o telefone para a auth que acionará o trigger
+            phone: phone,
+            plan_type: 'founder'
           }
         }
       });
       
       if (error) throw error;
 
-      if (data?.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ plan_type: 'founder' })
-          .eq('id', data.user.id);
-          
-        if (profileError) throw profileError;
-
+      if (data?.user && !data.session) {
+        setIsRegistered(true);
+        toast.success("Conta criada! Confirme seu e-mail.");
+      } else if (data?.session) {
         await refreshProfile();
         toast.success("Conta Founder criada com sucesso!");
-        navigate('/founders'); 
+        navigate('/founders');
       }
     } catch (error: any) {
       toast.error(error.message || "Ocorreu um erro ao criar sua conta.");
@@ -69,6 +67,34 @@ export default function FounderSignup() {
       setLoading(false);
     }
   };
+
+  if (isRegistered) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white p-4 font-sans py-10">
+        <div className="w-full max-w-md bg-white text-gray-900 p-8 rounded-3xl shadow-2xl relative overflow-hidden text-center">
+          <div className="flex justify-center mb-6">
+            <div className="w-20 h-20 bg-orange-50 rounded-full flex items-center justify-center border-4 border-orange-100">
+              <MailCheck className="w-10 h-10 text-orange-500" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-black mb-4">Verifique seu e-mail</h2>
+          <p className="text-gray-600 mb-6 font-medium">
+            Enviamos um link de confirmação para <strong className="text-gray-900">{email}</strong>.
+            Por favor, clique no link para ativar sua conta Founder e prosseguir para o pagamento.
+          </p>
+          <div className="bg-orange-50 text-orange-700 p-4 rounded-xl text-sm font-semibold border border-orange-100 mb-6">
+            Não encontrou o e-mail? Verifique sua pasta de Spam ou Lixo Eletrônico.
+          </div>
+          <Button
+            onClick={() => navigate('/login')}
+            className="w-full bg-gray-900 hover:bg-black text-white font-bold py-6 rounded-xl shadow-lg transition-all"
+          >
+            Ir para a página de Login
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white p-4 font-sans selection:bg-orange-500/30 py-10">
@@ -86,7 +112,7 @@ export default function FounderSignup() {
             Convite VIP Founder
           </div>
           <h1 className="text-2xl font-black mb-2">Crie sua conta Founder</h1>
-          <p className="text-gray-500 text-sm font-medium">Garanta 30% de desconto vitalício na assinatura anual da plataforma.</p>
+          <p className="text-gray-500 text-sm font-medium">Garanta o plano especial Founder Pack no momento do cadastro.</p>
         </div>
 
         <form onSubmit={handleSignup} className="space-y-4 relative z-10">
@@ -143,8 +169,8 @@ export default function FounderSignup() {
             />
           </div>
 
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             className="w-full bg-gray-900 hover:bg-black text-white mt-4 font-black py-6 rounded-xl shadow-xl flex items-center justify-center gap-2 transition-all active:scale-95"
             disabled={loading}
           >
