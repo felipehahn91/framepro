@@ -5,7 +5,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Target, Users, CheckSquare, DollarSign,
   FileText, Calculator, Calendar, Settings, Bell, GitBranch,
-  LogOut, ShieldCheck, Menu, X, Lock
+  LogOut, ShieldCheck, Menu, X, Lock, Star
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -31,6 +31,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const logoImg = "/logo.png";
 
   const isStarter = profile?.role !== 'admin' && (profile?.plan_type === 'starter' || profile?.plan_type === 'monthly' || !profile?.plan_type);
+  const isFounderOrAdmin = profile?.plan_type === 'founder' || profile?.role === 'admin';
 
   const handleSignOut = async () => {
     await signOut();
@@ -171,7 +172,15 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           </div>
           <div className="hidden md:block"></div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Selo Founder */}
+            {isFounderOrAdmin && (
+              <div className="hidden sm:flex items-center gap-1.5 bg-gradient-to-r from-gray-900 to-gray-800 text-orange-400 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border border-gray-700 shadow-sm mr-2 animate-in fade-in zoom-in">
+                <Star className="w-3 h-3 fill-orange-400" />
+                Founder
+              </div>
+            )}
+
             <Notifications />
             
             <DropdownMenu>
@@ -186,7 +195,14 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+                <DropdownMenuLabel className="flex flex-col gap-1">
+                  <span>Minha Conta</span>
+                  {isFounderOrAdmin && (
+                    <span className="inline-flex w-fit items-center gap-1 bg-gray-900 text-orange-400 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest">
+                      <Star className="w-2.5 h-2.5 fill-orange-400" /> Founder
+                    </span>
+                  )}
+                </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-gray-500 text-xs truncate">
                   {user?.email}

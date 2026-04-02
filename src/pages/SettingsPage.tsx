@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import {
   Camera, Save, Loader2, Palette, Check, MessageSquare, QrCode,
   Smartphone, LogOut, RefreshCw, Webhook, CreditCard, ShieldCheck, FileText, ExternalLink,
-  Banknote, Link as LinkIcon, Copy, Zap
+  Banknote, Link as LinkIcon, Copy, Zap, Star
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import * as evolutionApi from '@/lib/evolution';
@@ -38,6 +38,7 @@ export default function SettingsPage() {
   const [upgradeFeature, setUpgradeFeature] = useState("");
 
   const isStarter = profile?.role !== 'admin' && (profile?.plan_type === 'starter' || profile?.plan_type === 'monthly' || !profile?.plan_type);
+  const isFounderOrAdmin = profile?.plan_type === 'founder' || profile?.role === 'admin';
 
   // --- PAGHIPER STATES ---
   const [paghiperKey, setPaghiperKey] = useState('');
@@ -428,7 +429,14 @@ export default function SettingsPage() {
                         <Input id="email" value={user?.email || ''} disabled className="bg-gray-50" />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="name">Nome Completo</Label>
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="name">Nome Completo</Label>
+                          {isFounderOrAdmin && (
+                            <span className="inline-flex items-center gap-1 bg-gray-900 text-orange-400 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest">
+                              <Star className="w-2.5 h-2.5 fill-orange-400" /> Founder
+                            </span>
+                          )}
+                        </div>
                         <Input id="name" name="name" value={profileData.name} onChange={handleProfileChange} placeholder="Seu nome" />
                       </div>
                       <div className="space-y-2">
