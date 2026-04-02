@@ -64,7 +64,7 @@ export default function Financeiro() {
   
   const isStarter = profile?.role !== 'admin' && (profile?.plan_type === 'starter' || profile?.plan_type === 'monthly' || !profile?.plan_type);
 
-  // --- FUNÇÕES AUXILIARES (MOVIDAS PARA O TOPO) ---
+  // --- FUNÇÕES AUXILIARES ---
   const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   
   const formatDateBR = (dateStr: string) => {
@@ -229,20 +229,22 @@ export default function Financeiro() {
         insts.forEach(inst => {
           const iDate = parseDateSafe(inst.dueDate);
           const iPaid = inst.status === 'Pago';
+          const amt = Number(inst.amount) || 0;
           
           if (iPaid) {
-            if (iDate >= dateRange.start && iDate <= dateRange.end) atual += inst.amount;
-            else if (iDate < dateRange.start) passado += inst.amount;
+            if (iDate >= dateRange.start && iDate <= dateRange.end) atual += amt;
+            else if (iDate < dateRange.start) passado += amt;
           } else {
-            if (iDate >= dateRange.start && iDate <= dateRange.end) previsto += inst.amount;
+            if (iDate >= dateRange.start && iDate <= dateRange.end) previsto += amt;
           }
         });
       } else {
+        const amt = Number(t.amount) || 0;
         if (isPaid) {
-          if (tDate >= dateRange.start && tDate <= dateRange.end) atual += t.amount;
-          else if (tDate < dateRange.start) passado += t.amount;
+          if (tDate >= dateRange.start && tDate <= dateRange.end) atual += amt;
+          else if (tDate < dateRange.start) passado += amt;
         } else {
-          if (tDate >= dateRange.start && tDate <= dateRange.end) previsto += t.amount;
+          if (tDate >= dateRange.start && tDate <= dateRange.end) previsto += amt;
         }
       }
     });
@@ -265,20 +267,22 @@ export default function Financeiro() {
         insts.forEach(inst => {
           const d = parseDateSafe(inst.dueDate);
           const key = `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+          const amt = Number(inst.amount) || 0;
           if (months[key]) {
-            if (inst.status === 'Pago') months[key].Pago += inst.amount;
-            else if (d < new Date(new Date().setHours(0,0,0,0))) months[key].Atrasado += inst.amount;
-            else months[key].Pendente += inst.amount;
+            if (inst.status === 'Pago') months[key].Pago += amt;
+            else if (d < new Date(new Date().setHours(0,0,0,0))) months[key].Atrasado += amt;
+            else months[key].Pendente += amt;
           }
         });
       } else {
         const d = parseDateSafe(t.date);
         const key = `${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+        const amt = Number(t.amount) || 0;
         if (months[key]) {
-          if (t.status === 'Recebido' || t.status === 'Pago') months[key].Pago += t.amount;
+          if (t.status === 'Recebido' || t.status === 'Pago') months[key].Pago += amt;
           else if (t.status === 'Cancelado') { /* ignore */ }
-          else if (d < new Date(new Date().setHours(0,0,0,0))) months[key].Atrasado += t.amount;
-          else months[key].Pendente += t.amount;
+          else if (d < new Date(new Date().setHours(0,0,0,0))) months[key].Atrasado += amt;
+          else months[key].Pendente += amt;
         }
       }
     });
@@ -300,14 +304,16 @@ export default function Financeiro() {
         insts.forEach(inst => {
           if (inst.status === 'Pago') {
             const y = new Date(inst.paidDate || inst.dueDate).getFullYear();
-            if (years[y.toString()]) years[y.toString()].Total += inst.amount;
+            const amt = Number(inst.amount) || 0;
+            if (years[y.toString()]) years[y.toString()].Total += amt;
           }
         });
       } else {
         const d = new Date(t.date);
         if (t.status === 'Recebido' || t.status === 'Pago') {
           const y = d.getFullYear();
-          if (years[y.toString()]) years[y.toString()].Total += t.amount;
+          const amt = Number(t.amount) || 0;
+          if (years[y.toString()]) years[y.toString()].Total += amt;
         }
       }
     });
@@ -410,8 +416,7 @@ export default function Financeiro() {
       const { data: updatedTx, error } = await supabase
         .from('transactions')
         .update({ 
-          status: 'Pago',
-          paid_at: new Date().toISOString().split('T')[0]
+          status: 'Pago'
         })
         .eq('id', txId)
         .select('*, opportunities(name)')
@@ -607,8 +612,6 @@ export default function Financeiro() {
     }
     return transactions.filter(t => t.status === 'Recebido' || t.status === 'Pago');
   }, [transactions, listStatusTab]);
-
-  const expandedTxIdsArray = Array.from(expandedTxIds);
 
   return (
     <Layout>
@@ -898,7 +901,7 @@ export default function Financeiro() {
                   <div className="w-12 h-12 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
                     <DollarSign className="w-6 h-6 text-gray-400" />
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900">Nenhum registro encontrado</h3>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">Nenhum registro encontrado</h3>
                   <p className="text-sm text-gray-500 mt-1">
                     {listStatusTab === 'pendentes' ? 'Não há cobranças pendentes no momento.' : 'Nenhum recebimento foi concluído ainda.'}
                   </p>
