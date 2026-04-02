@@ -10,8 +10,6 @@ export default function Pricing() {
   const [loading, setLoading] = useState(false);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
-  import { toast } from 'sonner';
-
   const handleSubscribe = async (plan: string) => {
     setLoading(true);
     setLoadingPlan(plan);
