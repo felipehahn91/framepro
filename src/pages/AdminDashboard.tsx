@@ -177,7 +177,7 @@ export default function AdminDashboard() {
     
     setSendingNotif(true);
     try {
-      const targetUsers = usersList.filter(u => u.role !== 'admin');
+      const targetUsers = usersList;
       if (targetUsers.length === 0) {
         toast.info("Nenhum usuário para notificar.");
         setSendingNotif(false);
