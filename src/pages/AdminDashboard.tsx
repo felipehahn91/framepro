@@ -326,6 +326,7 @@ export default function AdminDashboard() {
                     <tr className="bg-gray-50/80 border-b border-gray-100">
                       <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Usuário</th>
                       <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Contato</th>
+                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Plano</th>
                       <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Status</th>
                       <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase text-right">Data Cad.</th>
                     </tr>
@@ -346,8 +347,18 @@ export default function AdminDashboard() {
                           <div className="text-xs text-gray-400">{usr.phone}</div>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`px-2.5 py-1 text-[10px] font-bold rounded-full border ${usr.role === 'admin' ? 'bg-purple-50 text-purple-700' : 'bg-green-50 text-green-700'}`}>
-                            {usr.role === 'admin' ? 'Admin' : usr.subscription_status}
+                          <span className="text-xs font-bold text-gray-700 uppercase bg-gray-100 px-2 py-1 rounded-md">
+                            {usr.role === 'admin' ? 'Vitalício' : (usr.plan_type || 'Starter')}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2.5 py-1 text-[10px] font-bold rounded-full border ${
+                            usr.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' : 
+                            usr.subscription_status === 'active' ? 'bg-green-50 text-green-700 border-green-200' :
+                            usr.subscription_status === 'trialing' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                            'bg-red-50 text-red-700 border-red-200'
+                          }`}>
+                            {usr.role === 'admin' ? 'Admin' : (usr.subscription_status || 'inactive')}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right text-sm text-gray-500">
