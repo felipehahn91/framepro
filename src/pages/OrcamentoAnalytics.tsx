@@ -8,6 +8,7 @@ import {
   Smartphone, Monitor, Tablet, PauseCircle, X, MousePointer2, Loader2, Map
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { PDFDocumentViewer } from '@/components/PDFDocumentViewer';
 
 const renderHTML = (html: string, fallback: string) => {
   if (!html || html === '<p><br></p>') return fallback;
@@ -356,6 +357,46 @@ export default function OrcamentoAnalytics() {
   const globalSettings = globalSec?.styles || { pageBackgroundColor: '#f3f4f6', backgroundColor: '#ffffff', maxWidth: '900px' };
   const renderSections = loadedSections.filter((s: any) => s.type !== 'global-settings');
 
+  const isPDFMode = orcamento?.type === 'pdf';
+  const pdfSection = loadedSections.find((s: any) => s.type === 'pdf');
+
+  const renderProposalContent = () => {
+    if (isPDFMode && pdfSection?.fileUrl) {
+      return (
+        <div className="relative w-full">
+          <PDFDocumentViewer url={pdfSection.fileUrl} />
+          {pdfSection.ctas?.length > 0 && pdfSection.ctas.map((cta: any, i: number) => {
+            if (cta.isGrouped !== false) return null;
+            return (
+              <div
+                key={`free-${i}`}
+                style={{
+                  position: 'absolute',
+                  top: cta.top || '50%',
+                  left: cta.left || '50%',
+                  transform: 'translate(-50%, -50%)',
+                  backgroundColor: cta.color || '#f97316',
+                  color: cta.textColor || '#ffffff',
+                  borderRadius: cta.borderRadius || '9999px',
+                  fontFamily: cta.fontFamily || 'inherit',
+                  fontWeight: cta.isBold === false ? 'normal' : 'bold',
+                  textTransform: cta.isUppercase ? 'uppercase' : 'none',
+                  zIndex: 51
+                }}
+                className="px-3 py-1.5 text-[10px] sm:px-4 sm:py-2 sm:text-xs md:px-5 md:py-2.5 md:text-sm lg:px-6 lg:py-3 lg:text-base shadow-xl whitespace-nowrap"
+              >
+                {cta.label}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+    return renderSections.map((s: any) => (
+      <PreviewBlock key={s.id} section={s} />
+    ));
+  };
+
   return (
     <Layout>
       <div className="max-w-7xl mx-auto flex flex-col h-full space-y-6">
@@ -519,9 +560,7 @@ export default function OrcamentoAnalytics() {
               }}
             >
               <div className="pointer-events-none opacity-40">
-                {renderSections.map((s: any) => (
-                  <PreviewBlock key={s.id} section={s} />
-                ))}
+                {renderProposalContent()}
               </div>
 
               <canvas
@@ -581,9 +620,7 @@ export default function OrcamentoAnalytics() {
                   style={{ maxWidth: globalSettings.maxWidth, backgroundColor: globalSettings.backgroundColor, minHeight: '100%' }}
                 >
                   <div className="pointer-events-none select-none">
-                    {renderSections.map((s: any) => (
-                      <PreviewBlock key={s.id} section={s} />
-                    ))}
+                    {renderProposalContent()}
                   </div>
 
                   {cursorPos.x !== -100 && (
