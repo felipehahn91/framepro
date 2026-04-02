@@ -5,7 +5,7 @@ import {
   Camera, Video, LayoutTemplate, PenTool, CheckCircle2, 
   MessageSquare, Zap, Target, ArrowRight, ShieldCheck, 
   Star, DollarSign, BarChart3, Users, Check, Eye,
-  Instagram, Youtube, Twitter
+  Instagram, Youtube, Twitter, X
 } from 'lucide-react';
 
 const fadeInUp: Variants = {
@@ -299,7 +299,7 @@ export default function LandingPage() {
                  <img src="https://upload.wikimedia.org/wikipedia/commons/f/fa/Signature_of_John_Hancock.svg" alt="Assinatura" className="h-24 mx-auto opacity-80" />
                </div>
                <p className="font-bold text-gray-900 text-lg">João da Silva</p>
-               <p className="text-xs text-gray-500 uppercase tracking-widest mt-1 font-bold">Contratante</p>
+               <p className="text-xs text-gray-500 uppercase tracking-widest mt-1 font-bold">Contratante / Noivo</p>
                <div className="mt-8 w-full bg-green-50 border border-green-200 text-green-700 font-bold py-4 rounded-2xl flex justify-center items-center gap-2 shadow-sm">
                  <ShieldCheck className="w-6 h-6" /> Assinado Digitalmente
                </div>
@@ -317,10 +317,10 @@ export default function LandingPage() {
               <ShieldCheck className="w-4 h-4" /> Fechamento Imediato
             </div>
             <h2 className="text-4xl md:text-5xl font-black text-gray-900 leading-tight tracking-tight">
-              Fechamento e pagamento no piloto automático.
+              Contrato e pagamento fechados na mesma tela.
             </h2>
             <p className="text-gray-500 text-xl leading-relaxed font-medium">
-              Esqueça o vai e vem de arquivos Word. Configure o modelo base, gere um "Link de Fechamento" e deixe o cliente preencher os dados, escolher a forma de pagamento e assinar na mesma tela.
+              Ao invés de mandar um documento no WhatsApp e pedir os dados do casal, você envia nosso "Link de Fechamento". O cliente preenche o CPF, escolhe como vai parcelar o pagamento e o seu contrato de fotografia é preenchido automaticamente com as "variáveis mágicas".
             </p>
             <ul className="space-y-5 pt-2">
               {[
@@ -360,41 +360,52 @@ export default function LandingPage() {
             </motion.p>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto items-center">
+          <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto items-stretch">
             {/* STARTER */}
             <motion.div 
               initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
-              className="bg-white border border-gray-200 rounded-[2.5rem] p-8 sm:p-10 shadow-xl hover:shadow-2xl transition-all flex flex-col relative h-[95%]"
+              className="bg-white border border-gray-200 rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all flex flex-col relative mt-4 lg:mt-8 mb-4 lg:mb-0"
             >
-              <h3 className="text-2xl font-black text-gray-900 mb-2 uppercase tracking-widest">Starter</h3>
-              <p className="text-gray-500 font-medium mb-8">O essencial para fotógrafos organizarem o fluxo da agenda.</p>
+              <h3 className="text-2xl font-black text-gray-900 mb-2 uppercase tracking-wide">Starter</h3>
+              <p className="text-gray-500 text-sm mb-6 font-medium h-10">O essencial para organizar suas vendas e crescer.</p>
               
-              <div className="flex items-baseline gap-2 mb-8">
-                <span className="text-6xl font-black text-gray-900 tracking-tighter">R$ 97</span>
+              <div className="flex items-baseline gap-1 mb-8">
+                <span className="text-5xl font-black text-gray-900 tracking-tight">R$ 97</span>
                 <span className="text-gray-500 font-bold">/mês</span>
               </div>
 
-              <div className="h-px bg-gray-100 w-full mb-8"></div>
-
-              <ul className="space-y-5 mb-10 flex-1">
+              <ul className="space-y-4 mb-10 flex-1">
                 {[
                   "14 dias de teste GRÁTIS",
-                  "Gestão ilimitada de clientes (Kanban)",
-                  "Construtor de Orçamentos Interativos",
-                  "Contratos com assinatura digital na tela",
-                  "Controle de pagamentos (Financeiro)",
+                  "Gestão ilimitada de clientes (CRM)",
+                  "Propostas e Orçamentos",
+                  "Contratos com assinatura digital",
+                  "Gestão Financeira Básica",
                   "Suporte por e-mail"
                 ].map((item, i) => (
-                  <li key={i} className="flex items-start gap-3 text-gray-700 font-bold">
-                    <div className="w-5 h-5 bg-gray-100 text-gray-900 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                  <li key={i} className="flex items-start gap-3 text-gray-700 font-semibold text-sm">
+                    <div className="w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center shrink-0 mt-0.5">
                       <Check className="w-3 h-3" />
+                    </div>
+                    {item}
+                  </li>
+                ))}
+                {[
+                  "Integração WhatsApp",
+                  "Sincronização com Google",
+                  "Boletos e Pix Automáticos",
+                  "Fluxos de Cadência"
+                ].map((item, i) => (
+                  <li key={`x-${i}`} className="flex items-start gap-3 text-gray-400 font-medium text-sm opacity-60 line-through">
+                    <div className="w-5 h-5 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                      <X className="w-3 h-3" />
                     </div>
                     {item}
                   </li>
                 ))}
               </ul>
 
-              <Link to="/signup" className="w-full py-4 bg-gray-100 text-gray-900 hover:bg-gray-200 font-black rounded-2xl transition-all flex items-center justify-center mt-auto">
+              <Link to="/signup" className="w-full py-4 bg-gray-900 text-white font-black rounded-2xl shadow-lg hover:bg-black transition-all flex items-center justify-center gap-2 mt-auto">
                 ASSINAR STARTER
               </Link>
             </motion.div>
@@ -402,35 +413,41 @@ export default function LandingPage() {
             {/* PLUS */}
             <motion.div 
               initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }}
-              className="bg-gray-900 rounded-[2.5rem] p-8 sm:p-10 shadow-[0_20px_60px_-15px_rgba(249,115,22,0.3)] relative overflow-hidden flex flex-col transform md:-translate-y-4 ring-2 ring-orange-500 h-[105%]"
+              className="bg-gradient-to-b from-orange-50 to-white border-2 border-orange-400 rounded-3xl p-8 shadow-2xl relative overflow-hidden flex flex-col transform lg:-translate-y-4"
             >
-              <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500 rounded-full blur-3xl opacity-20 -mr-20 -mt-20"></div>
-              
-              <div className="absolute top-8 right-8 bg-orange-500 text-white px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest shadow-sm flex items-center gap-1">
-                <Star className="w-3 h-3 fill-white" /> Mais Completo
+              <div className="absolute top-0 right-0 bg-orange-500 text-white px-6 py-1.5 rounded-bl-2xl text-xs font-black uppercase tracking-widest shadow-sm">
+                Mais Escolhido
               </div>
               
-              <h3 className="text-2xl font-black text-orange-400 mb-2 uppercase tracking-widest">Plus</h3>
-              <p className="text-gray-300 font-medium mb-8 relative z-10">Tudo do Starter + Automação de follow-up e mapa de calor.</p>
+              <div className="flex items-center gap-2 mb-2 mt-2">
+                <h3 className="text-2xl font-black text-orange-600 uppercase tracking-wide">Plus</h3>
+                <Star className="w-5 h-5 text-orange-500 fill-orange-500" />
+              </div>
               
-              <div className="flex items-baseline gap-2 mb-8 relative z-10">
-                <span className="text-6xl font-black text-white tracking-tighter">R$ 147</span>
+              <p className="text-gray-600 text-sm mb-6 font-medium h-10">Tudo do Starter + Automação total de comunicação e pagamentos.</p>
+              
+              <div className="flex items-baseline gap-1 mb-8">
+                <span className="text-5xl font-black text-gray-900 tracking-tight">R$ 147</span>
                 <span className="text-gray-500 font-bold">/mês</span>
               </div>
 
-              <div className="h-px bg-gray-800 w-full mb-8 relative z-10"></div>
-
-              <ul className="space-y-5 mb-10 flex-1 relative z-10">
+              <ul className="space-y-4 mb-10 flex-1">
+                <li className="flex items-start gap-3 text-gray-900 font-bold text-sm">
+                  <div className="w-5 h-5 bg-orange-500 text-white rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-3 h-3" />
+                  </div>
+                  Tudo que está no plano Starter, mais:
+                </li>
                 {[
-                  "Integração WhatsApp (Avisos de vencimento)",
-                  "Sincronização Google Calendar e Meet",
-                  "Geração automática de Pix e Boletos",
-                  "Fluxo de Cadência (Mensagens Agendadas)",
-                  "Mapa de Calor: Gravação de Tela nas propostas",
+                  "Integração WhatsApp (Evolution API)",
+                  "Sincronização Google Calendar",
+                  "Emissão de Boletos e Pix (PagHiper)",
+                  "Fluxo de Cadência Automático",
+                  "Mapa de Calor dos Orçamentos",
                   "Suporte prioritário via WhatsApp"
                 ].map((item, i) => (
-                  <li key={i} className="flex items-start gap-3 text-white font-bold">
-                    <div className="w-5 h-5 bg-orange-500 text-white rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                  <li key={i} className="flex items-start gap-3 text-gray-800 font-semibold text-sm">
+                    <div className="w-5 h-5 bg-orange-200 text-orange-700 rounded-full flex items-center justify-center shrink-0 mt-0.5">
                       <Check className="w-3 h-3" />
                     </div>
                     {item}
@@ -438,8 +455,59 @@ export default function LandingPage() {
                 ))}
               </ul>
 
-              <Link to="/signup" className="w-full py-4 bg-orange-500 text-white font-black rounded-2xl shadow-xl hover:bg-orange-600 transition-all flex items-center justify-center gap-2 relative z-10 mt-auto">
-                COMEÇAR TESTE DE 14 DIAS
+              <Link to="/signup" className="w-full py-4 bg-orange-500 text-white font-black rounded-2xl shadow-[0_8px_30px_rgb(249,115,22,0.3)] hover:bg-orange-600 hover:-translate-y-1 transition-all flex items-center justify-center gap-2 mt-auto">
+                <Zap className="w-5 h-5" />
+                TESTAR PLUS GRÁTIS
+              </Link>
+            </motion.div>
+
+            {/* FOUNDER */}
+            <motion.div 
+              initial={{ opacity: 0, y: 40 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.4 }}
+              className="bg-gray-900 border border-gray-800 rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all flex flex-col relative text-white mt-4 lg:mt-8 mb-4 lg:mb-0 overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-64 h-64 bg-orange-500 rounded-full blur-3xl opacity-20 -mr-20 -mt-20"></div>
+              
+              <div className="absolute top-6 right-6 bg-gray-800 text-gray-300 px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest border border-gray-700 shadow-sm">
+                VIP Anual
+              </div>
+
+              <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-wide">Founder</h3>
+              <p className="text-gray-400 text-sm mb-6 font-medium h-10">Desconto agressivo e benefícios vitalícios para os primeiros membros.</p>
+              
+              <div className="flex items-baseline gap-1 mb-1">
+                <span className="text-5xl font-black text-white tracking-tight">R$ 67</span>
+                <span className="text-gray-500 font-bold">/mês</span>
+              </div>
+              <p className="text-orange-400 text-[11px] font-black uppercase tracking-wider mb-8 bg-orange-400/10 inline-block px-2 py-1 rounded-md border border-orange-500/20">
+                Pagamento único de R$ 804 / 1 ano
+              </p>
+
+              <ul className="space-y-4 mb-10 flex-1 relative z-10">
+                <li className="flex items-start gap-3 text-white font-bold text-sm">
+                  <div className="w-5 h-5 bg-orange-500 text-white rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-3 h-3" />
+                  </div>
+                  Tudo que está no plano Plus, mais:
+                </li>
+                {[
+                  "Mais de 50% de desconto no ano",
+                  "Desconto vitalício garantido na renovação",
+                  "Selo 'Founder' no seu perfil",
+                  "Grupo exclusivo de networking",
+                  "Treinamento de Onboarding VIP (1h)"
+                ].map((item, i) => (
+                  <li key={i} className="flex items-start gap-3 text-gray-300 font-semibold text-sm">
+                    <div className="w-5 h-5 bg-gray-800 text-orange-400 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                      <ShieldCheck className="w-3 h-3" />
+                    </div>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+
+              <Link to="/founder-signup" className="w-full py-4 bg-white text-gray-900 font-black rounded-2xl shadow-lg hover:bg-gray-100 transition-all flex items-center justify-center gap-2 mt-auto relative z-10">
+                ASSINAR FOUNDER
               </Link>
             </motion.div>
           </div>
