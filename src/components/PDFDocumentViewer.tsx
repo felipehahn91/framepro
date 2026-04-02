@@ -6,10 +6,8 @@ import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import { Loader2 } from 'lucide-react';
 
-// Importando o worker diretamente como uma URL estática (Padrão ouro no Vite)
-import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-
-pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+// Usando CDN para garantir que o worker seja carregado corretamente e evitar erros de importação no Vite
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface PDFDocumentViewerProps {
   url: string;
