@@ -3,9 +3,10 @@ import { Layout } from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { listUserCalendars, listGoogleEvents, createGoogleCalendarEvent } from "@/lib/googleCalendar";
-import { 
-  ChevronLeft, ChevronRight, Calendar as CalendarIcon, 
-  CheckSquare, FileText, DollarSign, AlertCircle, Clock, 
+import { UpgradeModal } from "@/components/UpgradeModal";
+import {
+  ChevronLeft, ChevronRight, Calendar as CalendarIcon,
+  CheckSquare, FileText, DollarSign, AlertCircle, Clock,
   Loader2, X, ChevronDown, Download, RefreshCw, ExternalLink, Globe,
   Plus, Video, ListTodo
 } from "lucide-react";
@@ -45,7 +46,12 @@ interface CalendarEvent {
 }
 
 export default function Agenda() {
-  const { user, session } = useAuth();
+  const { user, profile, session } = useAuth();
+  
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [upgradeFeature, setUpgradeFeature] = useState("");
+  const isStarter = profile?.plan_type === 'starter' || !profile?.plan_type;
+  
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(startOfDay(new Date()));
@@ -255,6 +261,12 @@ export default function Agenda() {
   };
 
   const handleConnectGoogle = async () => {
+    if (isStarter) {
+      setUpgradeFeature("Sincronização com Google Calendar e Meet");
+      setUpgradeModalOpen(true);
+      return;
+    }
+    
     try {
       await supabase.auth.updateUser({
         data: { google_calendar_enabled: true }
@@ -874,6 +886,12 @@ export default function Agenda() {
           </div>
         </div>
       )}
+      
+      <UpgradeModal
+        isOpen={upgradeModalOpen}
+        onClose={() => setUpgradeModalOpen(false)}
+        featureName={upgradeFeature}
+      />
     </Layout>
   );
 }

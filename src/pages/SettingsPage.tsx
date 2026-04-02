@@ -538,62 +538,85 @@ export default function SettingsPage() {
                 </div>
 
                 <CardContent className="p-6 sm:p-8 space-y-6">
-                  <div className="bg-blue-50 border border-blue-100 rounded-xl p-5 text-sm text-blue-800 space-y-3">
-                    <p>
-                      <strong>Como obter suas chaves?</strong><br />
-                      1. Acesse sua conta em <a href="https://www.paghiper.com/" target="_blank" rel="noreferrer" className="underline font-bold">paghiper.com</a>.<br />
-                      2. Vá no menu lateral <strong>"Minha Conta"</strong> e depois em <strong>"Dados da conta"</strong> para obter a API Key.<br />
-                      3. Vá no menu <strong>"Ferramentas"</strong>, clique em <strong>"Token"</strong>, gere e copie o Token.
-                    </p>
-                    <div className="bg-white/60 p-3 rounded-lg border border-blue-200 flex flex-col gap-2">
-                      <p className="font-bold text-blue-900 flex items-center gap-1.5">
-                        <Webhook className="w-4 h-4" /> Configuração do Retorno Automático (Webhook)
+                  {isStarter ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                      <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-6 border border-blue-100 relative">
+                        <Banknote className="w-10 h-10 text-blue-500 opacity-50" />
+                        <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                          <LinkIcon className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-900 mb-2">Integração PagHiper</h3>
+                      <p className="text-gray-500 max-w-sm mx-auto mb-8">
+                        A emissão de Boletos e Pix via PagHiper é exclusiva para os planos Plus e Founder. Faça o upgrade agora para automatizar suas cobranças.
                       </p>
-                      <p className="text-xs">Para que o CRM saiba quando seu cliente pagou e dê baixa automática na cobrança, vá em <strong>Ferramentas {'>'} Retorno automático</strong> no PagHiper, cole este link na URL e marque <strong>Sim</strong> na caixa de Status:</p>
-                      <div className="flex items-center gap-2">
-                        <Input value={paghiperWebhookUrl} readOnly className="bg-white font-mono text-xs text-gray-500 h-8" />
-                        <Button 
-                          variant="secondary" 
-                          size="sm" 
-                          onClick={() => { navigator.clipboard.writeText(paghiperWebhookUrl); toast.success("URL copiada!"); }}
-                          className="h-8 shadow-sm flex items-center gap-1.5"
-                        >
-                          <Copy className="w-3.5 h-3.5" /> Copiar
+                      <Button
+                        onClick={() => navigate('/precos')}
+                        className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-6 px-8 rounded-xl shadow-lg"
+                      >
+                        Fazer Upgrade
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="bg-blue-50 border border-blue-100 rounded-xl p-5 text-sm text-blue-800 space-y-3">
+                        <p>
+                          <strong>Como obter suas chaves?</strong><br />
+                          1. Acesse sua conta em <a href="https://www.paghiper.com/" target="_blank" rel="noreferrer" className="underline font-bold">paghiper.com</a>.<br />
+                          2. Vá no menu lateral <strong>"Minha Conta"</strong> e depois em <strong>"Dados da conta"</strong> para obter a API Key.<br />
+                          3. Vá no menu <strong>"Ferramentas"</strong>, clique em <strong>"Token"</strong>, gere e copie o Token.
+                        </p>
+                        <div className="bg-white/60 p-3 rounded-lg border border-blue-200 flex flex-col gap-2">
+                          <p className="font-bold text-blue-900 flex items-center gap-1.5">
+                            <Webhook className="w-4 h-4" /> Configuração do Retorno Automático (Webhook)
+                          </p>
+                          <p className="text-xs">Para que o CRM saiba quando seu cliente pagou e dê baixa automática na cobrança, vá em <strong>Ferramentas {'>'} Retorno automático</strong> no PagHiper, cole este link na URL e marque <strong>Sim</strong> na caixa de Status:</p>
+                          <div className="flex items-center gap-2">
+                            <Input value={paghiperWebhookUrl} readOnly className="bg-white font-mono text-xs text-gray-500 h-8" />
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => { navigator.clipboard.writeText(paghiperWebhookUrl); toast.success("URL copiada!"); }}
+                              className="h-8 shadow-sm flex items-center gap-1.5"
+                            >
+                              <Copy className="w-3.5 h-3.5" /> Copiar
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="apiKey" className="font-bold text-gray-700">API Key</Label>
+                          <Input
+                            id="apiKey"
+                            value={paghiperKey}
+                            onChange={(e) => setPaghiperKey(e.target.value)}
+                            placeholder="Ex: apik_xxxxxxxxxxxxxxxx"
+                            className="bg-gray-50 focus:ring-blue-500"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="token" className="font-bold text-gray-700">Token</Label>
+                          <Input
+                            id="token"
+                            type="password"
+                            value={paghiperToken}
+                            onChange={(e) => setPaghiperToken(e.target.value)}
+                            placeholder="••••••••••••••••••••••••••••"
+                            className="bg-gray-50 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end pt-4 border-t border-gray-100">
+                        <Button onClick={savePaghiperSettings} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6">
+                          {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                          Salvar Integração
                         </Button>
                       </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <Label htmlFor="apiKey" className="font-bold text-gray-700">API Key</Label>
-                      <Input 
-                        id="apiKey" 
-                        value={paghiperKey} 
-                        onChange={(e) => setPaghiperKey(e.target.value)} 
-                        placeholder="Ex: apik_xxxxxxxxxxxxxxxx"
-                        className="bg-gray-50 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="token" className="font-bold text-gray-700">Token</Label>
-                      <Input 
-                        id="token" 
-                        type="password"
-                        value={paghiperToken} 
-                        onChange={(e) => setPaghiperToken(e.target.value)} 
-                        placeholder="••••••••••••••••••••••••••••"
-                        className="bg-gray-50 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end pt-4 border-t border-gray-100">
-                    <Button onClick={savePaghiperSettings} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6">
-                      {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                      Salvar Integração
-                    </Button>
-                  </div>
+                    </>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -665,7 +688,26 @@ export default function SettingsPage() {
                 </div>
 
                 <CardContent className="p-6 sm:p-8">
-                  {waLoading ? (
+                  {isStarter ? (
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                      <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-6 border border-green-100 relative">
+                        <MessageSquare className="w-10 h-10 text-green-500 opacity-50" />
+                        <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white">
+                          <LinkIcon className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+                      <h3 className="text-xl font-bold text-gray-900 mb-2">WhatsApp Bloqueado</h3>
+                      <p className="text-gray-500 max-w-sm mx-auto mb-8">
+                        A conexão com WhatsApp para disparos automáticos e botões de chat está disponível apenas nos planos Plus e Founder. Faça o upgrade para automatizar o seu atendimento.
+                      </p>
+                      <Button
+                        onClick={() => navigate('/precos')}
+                        className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-6 px-8 rounded-xl shadow-lg"
+                      >
+                        Fazer Upgrade
+                      </Button>
+                    </div>
+                  ) : waLoading ? (
                     <div className="flex flex-col items-center justify-center py-12 text-gray-500">
                       <Loader2 className="w-10 h-10 animate-spin text-green-500 mb-4" />
                       <p className="font-medium">Sincronizando com a Evolution API...</p>

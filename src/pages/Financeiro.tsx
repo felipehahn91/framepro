@@ -3,8 +3,9 @@ import { Layout } from "@/components/Layout";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { sendTextMessage, sendMediaMessage } from "@/lib/evolution";
-import { 
-  Wallet, TrendingDown, TrendingUp, Plus, Filter, 
+import { UpgradeModal } from "@/components/UpgradeModal";
+import {
+  Wallet, TrendingDown, TrendingUp, Plus, Filter,
   Edit2, Trash2, CheckCircle2, Loader2, X, DollarSign,
   AlertCircle, Calendar as CalendarIcon, ChevronDown, ChevronUp, Link as LinkIcon, Copy, MessageCircle
 } from "lucide-react";
@@ -56,7 +57,12 @@ const getInstallments = (t: Transaction): Installment[] => {
 };
 
 export default function Financeiro() {
-  const { user, session } = useAuth();
+  const { user, profile, session } = useAuth();
+  
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [upgradeFeature, setUpgradeFeature] = useState("");
+  
+  const isStarter = profile?.plan_type === 'starter' || !profile?.plan_type;
 
   // --- FUNÇÕES AUXILIARES (MOVIDAS PARA O TOPO) ---
   const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -489,6 +495,12 @@ export default function Financeiro() {
   };
 
   const handleOpenPaghiperModal = async (tx: Transaction, inst?: Installment) => {
+    if (isStarter) {
+      setUpgradeFeature("Emissão de Boletos e Pix via PagHiper");
+      setUpgradeModalOpen(true);
+      return;
+    }
+    
     let cpf = "";
     let email = "";
     let name = tx.clients?.name || "Cliente";
@@ -553,6 +565,12 @@ export default function Financeiro() {
 
   const handleSendWhatsApp = async (e: React.MouseEvent, tx: Transaction, inst?: Installment) => {
     e.stopPropagation();
+    if (isStarter) {
+      setUpgradeFeature("Envio de cobranças por WhatsApp");
+      setUpgradeModalOpen(true);
+      return;
+    }
+    
     try {
       let phone = "";
       let clientName = tx.clients?.name || "Cliente";
@@ -1064,9 +1082,9 @@ export default function Financeiro() {
           <div className="p-6 space-y-4">
             <div className="space-y-1.5">
               <label className="text-sm font-bold text-gray-700">Nova Data de Vencimento</label>
-              <input 
+              <input
                 type="date"
-                value={newDateValue} 
+                value={newDateValue}
                 onChange={e => setNewDateValue(e.target.value)}
                 className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none"
               />
@@ -1074,17 +1092,17 @@ export default function Financeiro() {
             </div>
 
             <DialogFooter className="mt-6">
-              <button 
-                type="button" 
-                onClick={() => setIsDateEditModalOpen(false)} 
+              <button
+                type="button"
+                onClick={() => setIsDateEditModalOpen(false)}
                 className="px-5 py-2.5 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition-colors"
               >
                 Cancelar
               </button>
-              <button 
+              <button
                 type="button"
                 onClick={handleSaveNewDate}
-                disabled={isUpdatingDate || !newDateValue} 
+                disabled={isUpdatingDate || !newDateValue}
                 className="px-6 py-2.5 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 shadow-sm flex items-center gap-2 disabled:opacity-50"
               >
                 {isUpdatingDate ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar Alteração'}
@@ -1093,6 +1111,12 @@ export default function Financeiro() {
           </div>
         </DialogContent>
       </Dialog>
+      
+      <UpgradeModal
+        isOpen={upgradeModalOpen}
+        onClose={() => setUpgradeModalOpen(false)}
+        featureName={upgradeFeature}
+      />
     </Layout>
   );
 }

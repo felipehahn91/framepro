@@ -468,28 +468,53 @@ export default function AdminDashboard() {
               <span className={`px-3 py-1.5 text-xs font-bold rounded-xl border ${selectedUser?.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
                 {selectedUser?.role === 'admin' ? 'Administrador' : 'Usuário Padrão'}
               </span>
-              <select
-                value={selectedUser?.plan_type || 'starter'}
-                onChange={async (e) => {
-                  const newPlan = e.target.value;
-                  const newStatus = selectedUser?.subscription_status === 'inactive' ? 'active' : selectedUser?.subscription_status;
-                  
-                  setSelectedUser({ ...selectedUser, plan_type: newPlan, subscription_status: newStatus });
-                  
-                  await supabase.from('profiles').update({
-                    plan_type: newPlan,
-                    subscription_status: newStatus
-                  }).eq('id', selectedUser.id);
-                  
-                  setUsersList(usersList.map(u => u.id === selectedUser.id ? { ...u, plan_type: newPlan, subscription_status: newStatus } : u));
-                  toast.success(`Plano alterado para ${newPlan.toUpperCase()}`);
-                }}
-                className="text-xs font-bold bg-white border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-orange-400 shadow-sm"
-              >
-                <option value="starter">Starter (Básico)</option>
-                <option value="plus">Plus (Completo)</option>
-                <option value="founder">Founder Pack</option>
-              </select>
+              <div className="flex flex-col gap-2">
+                <select
+                  value={selectedUser?.plan_type || 'starter'}
+                  onChange={async (e) => {
+                    const newPlan = e.target.value;
+                    const newStatus = selectedUser?.subscription_status === 'inactive' ? 'active' : selectedUser?.subscription_status;
+                    
+                    setSelectedUser({ ...selectedUser, plan_type: newPlan, subscription_status: newStatus });
+                    
+                    await supabase.from('profiles').update({
+                      plan_type: newPlan,
+                      subscription_status: newStatus
+                    }).eq('id', selectedUser.id);
+                    
+                    setUsersList(usersList.map(u => u.id === selectedUser.id ? { ...u, plan_type: newPlan, subscription_status: newStatus } : u));
+                    toast.success(`Plano alterado para ${newPlan.toUpperCase()}`);
+                  }}
+                  className="text-xs font-bold bg-white border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-orange-400 shadow-sm"
+                >
+                  <option value="starter">Starter (Básico)</option>
+                  <option value="plus">Plus (Completo)</option>
+                  <option value="founder">Founder Pack</option>
+                </select>
+
+                <select
+                  value={selectedUser?.subscription_status || 'inactive'}
+                  onChange={async (e) => {
+                    const newStatus = e.target.value;
+                    
+                    setSelectedUser({ ...selectedUser, subscription_status: newStatus });
+                    
+                    await supabase.from('profiles').update({
+                      subscription_status: newStatus
+                    }).eq('id', selectedUser.id);
+                    
+                    setUsersList(usersList.map(u => u.id === selectedUser.id ? { ...u, subscription_status: newStatus } : u));
+                    toast.success(`Status alterado para ${newStatus.toUpperCase()}`);
+                  }}
+                  className="text-xs font-bold bg-white border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-400 shadow-sm"
+                >
+                  <option value="active">🟢 Ativo (Acesso Liberado)</option>
+                  <option value="trialing">🔵 Trial (Em teste)</option>
+                  <option value="past_due">🟠 Inadimplente</option>
+                  <option value="canceled">🔴 Cancelado</option>
+                  <option value="inactive">⚫ Inativo</option>
+                </select>
+              </div>
             </div>
           </div>
           
