@@ -47,7 +47,7 @@ serve(async (req) => {
     const sessionParam: any = {
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
-      mode: 'subscription',
+      mode: planType === 'founder' ? 'payment' : 'subscription',
       success_url: `${req.headers.get('origin')}/billing-success`,
       cancel_url: `${req.headers.get('origin')}/billing-cancel`,
       metadata: {
@@ -58,6 +58,15 @@ serve(async (req) => {
     // Adiciona 30 dias de trial apenas para novos planos mensais (se desejado)
     if (planType === 'starter' || planType === 'plus') {
       sessionParam.subscription_data = { trial_period_days: 30 }
+    } else if (planType === 'founder') {
+      // Habilita o parcelamento do cartão de crédito para a compra anual (One-time payment)
+      sessionParam.payment_method_options = {
+        card: {
+          installments: {
+            enabled: true
+          }
+        }
+      }
     }
 
     const session = await stripe.checkout.sessions.create(sessionParam)
