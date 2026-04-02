@@ -3,11 +3,14 @@ import { Layout } from "@/components/Layout";
 import { useAuth } from "@/contexts/AuthContext";
 import { Check, Loader2, Zap, Star, X } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from 'sonner';
 
 export default function Pricing() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+
+  import { toast } from 'sonner';
 
   const handleSubscribe = async (plan: string) => {
     setLoading(true);
@@ -22,10 +25,19 @@ export default function Pricing() {
         },
         body: JSON.stringify({ planType: plan })
       });
+      
       const data = await response.json();
-      if (data.url) window.location.href = data.url;
-    } catch (e) {
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Erro ao gerar checkout na Stripe.");
+      }
+      
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (e: any) {
       console.error(e);
+      toast.error(e.message || "Não foi possível iniciar o pagamento. Tente novamente.");
     } finally {
       setLoading(false);
       setLoadingPlan(null);
