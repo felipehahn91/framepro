@@ -24,7 +24,7 @@ export default function ClosingLinkModal({ isOpen, onClose, opportunity }: Closi
   const [formData, setFormData] = useState({
     value: '',
     eventDate: '',
-    contractTemplateId: 'none'
+    contractTemplateId: '' // Começa vazio para forçar a seleção
   });
 
   const [installmentCount, setInstallmentCount] = useState('1');
@@ -44,7 +44,7 @@ export default function ClosingLinkModal({ isOpen, onClose, opportunity }: Closi
       setFormData({
         value: initialValue,
         eventDate: opportunity.event_date || '',
-        contractTemplateId: 'none'
+        contractTemplateId: ''
       });
       setInstallmentCount('1');
       setInstallments([{
@@ -105,6 +105,7 @@ export default function ClosingLinkModal({ isOpen, onClose, opportunity }: Closi
   const isSumValid = Math.abs(Number(formData.value) - totalInstSum) < 0.05;
 
   const handleGenerateLink = async () => {
+    if (!formData.contractTemplateId) return toast.error("É obrigatório selecionar um modelo de contrato para gerar o link.");
     if (!formData.value) return toast.error("O valor é obrigatório para gerar o link.");
     if (!isSumValid) return toast.error("A soma das parcelas deve ser igual ao valor total do contrato.");
     
@@ -125,7 +126,7 @@ export default function ClosingLinkModal({ isOpen, onClose, opportunity }: Closi
         max_installments: parseInt(installmentCount),
         installments: installments,
         client_can_edit_installments: clientCanEdit,
-        contract_template_id: formData.contractTemplateId === 'none' ? null : formData.contractTemplateId
+        contract_template_id: formData.contractTemplateId
       });
 
       if (error) {
@@ -316,22 +317,31 @@ export default function ClosingLinkModal({ isOpen, onClose, opportunity }: Closi
 
               <div className="space-y-2">
                 <Label className="font-bold text-gray-700 flex items-center gap-1.5">
-                  <FileSignature className="w-4 h-4 text-gray-400" /> Modelo de Contrato Base
+                  <FileSignature className="w-4 h-4 text-gray-400" /> Modelo de Contrato Base *
                 </Label>
                 <Select value={formData.contractTemplateId} onValueChange={(val) => setFormData({...formData, contractTemplateId: val})}>
                   <SelectTrigger className="bg-gray-50 border-gray-200 h-12 focus:ring-orange-400">
                     <SelectValue placeholder="Selecione um modelo..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Contrato em branco (apenas assinaturas)</SelectItem>
-                    {contracts.map(c => (
-                      <SelectItem key={c.id} value={c.id}>
-                        Modelo: {c.title}
+                    {contracts.length > 0 ? (
+                      contracts.map(c => (
+                        <SelectItem key={c.id} value={c.id}>
+                          Modelo: {c.title}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="empty" disabled>
+                        Nenhum modelo encontrado.
                       </SelectItem>
-                    ))}
+                    )}
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-gray-500">As variáveis mágicas serão preenchidas com os dados informados pelo cliente.</p>
+                {contracts.length === 0 ? (
+                  <p className="text-xs font-bold text-red-500">Você precisa criar um "Modelo Base" na aba de Contratos primeiro.</p>
+                ) : (
+                  <p className="text-xs text-gray-500">As variáveis mágicas serão preenchidas com os dados informados pelo cliente.</p>
+                )}
               </div>
             </div>
 
@@ -341,7 +351,7 @@ export default function ClosingLinkModal({ isOpen, onClose, opportunity }: Closi
               </Button>
               <Button 
                 onClick={handleGenerateLink} 
-                disabled={loading || !formData.value || !isSumValid}
+                disabled={loading || !formData.value || !isSumValid || !formData.contractTemplateId}
                 className="bg-green-500 hover:bg-green-600 text-white rounded-xl h-11 px-6 font-bold flex items-center gap-2"
               >
                 {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
