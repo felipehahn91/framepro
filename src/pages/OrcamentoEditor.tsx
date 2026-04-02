@@ -760,7 +760,7 @@ export default function OrcamentoEditor() {
                       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Botões de Ação (CTAs)</h3>
                       <button onClick={() => {
                         if (pdfSection) {
-                          // Calcula exatamente o meio do trecho do PDF que o usuário está enxergando agora
+                          // Calcula uma posição exata no terço superior do trecho visível do PDF
                           const scrollArea = document.getElementById('pdf-scroll-area');
                           const proposal = document.getElementById('proposal-container');
                           let topPercent = 50;
@@ -769,12 +769,13 @@ export default function OrcamentoEditor() {
                             const scrollRect = scrollArea.getBoundingClientRect();
                             const propRect = proposal.getBoundingClientRect();
                             
-                            const centerY = scrollRect.top + (scrollRect.height / 2);
-                            const relativeY = centerY - propRect.top;
+                            // Define o botão para nascer 150px abaixo do topo exato da área de rolagem visível
+                            const targetY = scrollRect.top + 150;
+                            const relativeY = targetY - propRect.top;
                             
                             topPercent = (relativeY / propRect.height) * 100;
-                            // Garante que o botão não nasça grudado demais nas bordas do PDF
-                            topPercent = Math.max(2, Math.min(98, topPercent));
+                            // Garante que o botão não passe dos limites da folha
+                            topPercent = Math.max(1, Math.min(99, topPercent));
                           }
 
                           const ctas = pdfSection.ctas || [];
