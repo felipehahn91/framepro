@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Trash2, Plus, UserPlus, MessageSquare, MessageCircle, Link as LinkIcon,
-  Upload, Loader2, Copy, ExternalLink, X, UserMinus, Search, Inbox, ArrowUp, ArrowDown, Clock, Tag as TagIcon, Zap, Filter, ChevronDown, LayoutGrid, MoreVertical, MoveRight, Settings, Edit2
+  Upload, Loader2, Copy, ExternalLink, X, UserMinus, Search, Inbox, ArrowUp, ArrowDown, Clock, Tag as TagIcon, Zap, Filter, ChevronDown, LayoutGrid, MoreVertical, MoveRight, Settings, Edit2, Lock
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import LeadImportModal from "@/components/LeadImportModal";
 import OpportunityDetailModal from "@/components/OpportunityDetailModal";
 import ClosingLinkModal from "@/components/ClosingLinkModal";
+import { UpgradeModal } from "@/components/UpgradeModal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,7 +65,9 @@ const PHOTO_TYPES = [
 ];
 
 export default function Oportunidades() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const isStarter = profile?.role !== 'admin' && (profile?.plan_type === 'starter' || profile?.plan_type === 'monthly' || !profile?.plan_type);
+
   const [loading, setLoading] = useState(true);
   const [loadingOpps, setLoadingOpps] = useState(false);
   
@@ -107,6 +110,10 @@ export default function Oportunidades() {
   // Modal de Ferramentas (Link Forms e Gatilhos)
   const [isAutomationsOpen, setIsAutomationsOpen] = useState(false);
   const [newTriggerData, setNewTriggerData] = useState({ phrase: '', column_id: '', tag: '' });
+
+  // Modal de Upgrade
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [upgradeFeature, setUpgradeFeature] = useState("");
 
   // Modal de Detalhes da Oportunidade
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -560,6 +567,12 @@ export default function Oportunidades() {
 
   const handleCadenciaClick = (e: React.MouseEvent, opp: Opportunity) => {
     e.stopPropagation();
+    if (isStarter) {
+      setUpgradeFeature("Fluxo de Cadência");
+      setUpgradeModalOpen(true);
+      return;
+    }
+
     if (!opp.phone) return toast.error("Este lead não possui telefone cadastrado.");
     if (activeCadences[opp.id] > 0) {
       return toast.warning("Este lead já possui um fluxo de cadência em andamento.");
@@ -1261,50 +1274,81 @@ export default function Oportunidades() {
             </div>
 
             <div className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-sm">
-              <h3 className="text-base font-bold text-gray-900 mb-2 flex items-center gap-2">
-                <Zap className="w-5 h-5 text-orange-400"/> Gatilhos WhatsApp
-              </h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-orange-400"/> Gatilhos WhatsApp
+                </h3>
+                {isStarter && (
+                  <span className="bg-gray-100 text-gray-500 px-2 py-1 rounded text-xs font-bold flex items-center gap-1">
+                    <Lock className="w-3 h-3"/> Plus
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-gray-500 mb-4">Cria um lead automaticamente quando você receber essa frase.</p>
               
-              <div className="flex flex-col gap-3 mb-6">
-                {whatsappTriggers.map(trig => (
-                  <div key={trig.id} className="bg-gray-50 border border-gray-100 rounded-xl p-4 flex justify-between items-center gap-3 overflow-hidden w-full">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-sm text-gray-900 truncate">"{trig.trigger_phrase}"</p>
-                      <p className="text-xs font-medium text-gray-500 mt-0.5 truncate">Destino: {columns.find(c => c.id === trig.column_id)?.name || '...'}</p>
-                    </div>
-                    <button onClick={() => handleDeleteTrigger(trig.id)} className="p-2 text-red-500 bg-white border border-gray-200 hover:bg-red-50 rounded-lg shadow-sm transition-colors shrink-0"><Trash2 className="w-4 h-4"/></button>
+              {isStarter ? (
+                <div className="bg-gray-50 border border-gray-100 rounded-xl p-6 text-center flex flex-col items-center">
+                  <div className="w-12 h-12 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center mb-3">
+                    <Zap className="w-6 h-6" />
                   </div>
-                ))}
-                {whatsappTriggers.length === 0 && <p className="text-sm text-gray-400 italic py-2">Nenhum gatilho configurado.</p>}
-              </div>
-
-              {/* Formulário Novo Gatilho */}
-              <div className="p-4 bg-orange-50/50 rounded-xl border border-orange-100 space-y-3">
-                <h4 className="text-sm font-bold text-gray-900">Novo Gatilho</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <input 
-                    type="text" 
-                    placeholder="Frase (Ex: orçamento)" 
-                    value={newTriggerData.phrase} 
-                    onChange={e => setNewTriggerData({...newTriggerData, phrase: e.target.value})} 
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-orange-400 text-sm" 
-                  />
-                  <select 
-                    value={newTriggerData.column_id} 
-                    onChange={e => setNewTriggerData({...newTriggerData, column_id: e.target.value})} 
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-orange-400 text-sm"
+                  <h4 className="text-sm font-bold text-gray-900 mb-2">Automação de WhatsApp</h4>
+                  <p className="text-xs text-gray-500 mb-4 max-w-sm mx-auto">
+                    A criação automática de leads por frases no WhatsApp é exclusiva para assinantes Plus.
+                  </p>
+                  <button 
+                    onClick={() => {
+                      setIsAutomationsOpen(false);
+                      setUpgradeFeature("Gatilhos de WhatsApp");
+                      setUpgradeModalOpen(true);
+                    }}
+                    className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-bold hover:bg-black transition-colors"
                   >
-                    <option value="">Etapa de destino...</option>
-                    {activeColumns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
-                </div>
-                <div className="flex justify-end pt-2">
-                  <button onClick={handleCreateTrigger} className="px-5 py-2.5 bg-orange-400 text-white rounded-lg text-sm font-bold hover:bg-orange-500 transition-colors w-full sm:w-auto shadow-sm">
-                    Salvar Gatilho
+                    Fazer Upgrade
                   </button>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div className="flex flex-col gap-3 mb-6">
+                    {whatsappTriggers.map(trig => (
+                      <div key={trig.id} className="bg-gray-50 border border-gray-100 rounded-xl p-4 flex justify-between items-center gap-3 overflow-hidden w-full">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-sm text-gray-900 truncate">"{trig.trigger_phrase}"</p>
+                          <p className="text-xs font-medium text-gray-500 mt-0.5 truncate">Destino: {columns.find(c => c.id === trig.column_id)?.name || '...'}</p>
+                        </div>
+                        <button onClick={() => handleDeleteTrigger(trig.id)} className="p-2 text-red-500 bg-white border border-gray-200 hover:bg-red-50 rounded-lg shadow-sm transition-colors shrink-0"><Trash2 className="w-4 h-4"/></button>
+                      </div>
+                    ))}
+                    {whatsappTriggers.length === 0 && <p className="text-sm text-gray-400 italic py-2">Nenhum gatilho configurado.</p>}
+                  </div>
+
+                  {/* Formulário Novo Gatilho */}
+                  <div className="p-4 bg-orange-50/50 rounded-xl border border-orange-100 space-y-3">
+                    <h4 className="text-sm font-bold text-gray-900">Novo Gatilho</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <input 
+                        type="text" 
+                        placeholder="Frase (Ex: orçamento)" 
+                        value={newTriggerData.phrase} 
+                        onChange={e => setNewTriggerData({...newTriggerData, phrase: e.target.value})} 
+                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-orange-400 text-sm" 
+                      />
+                      <select 
+                        value={newTriggerData.column_id} 
+                        onChange={e => setNewTriggerData({...newTriggerData, column_id: e.target.value})} 
+                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-orange-400 text-sm"
+                      >
+                        <option value="">Etapa de destino...</option>
+                        {activeColumns.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="flex justify-end pt-2">
+                      <button onClick={handleCreateTrigger} className="px-5 py-2.5 bg-orange-400 text-white rounded-lg text-sm font-bold hover:bg-orange-500 transition-colors w-full sm:w-auto shadow-sm">
+                        Salvar Gatilho
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </DialogContent>
@@ -1609,6 +1653,12 @@ export default function Oportunidades() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      <UpgradeModal
+        isOpen={upgradeModalOpen}
+        onClose={() => setUpgradeModalOpen(false)}
+        featureName={upgradeFeature}
+      />
     </Layout>
   );
 }
