@@ -49,14 +49,22 @@ serve(async (req) => {
       case 'checkout.session.completed': {
         const session = event.data.object;
         const customerId = session.customer;
+        const planType = session.metadata?.plan_type;
         
-        // Atualiza o perfil do usuário para 'active' e salva o customer_id
+        const updatePayload: any = { 
+          subscription_status: 'active',
+          stripe_customer_id: customerId
+        };
+        
+        // Se o checkout enviou a informação de qual plano foi pago, atualizamos também
+        if (planType) {
+          updatePayload.plan_type = planType;
+        }
+        
+        // Atualiza o perfil do usuário para 'active' e salva o customer_id e o plano correto
         const { error } = await supabase
           .from('profiles')
-          .update({ 
-            subscription_status: 'active',
-            stripe_customer_id: customerId
-          })
+          .update(updatePayload)
           .eq('stripe_customer_id', customerId);
           
         if (error) throw error;
