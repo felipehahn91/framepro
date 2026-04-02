@@ -68,6 +68,7 @@ export default function OpportunityDetailModal({
   const [docSearch, setDocSearch] = useState('');
   
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [upgradeFeature, setUpgradeFeature] = useState("");
 
   useEffect(() => {
     if (opportunity && isOpen) {
@@ -303,6 +304,7 @@ export default function OpportunityDetailModal({
                   <button
                     onClick={() => {
                       if (isStarter) {
+                        setUpgradeFeature("Link de Fechamento");
                         setUpgradeModalOpen(true);
                         return;
                       }
@@ -342,7 +344,14 @@ export default function OpportunityDetailModal({
                   </button>
 
                   <button 
-                    onClick={() => onOpenCadence && onOpenCadence(opportunity)}
+                    onClick={() => {
+                      if (isStarter) {
+                        setUpgradeFeature("Fluxo de Cadência");
+                        setUpgradeModalOpen(true);
+                        return;
+                      }
+                      if (onOpenCadence) onOpenCadence(opportunity);
+                    }}
                     className="w-full flex items-center gap-3 py-3.5 px-4 rounded-xl font-bold bg-white border border-gray-200 text-gray-700 hover:border-orange-300 hover:bg-orange-50 transition-all shadow-sm group"
                   >
                     <MessageCircle className="w-5 h-5 text-orange-400 group-hover:scale-110 transition-transform" />
@@ -471,7 +480,7 @@ export default function OpportunityDetailModal({
       <UpgradeModal
         isOpen={upgradeModalOpen}
         onClose={() => setUpgradeModalOpen(false)}
-        featureName="Link de Fechamento"
+        featureName={upgradeFeature}
       />
     </Dialog>
   );
