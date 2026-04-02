@@ -28,7 +28,7 @@ serve(async (req) => {
     const prices = {
       starter: 'price_1TH6XxE4KSfiMx6gkMrcJHZN', // ID do Plano Starter (R$ 97)
       plus: 'price_1THmFnE4KSfiMx6gEUrYgYrc', // Plano Plus (R$ 147)
-      founder: 'price_1TFlPTE4KSfiMx6g3ikCABIk', // R$ 804 / ano (R$ 67/mês)
+      founder: 'price_1THp0yE4KSfiMx6gwWXp3DpF', // ID ATUALIZADO Pagamento Único R$ 804
       monthly: 'price_1TH6XxE4KSfiMx6gkMrcJHZN' // Retrocompatibilidade temporária se precisar
     }
 
