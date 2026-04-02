@@ -57,6 +57,54 @@ const getInstallments = (t: Transaction): Installment[] => {
 
 export default function Financeiro() {
   const { user, session } = useAuth();
+
+  // --- FUNÇÕES AUXILIARES (MOVIDAS PARA O TOPO) ---
+  const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+  
+  const formatDateBR = (dateStr: string) => {
+    if (!dateStr) return "-";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const [year, month, day] = dateStr.split('-');
+      return `${day}/${month}/${year}`;
+    }
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0) {
+        d.setUTCHours(12);
+      }
+      return d.toLocaleDateString('pt-BR');
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
+  const parseDateSafe = (dateStr: string) => {
+    if (!dateStr) return new Date();
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return new Date();
+    if (dateStr.length <= 10 || (d.getUTCHours() === 0 && d.getUTCMinutes() === 0)) {
+      d.setUTCHours(12);
+    }
+    return d;
+  };
+
+  const getStatusBadge = (status: string, dateStr?: string) => {
+    if (status === 'Recebido' || status === 'Pago') {
+      return <span className="bg-green-50 text-green-600 px-2.5 py-1 rounded-md text-[11px] font-semibold border border-green-100">Pago</span>;
+    }
+    if (status === 'Cancelado') {
+      return <span className="bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md text-[11px] font-semibold border border-gray-200">Cancelado</span>;
+    }
+    
+    const isOverdue = dateStr && parseDateSafe(dateStr) < new Date(new Date().setHours(0,0,0,0));
+    if (status === 'Atrasado' || isOverdue) {
+      return <span className="bg-red-50 text-red-600 px-2.5 py-1 rounded-md text-[11px] font-semibold border border-red-100">Atrasado</span>;
+    }
+    
+    return <span className="bg-orange-50 text-orange-500 px-2.5 py-1 rounded-md text-[11px] font-semibold border border-orange-100">Pendente</span>;
+  };
+
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("faturamento");
   const [listStatusTab, setListStatusTab] = useState("pendentes");
@@ -81,12 +129,10 @@ export default function Financeiro() {
     installment_count: "1"
   });
 
-  // PagHiper States
   const [paghiperModalOpen, setPaghiperModalOpen] = useState(false);
   const [paghiperLoading, setPaghiperLoading] = useState(false);
   const [paghiperData, setPaghiperData] = useState<any>(null);
 
-  // Installment Date Edit States
   const [isDateEditModalOpen, setIsDateEditModalOpen] = useState(false);
   const [dateEditTarget, setDateEditTarget] = useState<{ tx: Transaction; inst: Installment } | null>(null);
   const [newDateValue, setNewDateValue] = useState("");
@@ -105,7 +151,6 @@ export default function Financeiro() {
       ]);
 
       if (txRes.error && txRes.error.code !== '42P01') throw txRes.error;
-      
       setTransactions(txRes.data || []);
       setClients(clientsRes.data || []);
     } catch (error) {
@@ -417,8 +462,6 @@ export default function Financeiro() {
 
   const handleOpenDateEdit = (tx: Transaction, inst: Installment) => {
     setDateEditTarget({ tx, inst });
-    // Pegar a data da parcela (que é ISO) e converter para YYYY-MM-DD
-    // Usar split('T')[0] é o mais seguro para manter o dia correto vindo do banco
     setNewDateValue(inst.dueDate.split('T')[0]);
     setIsDateEditModalOpen(true);
   };
@@ -429,23 +472,12 @@ export default function Financeiro() {
     try {
       const { tx, inst } = dateEditTarget;
       const insts = getInstallments(tx);
-      
-      // Criar a nova data usando UTC para evitar o bug do "dia a menos"
-      // Ao salvar com meio-dia UTC (12:00:00), garantimos que o timezone local
-      // não mude o dia (que é o que acontece quando fica em 00:00:00)
       const d = new Date(newDateValue);
       d.setUTCHours(12);
       const updatedIso = d.toISOString();
-
       const updatedInsts = insts.map(i => i.id === inst.id ? { ...i, dueDate: updatedIso } : i);
-      
-      const { error } = await supabase
-        .from('transactions')
-        .update({ installments: updatedInsts })
-        .eq('id', tx.id);
-
+      const { error } = await supabase.from('transactions').update({ installments: updatedInsts }).eq('id', tx.id);
       if (error) throw error;
-
       setTransactions(prev => prev.map(t => t.id === tx.id ? { ...t, installments: updatedInsts } : t));
       toast.success("Vencimento atualizado!");
       setIsDateEditModalOpen(false);
@@ -456,12 +488,10 @@ export default function Financeiro() {
     }
   };
 
-  // --- PAGHIPER HANDLERS ---
   const handleOpenPaghiperModal = async (tx: Transaction, inst?: Installment) => {
     let cpf = "";
     let email = "";
     let name = tx.clients?.name || "Cliente";
-
     if (tx.client_id) {
       const { data } = await supabase.from('opportunities').select('cpf, email').eq('id', tx.client_id).single();
       if (data) {
@@ -469,16 +499,11 @@ export default function Financeiro() {
         email = data.email || "";
       }
     }
-
     setPaghiperData({
-      tx,
-      inst,
-      amount: inst ? inst.amount : tx.amount,
+      tx, inst, amount: inst ? inst.amount : tx.amount,
       dueDate: inst ? inst.dueDate : tx.date,
       description: inst ? `${tx.description} (Parcela ${inst.number}/${tx.installment_count})` : tx.description,
-      payer_name: name,
-      payer_cpf: cpf,
-      payer_email: email
+      payer_name: name, payer_cpf: cpf, payer_email: email
     });
     setPaghiperModalOpen(true);
   };
@@ -487,7 +512,6 @@ export default function Financeiro() {
     e.preventDefault();
     if (!paghiperData.payer_cpf) return toast.error("O CPF/CNPJ é obrigatório para emissão de Pix.");
     setPaghiperLoading(true);
-
     try {
       const response = await fetch('https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/paghiper-create-boleto', {
         method: 'POST',
@@ -506,13 +530,9 @@ export default function Financeiro() {
           due_date: paghiperData.dueDate
         })
       });
-
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || "Erro desconhecido na API.");
-
+      if (!response.ok) throw new Error(result.error || "Erro desconhecido.");
       const { pix_url, pix_code } = result;
-
-      // Update Supabase and Local State
       if (paghiperData.inst) {
         const insts = getInstallments(paghiperData.tx);
         const updatedInsts = insts.map(i => i.id === paghiperData.inst.id ? { ...i, pix_url, pix_code } : i);
@@ -522,10 +542,8 @@ export default function Financeiro() {
         await supabase.from('transactions').update({ pix_url, pix_code }).eq('id', paghiperData.tx.id);
         setTransactions(prev => prev.map(t => t.id === paghiperData.tx.id ? { ...t, pix_url, pix_code } : t));
       }
-
       toast.success("Pix gerado com sucesso!");
       setPaghiperModalOpen(false);
-
     } catch (error: any) {
       toast.error(error.message || "Erro ao gerar Pix.");
     } finally {
@@ -535,120 +553,34 @@ export default function Financeiro() {
 
   const handleSendWhatsApp = async (e: React.MouseEvent, tx: Transaction, inst?: Installment) => {
     e.stopPropagation();
-    
     try {
       let phone = "";
       let clientName = tx.clients?.name || "Cliente";
-      
       if (tx.client_id) {
         const { data } = await supabase.from('opportunities').select('phone').eq('id', tx.client_id).single();
         if (data?.phone) phone = data.phone;
       }
-
       if (!phone) return toast.error("Este cliente não possui telefone cadastrado.");
-
-      const { data: instanceData } = await supabase
-        .from('whatsapp_instances')
-        .select('instance_name')
-        .eq('user_id', user?.id)
-        .eq('status', 'connected')
-        .single();
-        
-      if (!instanceData) return toast.error("WhatsApp não está conectado. Vá em Configurações para conectar.");
-
+      const { data: instanceData } = await supabase.from('whatsapp_instances').select('instance_name').eq('user_id', user?.id).eq('status', 'connected').single();
+      if (!instanceData) return toast.error("WhatsApp não conectado.");
       const amount = inst ? inst.amount : tx.amount;
       const pixCode = inst ? inst.pix_code : tx.pix_code;
       const pixUrl = inst ? inst.pix_url : tx.pix_url;
       const description = inst ? `${tx.description} (Parcela ${inst.number})` : tx.description;
-
       const message1 = `Olá ${clientName.split(' ')[0]}!\n\nAqui está a cobrança referente a:\n*${description}*\nValor: *${formatCurrency(amount)}*\n\nAbaixo estão os dados para pagamento via Pix:`;
-
-      // 1. Enviar mensagem de texto introdutória
       await sendTextMessage(instanceData.instance_name, phone, message1);
-
-      // 2. Se tiver QR Code, envia a imagem
       if (pixUrl) {
         await new Promise(r => setTimeout(r, 1000));
-        await sendMediaMessage(
-          instanceData.instance_name, 
-          phone, 
-          pixUrl, 
-          'image', 
-          'image/png', 
-          'QR Code Pix'
-        );
+        await sendMediaMessage(instanceData.instance_name, phone, pixUrl, 'image', 'image/png', 'QR Code Pix');
       }
-
-      // 3. Enviar apenas o código Copia e Cola para facilitar a cópia
       if (pixCode) {
         await new Promise(r => setTimeout(r, 1500));
         await sendTextMessage(instanceData.instance_name, phone, pixCode);
       }
-      
-      // Notify internal system
-      await supabase.from('notifications').insert({
-        user_id: user?.id,
-        title: 'Cobrança Manual Enviada',
-        content: `A cobrança de ${formatCurrency(amount)} foi enviada para ${clientName} via WhatsApp.`,
-        type: 'info',
-        related_entity_type: 'transaction',
-        related_entity_id: tx.id
-      });
-
       toast.success("Cobrança enviada por WhatsApp!");
     } catch(e) {
-      toast.error("Erro ao enviar mensagem via WhatsApp.");
+      toast.error("Erro ao enviar via WhatsApp.");
     }
-  };
-
-  const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-  
-  const formatDateBR = (dateStr: string) => {
-    if (!dateStr) return "-";
-    // If it's YYYY-MM-DD format (like from Supabase 'date' column)
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-      const [year, month, day] = dateStr.split('-');
-      return `${day}/${month}/${year}`;
-    }
-    // For ISO strings (like JSONB dueDate or timestamps)
-    try {
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return dateStr;
-      // If it's at midnight UTC, it's probably a date-only intent
-      if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0) {
-        d.setUTCHours(12);
-      }
-      return d.toLocaleDateString('pt-BR');
-    } catch (e) {
-      return dateStr;
-    }
-  };
-
-  const parseDateSafe = (dateStr: string) => {
-    if (!dateStr) return new Date();
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return new Date();
-    // For date-only strings (YYYY-MM-DD) or midnight UTC ISO strings
-    if (dateStr.length <= 10 || (d.getUTCHours() === 0 && d.getUTCMinutes() === 0)) {
-      d.setUTCHours(12);
-    }
-    return d;
-  };
-
-  const getStatusBadge = (status: string, dateStr?: string) => {
-    if (status === 'Recebido' || status === 'Pago') {
-      return <span className="bg-green-50 text-green-600 px-2.5 py-1 rounded-md text-[11px] font-semibold border border-green-100">Pago</span>;
-    }
-    if (status === 'Cancelado') {
-      return <span className="bg-gray-100 text-gray-600 px-2.5 py-1 rounded-md text-[11px] font-semibold border border-gray-200">Cancelado</span>;
-    }
-    
-    const isOverdue = dateStr && parseDateSafe(dateStr) < new Date(new Date().setHours(0,0,0,0));
-    if (status === 'Atrasado' || isOverdue) {
-      return <span className="bg-red-50 text-red-600 px-2.5 py-1 rounded-md text-[11px] font-semibold border border-red-100">Atrasado</span>;
-    }
-    
-    return <span className="bg-orange-50 text-orange-500 px-2.5 py-1 rounded-md text-[11px] font-semibold border border-orange-100">Pendente</span>;
   };
 
   const listToRender = useMemo(() => {
@@ -658,9 +590,7 @@ export default function Financeiro() {
     return transactions.filter(t => t.status === 'Recebido' || t.status === 'Pago');
   }, [transactions, listStatusTab]);
 
-  if (loading) {
-    return <Layout><div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div></Layout>;
-  }
+  const expandedTxIdsArray = Array.from(expandedTxIds);
 
   return (
     <Layout>
@@ -852,7 +782,7 @@ export default function Financeiro() {
                                       <div className="flex items-center gap-1.5">
                                         <p className="text-[11px] text-gray-500">Vence: {formatDateBR(inst.dueDate)}</p>
                                         {inst.status !== 'Pago' && (
-                                          <button
+                                          <button 
                                             onClick={(e) => { e.stopPropagation(); handleOpenDateEdit(tx, inst); }}
                                             className="p-1 text-gray-400 hover:text-orange-500 hover:bg-white rounded transition-colors"
                                           >
@@ -1059,7 +989,7 @@ export default function Financeiro() {
                   Cancelar
                 </button>
                 <button type="submit" disabled={isSubmitting} className="px-8 py-2.5 bg-orange-400 text-white font-bold rounded-xl hover:bg-orange-500 transition-colors flex items-center justify-center shadow-md disabled:opacity-50">
-                  {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Salvar Recebimento'}
+                  {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar Recebimento'}
                 </button>
               </div>
             </form>
@@ -1134,9 +1064,9 @@ export default function Financeiro() {
           <div className="p-6 space-y-4">
             <div className="space-y-1.5">
               <label className="text-sm font-bold text-gray-700">Nova Data de Vencimento</label>
-              <input
+              <input 
                 type="date"
-                value={newDateValue}
+                value={newDateValue} 
                 onChange={e => setNewDateValue(e.target.value)}
                 className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-orange-400 outline-none"
               />
@@ -1144,17 +1074,17 @@ export default function Financeiro() {
             </div>
 
             <DialogFooter className="mt-6">
-              <button
-                type="button"
-                onClick={() => setIsDateEditModalOpen(false)}
+              <button 
+                type="button" 
+                onClick={() => setIsDateEditModalOpen(false)} 
                 className="px-5 py-2.5 text-gray-600 font-bold hover:bg-gray-100 rounded-xl transition-colors"
               >
                 Cancelar
               </button>
-              <button
+              <button 
                 type="button"
                 onClick={handleSaveNewDate}
-                disabled={isUpdatingDate || !newDateValue}
+                disabled={isUpdatingDate || !newDateValue} 
                 className="px-6 py-2.5 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 shadow-sm flex items-center gap-2 disabled:opacity-50"
               >
                 {isUpdatingDate ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Salvar Alteração'}
