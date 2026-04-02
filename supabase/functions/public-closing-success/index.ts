@@ -41,7 +41,7 @@ serve(async (req) => {
     }
     const userId = link.user_id;
 
-    // 2. Generate Pix via PagHiper
+    // 2. Generate Pix via PagHiper (APENAS SE A DATA DA PRIMEIRA PARCELA FOR HOJE)
     const { data: profile } = await supabaseAdmin
       .from('profiles')
       .select('paghiper_api_key, paghiper_token')
@@ -51,7 +51,12 @@ serve(async (req) => {
     let pixUrl = null;
     let pixCode = null;
 
-    if (profile?.paghiper_api_key && profile?.paghiper_token) {
+    // Verifica se a data de vencimento é hoje (usando UTC-3 para o Brasil)
+    const todayStr = new Date(Date.now() - 3 * 3600 * 1000).toISOString().split('T')[0];
+    const dueDateStr = due_date ? due_date.split('T')[0] : '';
+    const isDueDateToday = dueDateStr === todayStr;
+
+    if (isDueDateToday && profile?.paghiper_api_key && profile?.paghiper_token) {
       const dueDateMs = new Date(due_date).getTime();
       let daysDue = Math.ceil((dueDateMs - Date.now()) / (1000 * 3600 * 24));
       if (daysDue < 1) daysDue = 1;
@@ -89,7 +94,6 @@ serve(async (req) => {
 
         // Atualizar a transação no banco de dados com o PIX
         if (installment_id) {
-          // Precisamos atualizar o array de installments
           const { data: tx } = await supabaseAdmin.from('transactions').select('installments').eq('id', transaction_id).single();
           if (tx && tx.installments) {
             const updatedInsts = tx.installments.map((i: any) => i.id === installment_id ? { ...i, pix_url: pixUrl, pix_code: pixCode } : i);
@@ -125,10 +129,21 @@ serve(async (req) => {
       });
     }
 
+    // Notify user about PIX generated
+    if (pixCode) {
+      await supabaseAdmin.from('notifications').insert({
+        user_id: link.user_id,
+        title: 'Cobrança via Pix Gerada e Enviada',
+        content: `Pix automático no valor de ${formatCurrency(amount)} foi gerado e enviado para ${payer_name} via WhatsApp.`,
+        type: 'info',
+        related_entity_type: 'transaction',
+        related_entity_id: transaction_id
+      });
+    }
+
     // 3. Send WhatsApp via Evolution API
     const { data: settings } = await supabaseAdmin.from('platform_settings').select('evo_api_url, evo_api_key').single();
     if (settings?.evo_api_url && settings?.evo_api_key && client_phone) {
-      // Find the user's active whatsapp instance
       const { data: waInstance } = await supabaseAdmin
         .from('whatsapp_instances')
         .select('instance_name')
@@ -147,17 +162,16 @@ serve(async (req) => {
           formattedPhone = `55${formattedPhone}`;
         }
         
-        if (formattedPhone.length < 12) {
-          console.error("Número de telefone muito curto ou inválido:", formattedPhone);
-        }
-
         const firstName = payer_name ? payer_name.split(' ')[0] : 'Cliente';
         let messageText = `Olá ${firstName}! 🎉 Muito obrigado por fechar negócio conosco!\n\nSeu contrato foi assinado e salvo com sucesso.\n`;
         
         if (pixCode) {
           messageText += `\nAbaixo estão os dados para o pagamento do seu acordo:`;
+        } else if (dueDateStr) {
+          const [year, month, day] = dueDateStr.split('-');
+          messageText += `\nSua primeira parcela está agendada para o dia ${day}/${month}/${year}. Entraremos em contato próximo a esta data.\n\nQualquer dúvida, estamos à disposição!`;
         } else {
-          messageText += `\nQualquer dúvida, estamos à disposição.`;
+          messageText += `\nQualquer dúvida, estamos à disposição!`;
         }
 
         // Send 1: Welcome and Text
@@ -186,10 +200,7 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               number: formattedPhone,
-              options: {
-                delay: 2000,
-                presence: "composing"
-              },
+              options: { delay: 2000, presence: "composing" },
               mediaMessage: {
                 mediatype: "image",
                 fileName: "qrcode_pix.png",
@@ -215,18 +226,6 @@ serve(async (req) => {
           });
         }
       }
-    }
-
-    // Notify user about PIX generated
-    if (pixCode) {
-      await supabaseAdmin.from('notifications').insert({
-        user_id: link.user_id,
-        title: 'Cobrança via Pix Gerada e Enviada',
-        content: `Pix automático no valor de ${formatCurrency(amount)} foi gerado e enviado para ${payer_name} via WhatsApp.`,
-        type: 'info',
-        related_entity_type: 'transaction',
-        related_entity_id: transaction_id
-      });
     }
 
     // Trigger AI Insight update (Background)
