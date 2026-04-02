@@ -22,14 +22,17 @@ serve(async (req) => {
 
     if (!user) throw new Error('Não autorizado')
 
-    const { planType } = await req.json() // 'monthly' ou 'founder'
+    const { planType } = await req.json() // 'starter', 'plus' ou 'founder'
     
-    // Configurações dos Planos (ID dos preços do seu Stripe Dashboard)
-    // Substitua pelos seus IDs Reais do Stripe!
+    // IDs dos preços do Stripe
     const prices = {
-      monthly: 'price_1Q_MONTHLY_ID', // R$ 97 / mês com trial
-      founder: 'price_1Q_FOUNDER_ID'   // R$ 804 / ano (R$ 67/mês)
+      starter: 'price_STARTER_ID', // SUBSTITUIR PELO ID DO PLANO STARTER (R$ 97)
+      plus: 'price_1THmFnE4KSfiMx6gEUrYgYrc', // Plano Plus (R$ 147)
+      founder: 'price_1Q_FOUNDER_ID', // R$ 804 / ano (R$ 67/mês)
+      monthly: 'price_STARTER_ID' // Retrocompatibilidade temporária se precisar
     }
+
+    const priceId = prices[planType] || prices.starter;
 
     // Busca ou cria o cliente no Stripe
     const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
@@ -43,14 +46,17 @@ serve(async (req) => {
 
     const sessionParam: any = {
       customer: customerId,
-      line_items: [{ price: prices[planType], quantity: 1 }],
+      line_items: [{ price: priceId, quantity: 1 }],
       mode: 'subscription',
       success_url: `${req.headers.get('origin')}/billing-success`,
       cancel_url: `${req.headers.get('origin')}/billing-cancel`,
+      metadata: {
+        plan_type: planType // Para o webhook do stripe saber qual plano
+      }
     }
 
-    // Adiciona 30 dias de trial apenas no plano mensal
-    if (planType === 'monthly') {
+    // Adiciona 30 dias de trial apenas para novos planos mensais (se desejado)
+    if (planType === 'starter' || planType === 'plus') {
       sessionParam.subscription_data = { trial_period_days: 30 }
     }
 

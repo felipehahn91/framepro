@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard, Target, Users, CheckSquare, DollarSign,
   FileText, Calculator, Calendar, Settings, Bell, GitBranch,
-  LogOut, ShieldCheck, Menu, X
+  LogOut, ShieldCheck, Menu, X, Lock
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -19,12 +19,18 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { InstallPWA } from "./InstallPWA";
 import { Notifications } from "./Notifications";
+import { UpgradeModal } from "./UpgradeModal";
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [upgradeFeature, setUpgradeFeature] = useState("");
   const logoImg = "/logo.png";
+
+  const isStarter = profile?.plan_type === 'starter' || !profile?.plan_type;
 
   const handleSignOut = async () => {
     await signOut();
@@ -51,7 +57,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     { name: "Contratos", path: "/contratos", icon: FileText },
     { name: "Orçamentos", path: "/orcamentos", icon: Calculator },
     { name: "Agenda", path: "/agenda", icon: Calendar },
-    { name: "Fluxo de Cadência", path: "/fluxo", icon: GitBranch },
+    { name: "Fluxo de Cadência", path: "/fluxo", icon: GitBranch, isPremium: true },
     { name: "Configurações", path: "/configuracoes", icon: Settings },
   ];
 
@@ -59,20 +65,32 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
     navItems.push({ name: "Administração", path: "/admin", icon: ShieldCheck });
   }
 
+  const handleNavClick = (e: React.MouseEvent, item: any, isMobileView: boolean) => {
+    if (item.isPremium && isStarter) {
+      e.preventDefault();
+      setUpgradeFeature(item.name);
+      setUpgradeModalOpen(true);
+      if (isMobileView) setIsMobileMenuOpen(false);
+      return;
+    }
+    if (isMobileView) setIsMobileMenuOpen(false);
+  };
+
   const renderNavItems = (isMobileView = false) => {
     return navItems.map((item) => {
       const isActive = location.pathname === item.path;
       const isAdminItem = item.path === "/admin";
+      const showLock = item.isPremium && isStarter;
       
       return (
         <Link
           key={item.name}
           to={item.path}
-          onClick={() => isMobileView && setIsMobileMenuOpen(false)}
-          className={`flex items-center gap-3.5 px-4 py-3.5 rounded-2xl transition-all text-sm font-semibold ${
+          onClick={(e) => handleNavClick(e, item, isMobileView)}
+          className={`flex items-center gap-3.5 px-4 py-3.5 rounded-2xl transition-all text-sm font-semibold relative ${
             isActive
-              ? isAdminItem 
-                ? "bg-gray-900 text-white shadow-lg shadow-gray-200" 
+              ? isAdminItem
+                ? "bg-gray-900 text-white shadow-lg shadow-gray-200"
                 : "bg-orange-500 text-white shadow-lg shadow-orange-100"
               : "text-gray-600 hover:bg-gray-50"
           }`}
@@ -82,7 +100,10 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
               isActive ? "text-white" : "text-gray-400"
             }`}
           />
-          <span className="flex-1">{item.name}</span>
+          <span className="flex-1 flex items-center justify-between">
+            {item.name}
+            {showLock && <Lock className="w-3.5 h-3.5 text-gray-300" />}
+          </span>
           {isAdminItem && !isActive && (
             <span className="w-2 h-2 rounded-full bg-blue-500"></span>
           )}
@@ -184,6 +205,12 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
           {children}
         </div>
       </main>
+
+      <UpgradeModal
+        isOpen={upgradeModalOpen}
+        onClose={() => setUpgradeModalOpen(false)}
+        featureName={upgradeFeature}
+      />
 
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar::-webkit-scrollbar {

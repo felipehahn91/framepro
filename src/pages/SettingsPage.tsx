@@ -17,6 +17,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import * as evolutionApi from '@/lib/evolution';
 import { THEMES, applyTheme, getActiveTheme } from '@/lib/theme';
+import { UpgradeModal } from '@/components/UpgradeModal';
 
 export default function SettingsPage() {
   const { user, profile, refreshProfile } = useAuth();
@@ -32,6 +33,11 @@ export default function SettingsPage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   
   const [activeTheme, setActiveTheme] = useState(getActiveTheme());
+  
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [upgradeFeature, setUpgradeFeature] = useState("");
+
+  const isStarter = profile?.plan_type === 'starter' || !profile?.plan_type;
 
   // --- PAGHIPER STATES ---
   const [paghiperKey, setPaghiperKey] = useState('');

@@ -464,10 +464,32 @@ export default function AdminDashboard() {
                 {selectedUser?.phone && <span className="flex items-center gap-1.5"><Phone className="w-4 h-4" /> {selectedUser?.phone}</span>}
               </div>
             </div>
-            <div>
+            <div className="flex flex-col items-end gap-2">
               <span className={`px-3 py-1.5 text-xs font-bold rounded-xl border ${selectedUser?.role === 'admin' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-green-50 text-green-700 border-green-200'}`}>
                 {selectedUser?.role === 'admin' ? 'Administrador' : 'Usuário Padrão'}
               </span>
+              <select
+                value={selectedUser?.plan_type || 'starter'}
+                onChange={async (e) => {
+                  const newPlan = e.target.value;
+                  const newStatus = selectedUser?.subscription_status === 'inactive' ? 'active' : selectedUser?.subscription_status;
+                  
+                  setSelectedUser({ ...selectedUser, plan_type: newPlan, subscription_status: newStatus });
+                  
+                  await supabase.from('profiles').update({
+                    plan_type: newPlan,
+                    subscription_status: newStatus
+                  }).eq('id', selectedUser.id);
+                  
+                  setUsersList(usersList.map(u => u.id === selectedUser.id ? { ...u, plan_type: newPlan, subscription_status: newStatus } : u));
+                  toast.success(`Plano alterado para ${newPlan.toUpperCase()}`);
+                }}
+                className="text-xs font-bold bg-white border border-gray-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-orange-400 shadow-sm"
+              >
+                <option value="starter">Starter (Básico)</option>
+                <option value="plus">Plus (Completo)</option>
+                <option value="founder">Founder Pack</option>
+              </select>
             </div>
           </div>
           
