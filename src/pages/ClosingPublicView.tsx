@@ -172,7 +172,7 @@ export default function ClosingPublicView() {
       
       let finalInstallments = [];
       
-      // Verifica se o cliente alterou alguma coisa
+      // Verifica se o cliente alterou alguma coisa usando comparação direta dos valores e datas
       let hasEditedInstallments = false;
 
       if (isCustomPlan) {
@@ -184,15 +184,13 @@ export default function ClosingPublicView() {
           paidDate: null
         }));
         
-        // Compara com os originais
+        // Compara com os originais de forma segura
         if (clientCanEdit && linkData.installments) {
-          hasEditedInstallments = linkData.installments.some((origInst: any, i: number) => {
-            const currentInst = customInstallments[i];
-            if (!currentInst) return true;
-            if (Number(origInst.amount) !== Number(currentInst.amount)) return true;
-            if (origInst.dueDate !== currentInst.dueDate) return true;
-            return false;
-          });
+          const orig = linkData.installments.map((i: any) => ({ d: i.dueDate, a: Number(i.amount).toFixed(2) }));
+          const curr = customInstallments.map((i: any) => ({ d: i.dueDate, a: Number(i.amount).toFixed(2) }));
+          if (JSON.stringify(orig) !== JSON.stringify(curr)) {
+            hasEditedInstallments = true;
+          }
         }
       } else {
         const baseAmount = Math.floor((amount / count) * 100) / 100;

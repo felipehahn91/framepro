@@ -8,9 +8,11 @@ import "react-quill-new/dist/quill.snow.css";
 import SignaturePad from "react-signature-canvas";
 import { 
   ArrowLeft, Save, UploadCloud, X, Loader2, Image as ImageIcon, PenTool, 
-  Wand2, Info, Copy
+  Wand2, Info, Copy, DollarSign
 } from "lucide-react";
 import { toast } from "sonner";
+import { Card, CardContent } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 
 export default function ContractEditor() {
   const { id } = useParams();
@@ -21,6 +23,7 @@ export default function ContractEditor() {
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [clients, setClients] = useState<{id: string, name: string}[]>([]);
+  const [linkedTransaction, setLinkedTransaction] = useState<any>(null);
   
   const sigCanvas = useRef<SignaturePad>(null);
 
@@ -91,6 +94,19 @@ export default function ContractEditor() {
         });
 
         if (contract.contract_image) setImagePreview(contract.contract_image);
+
+        if (clientId !== "template") {
+          const { data: tx } = await supabase
+            .from('transactions')
+            .select('*')
+            .eq('client_id', clientId)
+            .eq('amount', contract.value)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          
+          if (tx) setLinkedTransaction(tx);
+        }
       }
     } catch (error) {
       toast.error("Erro ao carregar dados.");
@@ -192,16 +208,19 @@ export default function ContractEditor() {
 
       if (isNew) {
         const share_token = crypto.randomUUID();
-        await supabase.from('contracts').insert({ ...payload, share_token });
+        const { error } = await supabase.from('contracts').insert({ ...payload, share_token });
+        if (error) throw error;
         toast.success(isTemplate ? "Modelo salvo com sucesso!" : "Contrato salvo com sucesso!");
       } else {
-        await supabase.from('contracts').update(payload).eq('id', id);
+        const { error } = await supabase.from('contracts').update(payload).eq('id', id);
+        if (error) throw error;
         toast.success("Atualizado com sucesso!");
       }
       
       navigate('/contratos');
-    } catch (error) {
-      toast.error("Erro ao salvar.");
+    } catch (error: any) {
+      console.error("Save Error:", error);
+      toast.error(error?.message || "Erro ao salvar contrato. Verifique sua conexão e os dados.");
     } finally {
       setSaving(false);
     }
@@ -310,6 +329,40 @@ export default function ContractEditor() {
                 </div>
               )}
             </div>
+
+            {/* Plano de Pagamento Vinculado */}
+            {linkedTransaction && (
+              <Card className="border-gray-200 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-gray-100 bg-green-50">
+                  <Label className="text-base font-bold flex items-center gap-2 text-green-800">
+                    <DollarSign className="w-5 h-5 text-green-600" />
+                    Plano de Pagamento Vinculado
+                  </Label>
+                  <p className="text-xs text-green-600 mt-1 font-medium">Condições salvas após o cliente assinar o contrato.</p>
+                </div>
+                <CardContent className="p-5 space-y-4">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm font-medium text-gray-500">Status Atual:</span>
+                    <span className="text-sm font-bold uppercase text-gray-900">{linkedTransaction.status}</span>
+                  </div>
+                  {linkedTransaction.is_installment && linkedTransaction.installments ? (
+                     <div className="space-y-2">
+                       {(typeof linkedTransaction.installments === 'string' ? JSON.parse(linkedTransaction.installments) : linkedTransaction.installments).map((inst: any, idx: number) => (
+                         <div key={idx} className="flex justify-between items-center text-sm p-3 bg-gray-50 rounded-lg border border-gray-100">
+                           <span className="font-bold text-gray-700">{inst.number}x de {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(inst.amount)}</span>
+                           <span className="text-gray-500 font-medium text-xs">{new Date(inst.dueDate).toLocaleDateString('pt-BR')}</span>
+                         </div>
+                       ))}
+                     </div>
+                  ) : (
+                    <div className="text-sm p-3 bg-gray-50 rounded-lg border border-gray-100 flex justify-between items-center">
+                      <span className="font-bold text-gray-700">À vista</span>
+                      <span className="font-bold text-gray-900">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(linkedTransaction.amount)}</span>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Espaço para a Assinatura do Fornecedor */}
             <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
