@@ -124,20 +124,15 @@ export default function LandingPage() {
           initial={{ opacity: 0, y: 100 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1.2, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className="max-w-6xl mx-auto mt-16 w-full px-4 sm:px-0 relative z-10"
+          className="max-w-6xl mx-auto mt-16 w-full px-4 sm:px-0 relative z-10 flex justify-center"
         >
-          <motion.div 
+          <motion.img 
             animate={{ y: [0, -10, 0] }}
             transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-            className="bg-gray-900 rounded-[2.5rem] p-2 sm:p-4 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] overflow-hidden relative ring-1 ring-white/10"
-          >
-            <div className="absolute inset-0 bg-gradient-to-t from-gray-900/80 to-transparent z-10 pointer-events-none"></div>
-            <img 
-              src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=2426&auto=format&fit=crop" 
-              alt="Dashboard Frame Pro" 
-              className="rounded-[2rem] border border-gray-800 w-full h-[300px] sm:h-[500px] object-cover object-top opacity-90"
-            />
-          </motion.div>
+            src="/hero-mockup.webp" 
+            alt="Dashboard Frame Pro" 
+            className="rounded-3xl shadow-2xl w-full max-w-5xl object-cover border border-gray-200/50"
+          />
         </motion.div>
       </section>
 
@@ -383,8 +378,8 @@ export default function LandingPage() {
               <ul className="space-y-5 mb-10 flex-1">
                 {[
                   "14 dias de teste GRÁTIS",
-                  "Gestão ilimitada de clientes (Kanban)",
-                  "Construtor de Orçamentos Interativos",
+                  "Gestão ilimitada de clientes (CRM)",
+                  "Criador de Propostas (Páginas)",
                   "Contratos com assinatura digital na tela",
                   "Controle de pagamentos (Financeiro)",
                   "Suporte por e-mail"
@@ -415,7 +410,7 @@ export default function LandingPage() {
               </div>
               
               <h3 className="text-2xl font-black text-orange-400 mb-2 uppercase tracking-widest">Plus</h3>
-              <p className="text-gray-300 font-medium mb-8 relative z-10">Tudo do Starter + Automação de follow-up e mapa de calor.</p>
+              <p className="text-gray-300 font-medium mb-8 relative z-10">Tudo do Starter + Automação total de comunicação e pagamentos.</p>
               
               <div className="flex items-baseline gap-2 mb-8 relative z-10">
                 <span className="text-6xl font-black text-white tracking-tighter">R$ 147</span>
@@ -429,7 +424,7 @@ export default function LandingPage() {
                   "Integração WhatsApp (Avisos de vencimento)",
                   "Sincronização Google Calendar e Meet",
                   "Geração automática de Pix e Boletos",
-                  "Fluxo de Cadência (Mensagens Agendadas)",
+                  "Fluxo de Cadência Automático",
                   "Mapa de Calor: Gravação de Tela nas propostas",
                   "Suporte prioritário via WhatsApp"
                 ].map((item, i) => (
