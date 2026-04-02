@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   X, Mail, Phone, Instagram, Calendar, FileText, 
-  Send, Clock, Edit2, Loader2, User, Building2, Search, Calculator, MessageCircle
+  Send, Clock, Edit2, Loader2, User, Building2, Search, Calculator, MessageCircle, Eye, CheckCircle2, AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -49,7 +49,7 @@ const parseNotes = (obs: string | null | undefined): Note[] => {
 };
 
 export default function ClientDetailPanel({ isOpen, onClose, client, onUpdate, onEditClick }: ClientDetailPanelProps) {
-  const [activeTab, setActiveTab] = useState<'details' | 'notes'>('notes');
+  const [activeTab, setActiveTab] = useState<'details' | 'notes' | 'contracts'>('notes');
   const [newNote, setNewNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -58,6 +58,36 @@ export default function ClientDetailPanel({ isOpen, onClose, client, onUpdate, o
   const [documents, setDocuments] = useState<any[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [docSearch, setDocSearch] = useState('');
+
+  // Estados para Aba de Contratos
+  const [clientContracts, setClientContracts] = useState<any[]>([]);
+  const [loadingContracts, setLoadingContracts] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && client && activeTab === 'contracts') {
+      fetchClientContracts();
+    }
+  }, [isOpen, client, activeTab]);
+
+  const fetchClientContracts = async () => {
+    if (!client) return;
+    setLoadingContracts(true);
+    try {
+      const { data, error } = await supabase
+        .from('contracts')
+        .select('*')
+        .eq('client_id', client.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setClientContracts(data || []);
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao carregar contratos do cliente.");
+    } finally {
+      setLoadingContracts(false);
+    }
+  };
 
   if (!isOpen || !client) return null;
 
@@ -243,18 +273,24 @@ export default function ClientDetailPanel({ isOpen, onClose, client, onUpdate, o
           </div>
 
           {/* Tabs */}
-          <div className="flex border-b border-gray-100 px-6 shrink-0">
+          <div className="flex border-b border-gray-100 px-6 shrink-0 gap-6">
             <button 
               onClick={() => setActiveTab('notes')}
-              className={`py-4 text-sm font-bold border-b-2 transition-colors mr-8 ${activeTab === 'notes' ? 'border-orange-500 text-orange-500' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+              className={`py-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'notes' ? 'border-orange-500 text-orange-500' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
             >
               Anotações
+            </button>
+            <button 
+              onClick={() => setActiveTab('contracts')}
+              className={`py-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'contracts' ? 'border-orange-500 text-orange-500' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+            >
+              Contratos
             </button>
             <button 
               onClick={() => setActiveTab('details')}
               className={`py-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'details' ? 'border-orange-500 text-orange-500' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
             >
-              Dados do Contato
+              Contato
             </button>
           </div>
 
@@ -313,6 +349,48 @@ export default function ClientDetailPanel({ isOpen, onClose, client, onUpdate, o
                     <div className="text-center py-10 text-gray-400"><p className="text-sm">Nenhuma anotação registrada.</p></div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {activeTab === 'contracts' && (
+              <div className="p-6 space-y-4 animate-in fade-in">
+                {loadingContracts ? (
+                  <div className="flex justify-center py-10"><Loader2 className="w-6 h-6 animate-spin text-orange-400" /></div>
+                ) : clientContracts.length > 0 ? (
+                  clientContracts.map(contract => (
+                    <div key={contract.id} className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm hover:border-orange-200 transition-colors">
+                      <div className="flex justify-between items-start mb-3">
+                        <h4 className="font-bold text-gray-900 text-sm">Contrato</h4>
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                          contract.signature_status === 'Assinado 2/2' ? 'bg-green-50 text-green-600 border border-green-100' : 'bg-yellow-50 text-yellow-600 border border-yellow-100'
+                        }`}>
+                          {contract.signature_status || 'Pendente'}
+                        </span>
+                      </div>
+                      <div className="space-y-2 mb-4">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">Valor</span>
+                          <span className="font-bold text-gray-900">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(contract.value)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">Data</span>
+                          <span className="font-medium text-gray-700">{new Date(contract.start_date).toLocaleDateString('pt-BR')}</span>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => window.open(`/contratos/public/${contract.share_token}`, '_blank')}
+                        className="w-full py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 text-sm font-bold rounded-xl transition-colors flex justify-center items-center gap-2 border border-gray-200"
+                      >
+                        <Eye className="w-4 h-4" /> Visualizar / PDF
+                      </button>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-12 bg-white border border-gray-100 rounded-2xl">
+                    <FileText className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                    <p className="text-sm font-medium text-gray-500">Nenhum contrato gerado para este cliente.</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
