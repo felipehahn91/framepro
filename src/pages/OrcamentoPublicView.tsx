@@ -318,10 +318,6 @@ export default function OrcamentoPublicView() {
         .title-rich-text p { margin: 0; padding: 0; }
         html { scroll-behavior: smooth; }
       `}} />
-      <div 
-        className="min-h-screen font-sans text-gray-900 flex flex-col items-center justify-start sm:py-12 transition-colors"
-        style={{ backgroundColor: globalSettings.pageBackgroundColor || '#f3f4f6' }}
-      >
       <div
         className="min-h-screen font-sans text-gray-900 flex flex-col items-center justify-start sm:py-12 transition-colors relative overflow-y-auto custom-scrollbar"
         style={{ backgroundColor: globalSettings.pageBackgroundColor || '#f3f4f6' }}
