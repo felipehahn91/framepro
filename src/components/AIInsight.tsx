@@ -53,17 +53,17 @@ export const AIInsight = ({ userId, initialData }: AIInsightProps) => {
   };
 
   return (
-    <div className={`rounded-2xl border p-6 shadow-sm transition-all animate-in fade-in zoom-in-95 duration-500 ${getMoodBg()}`}>
-      <div className="flex items-center justify-between mb-4">
+    <div className={`rounded-2xl border p-4 shadow-sm transition-all animate-in fade-in zoom-in-95 duration-500 ${getMoodBg()}`}>
+      <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-white rounded-xl shadow-sm border border-gray-100">
+          <div className="p-1.5 bg-white rounded-lg shadow-sm border border-gray-100">
             {getMoodIcon()}
           </div>
           <div>
-            <h3 className="font-black text-gray-900 tracking-tight">{data.title}</h3>
+            <h3 className="font-bold text-gray-900 text-sm tracking-tight">{data.title}</h3>
             {data.updated_at && (
-              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                Última atualização: {new Date(data.updated_at).toLocaleDateString()}
+              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">
+                IA • {new Date(data.updated_at).toLocaleDateString()}
               </p>
             )}
           </div>
@@ -71,16 +71,16 @@ export const AIInsight = ({ userId, initialData }: AIInsightProps) => {
         <button 
           onClick={handleGenerate}
           disabled={loading}
-          className="p-2 hover:bg-white/50 rounded-full transition-colors text-gray-400 hover:text-gray-900 disabled:opacity-50"
+          className="p-1.5 hover:bg-white/50 rounded-full transition-colors text-gray-400 hover:text-gray-900 disabled:opacity-50"
           title="Recarregar análise"
         >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
-      <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed font-medium">
+      <div className="text-xs text-gray-700 leading-relaxed font-medium">
         {data.content.split('\n').map((para: string, i: number) => (
-          <p key={i} className="mb-3 last:mb-0">{para}</p>
+          <p key={i} className="mb-1 last:mb-0">{para}</p>
         ))}
       </div>
     </div>

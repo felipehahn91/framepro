@@ -68,11 +68,11 @@ serve(async (req) => {
     const goalPercentage = goal > 0 ? (monthlyRevenue / goal) * 100 : 0;
 
     // 3. Prepare Prompt
-    const prompt = `Você é um Coach de Negócios e Mentor de Vendas especialista.
-Seu objetivo é dar um insight motivador e estratégico para o usuário baseado nos dados atuais dele.
+    const prompt = `Você é um Mentor de Negócios especializado em FOTOGRAFIA.
+Seu objetivo é dar um insight MUITO CURTO (máximo 2 parágrafos pequenos), motivador e estratégico para o fotógrafo baseado nos dados atuais.
 
 DADOS DO USUÁRIO:
-- Nome: ${profile?.first_name || 'Usuário'}
+- Nome: ${profile?.first_name || 'Fotógrafo'}
 - Leads/Oportunidades em aberto: ${leadsCount}
 - Clientes convertidos: ${clientsCount}
 - Contratos ativos: ${contractsCount}
@@ -80,17 +80,16 @@ DADOS DO USUÁRIO:
 - Faturamento atual do mês: R$ ${monthlyRevenue} (${goalPercentage.toFixed(1)}% da meta)
 
 INSTRUÇÕES:
-- Seja curto e impactante (máximo 3-4 parágrafos).
-- Se ele estiver longe da meta, dê uma dica estratégica sobre os ${leadsCount} leads.
-- Se ele fechou novos negócios recentemente ou está perto da meta, seja muito entusiasmado.
-- Use emojis.
-- Termine sempre com uma frase de efeito.
+- Use terminologia de fotografia (ex: foco, lente, clique, cena, enquadramento).
+- Seja muito direto e conciso. O card no dashboard deve ser pequeno.
+- Se tiver muitos leads, sugira dar um "foco" neles para converter.
+- Use poucos emojis.
 - Responda em Português do Brasil.
 
 Retorne APENAS um JSON no formato:
 {
-  "title": "Título curto e chamativo",
-  "content": "Conteúdo formatado com parágrafos",
+  "title": "Título muito curto",
+  "content": "Conteúdo curto",
   "mood": "enthusiastic | strategic | alert"
 }`;
 
