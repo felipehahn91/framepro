@@ -322,9 +322,13 @@ export default function OrcamentoPublicView() {
         style={{ backgroundColor: globalSettings.pageBackgroundColor || '#f3f4f6' }}
       >
         {isPDFMode ? (
-          <div 
+          <div
             id="proposal-container"
-            className="w-full h-[100dvh] sm:h-[90vh] sm:max-w-4xl sm:rounded-3xl sm:shadow-2xl overflow-hidden relative flex flex-col bg-white"
+            className="w-full h-[100dvh] sm:h-[90vh] sm:rounded-3xl sm:shadow-2xl overflow-hidden relative flex flex-col transition-all"
+            style={{
+              maxWidth: globalSettings.maxWidth || '900px',
+              backgroundColor: globalSettings.backgroundColor || '#ffffff'
+            }}
           >
             {pdfSection?.fileUrl ? (
               <iframe src={`${pdfSection.fileUrl}#toolbar=0`} className="w-full flex-1 border-0" title="Proposta PDF" />
@@ -332,26 +336,70 @@ export default function OrcamentoPublicView() {
               <div className="flex-1 flex items-center justify-center">O arquivo PDF não foi encontrado.</div>
             )}
             
-            {pdfSection?.ctas?.length > 0 && pdfSection?.fileUrl && (
+            {/* GROUPED CTAS */}
+            {pdfSection?.ctas?.length > 0 && pdfSection?.fileUrl && pdfSection.ctas.some((c: any) => c.isGrouped !== false) && (
               <div className="absolute bottom-6 left-0 right-0 flex justify-center z-50 px-4 pointer-events-none">
                 <div className="bg-white/90 backdrop-blur-md px-6 py-4 rounded-2xl shadow-2xl border border-gray-200 flex flex-wrap justify-center gap-4 pointer-events-auto max-w-2xl w-full">
-                  {pdfSection.ctas.map((cta: any, i: number) => (
-                    <button 
-                      key={i} 
+                  {pdfSection.ctas.filter((c: any) => c.isGrouped !== false).map((cta: any, i: number) => (
+                    <button
+                      key={i}
                       onClick={() => {
                         if(cta.link) {
                           const finalLink = cta.link.startsWith('http') ? cta.link : `https://${cta.link}`;
                           window.open(finalLink, '_blank');
                         }
                       }}
-                      style={{ backgroundColor: cta.color || '#22c55e' }}
-                      className="px-8 py-3.5 rounded-xl font-bold text-white shadow-md hover:-translate-y-1 transition-transform flex-1 text-center min-w-[200px]"
+                      style={{
+                        backgroundColor: cta.color || '#f97316',
+                        color: cta.textColor || '#ffffff',
+                        borderRadius: cta.borderRadius || '9999px',
+                        fontFamily: cta.fontFamily || 'inherit',
+                        fontWeight: cta.isBold === false ? 'normal' : 'bold',
+                        textTransform: cta.isUppercase ? 'uppercase' : 'none',
+                      }}
+                      className="px-8 py-3.5 shadow-md hover:-translate-y-1 transition-transform flex-1 text-center min-w-[200px]"
                     >
                       {cta.label}
                     </button>
                   ))}
                 </div>
               </div>
+            )}
+
+            {/* FREE CTAS */}
+            {pdfSection?.ctas?.length > 0 && pdfSection?.fileUrl && (
+              <>
+                {pdfSection.ctas.map((cta: any, i: number) => {
+                  if (cta.isGrouped !== false) return null;
+                  return (
+                    <button
+                      key={`free-${i}`}
+                      onClick={() => {
+                        if(cta.link) {
+                          const finalLink = cta.link.startsWith('http') ? cta.link : `https://${cta.link}`;
+                          window.open(finalLink, '_blank');
+                        }
+                      }}
+                      style={{
+                        position: 'absolute',
+                        top: cta.top || '50%',
+                        left: cta.left || '50%',
+                        transform: 'translate(-50%, -50%)',
+                        backgroundColor: cta.color || '#f97316',
+                        color: cta.textColor || '#ffffff',
+                        borderRadius: cta.borderRadius || '9999px',
+                        fontFamily: cta.fontFamily || 'inherit',
+                        fontWeight: cta.isBold === false ? 'normal' : 'bold',
+                        textTransform: cta.isUppercase ? 'uppercase' : 'none',
+                        zIndex: 51
+                      }}
+                      className="px-6 py-3 shadow-xl hover:-translate-y-1 hover:shadow-2xl transition-all whitespace-nowrap"
+                    >
+                      {cta.label}
+                    </button>
+                  );
+                })}
+              </>
             )}
           </div>
         ) : (

@@ -315,6 +315,8 @@ export default function OrcamentoEditor() {
   const isPDFMode = orcamento?.type === 'pdf';
   const pdfSection = sections.find(s => s.type === 'pdf');
 
+  const [draggingCtaIndex, setDraggingCtaIndex] = useState<number | null>(null);
+
   useEffect(() => {
     if (user && id) loadData();
   }, [user, id]);
@@ -525,6 +527,22 @@ export default function OrcamentoEditor() {
     }
   };
 
+  const handleDragMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (draggingCtaIndex === null || !pdfSection) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    let x = ((e.clientX - rect.left) / rect.width) * 100;
+    let y = ((e.clientY - rect.top) / rect.height) * 100;
+    
+    // Limits
+    if (x < 0) x = 0; if (x > 100) x = 100;
+    if (y < 0) y = 0; if (y > 100) y = 100;
+
+    const newCtas = [...pdfSection.ctas];
+    newCtas[draggingCtaIndex].left = `${x.toFixed(2)}%`;
+    newCtas[draggingCtaIndex].top = `${y.toFixed(2)}%`;
+    updateSection(pdfSection.id, { ctas: newCtas });
+  };
+
   const activeSection = sections.find(s => s.id === selectedId);
 
   return (
@@ -681,9 +699,44 @@ export default function OrcamentoEditor() {
                   </div>
                 </div>
               ) : isPDFMode ? (
-                <div className="p-4 space-y-8">
+                <div className="p-4 space-y-8 animate-in fade-in">
+                  
+                  {/* CONFIGURAÇÕES DE FUNDO E DIMENSÕES */}
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100 pb-2">Aparência da Página</h3>
+                    
+                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                      <div>
+                        <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">Largura do PDF na Tela</label>
+                        <select value={globalSettings.maxWidth} onChange={e => setGlobalSettings({...globalSettings, maxWidth: e.target.value})} className="w-full text-sm border border-gray-200 rounded-lg p-2.5 focus:outline-none focus:border-orange-400 bg-white">
+                          <option value="800px">Estreito (800px)</option>
+                          <option value="900px">Padrão (900px)</option>
+                          <option value="1100px">Largo (1100px)</option>
+                          <option value="100%">Tela Cheia (100%)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">Cor de Fundo (Área Externa)</label>
+                        <div className="flex gap-2">
+                          <input type="color" value={globalSettings.pageBackgroundColor || '#f3f4f6'} onChange={e => setGlobalSettings({...globalSettings, pageBackgroundColor: e.target.value})} className="h-10 w-12 rounded cursor-pointer border border-gray-300 p-0.5 bg-white" />
+                          <input type="text" value={globalSettings.pageBackgroundColor || '#f3f4f6'} onChange={e => setGlobalSettings({...globalSettings, pageBackgroundColor: e.target.value})} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none focus:border-orange-400 bg-white" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-gray-700 mb-1.5 flex justify-between">Cor de Fundo (Atrás do PDF)</label>
+                        <div className="flex gap-2">
+                          <input type="color" value={globalSettings.backgroundColor || '#ffffff'} onChange={e => setGlobalSettings({...globalSettings, backgroundColor: e.target.value})} className="h-10 w-12 rounded cursor-pointer border border-gray-300 p-0.5 bg-white" />
+                          <input type="text" value={globalSettings.backgroundColor || '#ffffff'} onChange={e => setGlobalSettings({...globalSettings, backgroundColor: e.target.value})} className="flex-1 text-sm border border-gray-200 rounded-lg px-3 focus:outline-none focus:border-orange-400 bg-white" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ARQUIVO PDF */}
                   <div className="space-y-3">
-                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Arquivo PDF</label>
+                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100 pb-2">Arquivo PDF</h3>
                     {pdfSection?.fileUrl ? (
                       <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-center">
                         <FileUp className="w-6 h-6 text-green-500 mx-auto mb-2" />
@@ -698,47 +751,161 @@ export default function OrcamentoEditor() {
                       </label>
                     )}
                   </div>
-                  <div className="space-y-4 border-t border-gray-200 pt-6">
-                    <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Botões de Ação (CTAs)</label>
+                  
+                  {/* BOTÕES CTA */}
+                  <div className="space-y-4 pt-2">
+                    <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                      <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Botões de Ação (CTAs)</h3>
                       <button onClick={() => {
                         if (pdfSection) {
                           const ctas = pdfSection.ctas || [];
-                          updateSection(pdfSection.id, { ctas: [...ctas, { label: 'Aprovar Orçamento', link: '', color: '#22c55e' }] });
+                          updateSection(pdfSection.id, {
+                            ctas: [...ctas, {
+                              id: crypto.randomUUID(),
+                              label: 'Aprovar Orçamento',
+                              link: '',
+                              color: '#f97316',
+                              textColor: '#ffffff',
+                              borderRadius: '9999px',
+                              fontFamily: 'inherit',
+                              isBold: true,
+                              isUppercase: false,
+                              isGrouped: true,
+                              top: '80%',
+                              left: '50%'
+                            }]
+                          });
                         }
-                      }} className="p-1 bg-orange-100 text-orange-600 rounded hover:bg-orange-200"><Plus className="w-4 h-4" /></button>
+                      }} className="p-1.5 bg-orange-100 text-orange-600 rounded hover:bg-orange-200"><Plus className="w-4 h-4" /></button>
                     </div>
-                    <div className="space-y-3">
+                    
+                    <div className="space-y-4">
                       {pdfSection?.ctas?.map((cta: any, idx: number) => (
-                        <div key={idx} className="bg-white border border-gray-200 p-3 rounded-lg shadow-sm relative group space-y-3">
+                        <div key={cta.id || idx} className="bg-gray-50 border border-gray-200 p-4 rounded-xl shadow-sm relative group space-y-4">
                           <button onClick={() => {
                             const newCtas = [...pdfSection.ctas]; newCtas.splice(idx, 1);
                             updateSection(pdfSection.id, { ctas: newCtas });
-                          }} className="absolute top-2 right-2 text-gray-400 hover:text-red-500"><X className="w-4 h-4" /></button>
+                          }} className="absolute top-2 right-2 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"><X className="w-4 h-4" /></button>
                           
-                          <div>
-                            <label className="text-[10px] font-semibold text-gray-400">Texto</label>
-                            <input value={cta.label} onChange={e => {
-                                const newCtas = [...pdfSection.ctas]; newCtas[idx].label = e.target.value;
-                                updateSection(pdfSection.id, { ctas: newCtas });
-                              }} className="w-full text-sm font-semibold border-b border-gray-200 focus:border-orange-400 outline-none pb-1"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] font-semibold text-gray-400">Link</label>
-                            <input value={cta.link} onChange={e => {
-                                const newCtas = [...pdfSection.ctas]; newCtas[idx].link = e.target.value;
-                                updateSection(pdfSection.id, { ctas: newCtas });
-                              }} placeholder="https://" className="w-full text-xs bg-gray-50 border border-gray-200 rounded px-2 py-1.5 outline-none focus:border-orange-400"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] font-semibold text-gray-400">Cor do Botão</label>
-                            <input type="color" value={cta.color} onChange={e => {
-                                const newCtas = [...pdfSection.ctas]; newCtas[idx].color = e.target.value;
-                                updateSection(pdfSection.id, { ctas: newCtas });
-                              }} className="w-full h-8 rounded cursor-pointer border-none p-0"
-                            />
+                          <div className="grid grid-cols-1 gap-3 pt-2">
+                            <div>
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Texto do Botão</label>
+                              <input value={cta.label} onChange={e => {
+                                  const newCtas = [...pdfSection.ctas]; newCtas[idx].label = e.target.value;
+                                  updateSection(pdfSection.id, { ctas: newCtas });
+                                }} className="w-full text-sm font-semibold border border-gray-200 rounded-md px-3 py-2 outline-none focus:border-orange-400 bg-white"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Link de Destino</label>
+                              <input value={cta.link} onChange={e => {
+                                  const newCtas = [...pdfSection.ctas]; newCtas[idx].link = e.target.value;
+                                  updateSection(pdfSection.id, { ctas: newCtas });
+                                }} placeholder="https://..." className="w-full text-sm border border-gray-200 rounded-md px-3 py-2 outline-none focus:border-orange-400 bg-white"
+                              />
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Cor Fundo</label>
+                                <div className="flex gap-2">
+                                  <input type="color" value={cta.color || '#f97316'} onChange={e => {
+                                      const newCtas = [...pdfSection.ctas]; newCtas[idx].color = e.target.value;
+                                      updateSection(pdfSection.id, { ctas: newCtas });
+                                    }} className="w-8 h-8 rounded cursor-pointer border border-gray-300 p-0.5 bg-white"
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Cor Texto</label>
+                                <div className="flex gap-2">
+                                  <input type="color" value={cta.textColor || '#ffffff'} onChange={e => {
+                                      const newCtas = [...pdfSection.ctas]; newCtas[idx].textColor = e.target.value;
+                                      updateSection(pdfSection.id, { ctas: newCtas });
+                                    }} className="w-8 h-8 rounded cursor-pointer border border-gray-300 p-0.5 bg-white"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="pt-2 border-t border-gray-100">
+                              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-2">Estilo Visual</label>
+                              <div className="grid grid-cols-2 gap-2 mb-2">
+                                <label className="flex items-center gap-2 text-xs text-gray-700">
+                                  <input type="checkbox" checked={cta.isBold !== false} onChange={e => {
+                                    const newCtas = [...pdfSection.ctas]; newCtas[idx].isBold = e.target.checked;
+                                    updateSection(pdfSection.id, { ctas: newCtas });
+                                  }} className="rounded text-orange-500 focus:ring-orange-500" />
+                                  Negrito
+                                </label>
+                                <label className="flex items-center gap-2 text-xs text-gray-700">
+                                  <input type="checkbox" checked={cta.isUppercase || false} onChange={e => {
+                                    const newCtas = [...pdfSection.ctas]; newCtas[idx].isUppercase = e.target.checked;
+                                    updateSection(pdfSection.id, { ctas: newCtas });
+                                  }} className="rounded text-orange-500 focus:ring-orange-500" />
+                                  Maiúsculas
+                                </label>
+                              </div>
+                              
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <label className="text-[10px] text-gray-400 font-semibold">Arredondamento</label>
+                                  <select value={cta.borderRadius || '9999px'} onChange={e => {
+                                      const newCtas = [...pdfSection.ctas]; newCtas[idx].borderRadius = e.target.value;
+                                      updateSection(pdfSection.id, { ctas: newCtas });
+                                    }} className="w-full text-xs border border-gray-200 rounded-md p-1.5 focus:outline-none focus:border-orange-400 bg-white">
+                                    <option value="0px">Quadrado</option>
+                                    <option value="8px">Leve</option>
+                                    <option value="16px">Médio</option>
+                                    <option value="9999px">Pílula</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="text-[10px] text-gray-400 font-semibold">Fonte</label>
+                                  <select value={cta.fontFamily || 'inherit'} onChange={e => {
+                                      const newCtas = [...pdfSection.ctas]; newCtas[idx].fontFamily = e.target.value;
+                                      updateSection(pdfSection.id, { ctas: newCtas });
+                                    }} className="w-full text-xs border border-gray-200 rounded-md p-1.5 focus:outline-none focus:border-orange-400 bg-white">
+                                    <option value="inherit">Padrão</option>
+                                    <option value="'Montserrat', sans-serif">Montserrat</option>
+                                    <option value="'Playfair Display', serif">Playfair</option>
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="pt-2 border-t border-gray-100">
+                              <label className="flex items-center gap-2 text-xs font-bold text-gray-700 mb-2">
+                                <input type="checkbox" checked={cta.isGrouped !== false} onChange={e => {
+                                  const newCtas = [...pdfSection.ctas]; newCtas[idx].isGrouped = e.target.checked;
+                                  updateSection(pdfSection.id, { ctas: newCtas });
+                                }} className="rounded text-orange-500 focus:ring-orange-500 w-4 h-4" />
+                                Agrupar botão na barra flutuante inferior?
+                              </label>
+                              
+                              {cta.isGrouped === false && (
+                                <div className="bg-orange-50 p-3 rounded-lg border border-orange-100">
+                                  <p className="text-[10px] text-orange-600 font-semibold mb-2 leading-tight">Posicionamento Livre: Arraste o botão livremente sobre o PDF ao lado para fixá-lo na posição desejada.</p>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                      <label className="text-[10px] text-orange-700 font-bold">X (Esquerda %)</label>
+                                      <input type="text" value={cta.left || '50%'} onChange={e => {
+                                          const newCtas = [...pdfSection.ctas]; newCtas[idx].left = e.target.value;
+                                          updateSection(pdfSection.id, { ctas: newCtas });
+                                        }} className="w-full text-xs border border-orange-200 rounded p-1 bg-white outline-none" />
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] text-orange-700 font-bold">Y (Topo %)</label>
+                                      <input type="text" value={cta.top || '50%'} onChange={e => {
+                                          const newCtas = [...pdfSection.ctas]; newCtas[idx].top = e.target.value;
+                                          updateSection(pdfSection.id, { ctas: newCtas });
+                                        }} className="w-full text-xs border border-orange-200 rounded p-1 bg-white outline-none" />
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
                           </div>
                         </div>
                       ))}
@@ -1265,25 +1432,84 @@ export default function OrcamentoEditor() {
             >
               
               {isPDFMode ? (
-                <div className="w-full h-full relative flex-1 flex flex-col">
+                <div
+                  className="w-full h-full relative flex-1 flex flex-col"
+                  onMouseMove={handleDragMouseMove}
+                  onMouseUp={() => setDraggingCtaIndex(null)}
+                  onMouseLeave={() => setDraggingCtaIndex(null)}
+                >
                   {pdfSection?.fileUrl ? (
-                    <iframe src={`${pdfSection.fileUrl}#toolbar=0`} className="w-full flex-1 border-0" title="PDF Preview" />
+                    <>
+                      <iframe src={`${pdfSection.fileUrl}#toolbar=0`} className="w-full flex-1 border-0" title="PDF Preview" />
+                      {/* Invisible overlay to capture mouse events while dragging */}
+                      {draggingCtaIndex !== null && (
+                        <div className="absolute inset-0 z-40 cursor-grabbing bg-transparent" />
+                      )}
+                    </>
                   ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-gray-400 bg-gray-50">
                       <FileUp className="w-16 h-16 mb-4 text-gray-300" />
                       <p className="font-medium text-lg text-gray-500">Faça upload de um PDF no menu lateral</p>
                     </div>
                   )}
+                  
+                  {/* GROUPED CTAS */}
                   {pdfSection?.ctas?.length > 0 && pdfSection?.fileUrl && (
-                    <div className="absolute bottom-8 left-0 right-0 flex justify-center pointer-events-none">
+                    <div className="absolute bottom-8 left-0 right-0 flex justify-center pointer-events-none z-50">
                       <div className="bg-white/90 backdrop-blur-md px-6 py-4 rounded-2xl shadow-2xl border border-gray-200 flex gap-4 pointer-events-auto">
-                        {pdfSection.ctas.map((cta: any, i: number) => (
-                          <div key={i} style={{ backgroundColor: cta.color || '#22c55e' }} className="px-6 py-3 rounded-xl font-bold text-white shadow-md cursor-pointer hover:-translate-y-1 transition-transform">
+                        {pdfSection.ctas.filter((c: any) => c.isGrouped !== false).map((cta: any, i: number) => (
+                          <div
+                            key={i}
+                            style={{
+                              backgroundColor: cta.color || '#f97316',
+                              color: cta.textColor || '#ffffff',
+                              borderRadius: cta.borderRadius || '9999px',
+                              fontFamily: cta.fontFamily || 'inherit',
+                              fontWeight: cta.isBold === false ? 'normal' : 'bold',
+                              textTransform: cta.isUppercase ? 'uppercase' : 'none',
+                            }}
+                            className="px-6 py-3 shadow-md transition-transform"
+                          >
                             {cta.label}
                           </div>
                         ))}
+                        {pdfSection.ctas.filter((c: any) => c.isGrouped !== false).length === 0 && (
+                          <span className="text-sm text-gray-400 font-medium px-4">Sem botões agrupados</span>
+                        )}
                       </div>
                     </div>
+                  )}
+
+                  {/* FREE CTAS */}
+                  {pdfSection?.ctas?.length > 0 && pdfSection?.fileUrl && (
+                    <>
+                      {pdfSection.ctas.map((cta: any, i: number) => {
+                        if (cta.isGrouped !== false) return null;
+                        return (
+                          <div
+                            key={`free-${i}`}
+                            onMouseDown={(e) => { e.preventDefault(); setDraggingCtaIndex(i); }}
+                            style={{
+                              position: 'absolute',
+                              top: cta.top || '50%',
+                              left: cta.left || '50%',
+                              transform: 'translate(-50%, -50%)',
+                              backgroundColor: cta.color || '#f97316',
+                              color: cta.textColor || '#ffffff',
+                              borderRadius: cta.borderRadius || '9999px',
+                              fontFamily: cta.fontFamily || 'inherit',
+                              fontWeight: cta.isBold === false ? 'normal' : 'bold',
+                              textTransform: cta.isUppercase ? 'uppercase' : 'none',
+                              cursor: draggingCtaIndex === i ? 'grabbing' : 'grab',
+                              zIndex: 51
+                            }}
+                            className="px-6 py-3 shadow-xl hover:ring-4 hover:ring-orange-400/30 transition-shadow select-none whitespace-nowrap"
+                          >
+                            {cta.label}
+                          </div>
+                        );
+                      })}
+                    </>
                   )}
                 </div>
               ) : (
