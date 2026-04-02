@@ -317,6 +317,7 @@ export default function OrcamentoEditor() {
   const pdfSection = sections.find(s => s.type === 'pdf');
 
   const [draggingCtaIndex, setDraggingCtaIndex] = useState<number | null>(null);
+  const [expandedCtaIndex, setExpandedCtaIndex] = useState<number | null>(0);
 
   useEffect(() => {
     if (user && id) loadData();
@@ -776,138 +777,160 @@ export default function OrcamentoEditor() {
                               left: '50%'
                             }]
                           });
+                          setExpandedCtaIndex(ctas.length);
                         }
                       }} className="p-1.5 bg-orange-100 text-orange-600 rounded hover:bg-orange-200"><Plus className="w-4 h-4" /></button>
                     </div>
                     
                     <div className="space-y-4">
                       {pdfSection?.ctas?.map((cta: any, idx: number) => (
-                        <div key={cta.id || idx} className="bg-gray-50 border border-gray-200 p-4 rounded-xl shadow-sm relative group space-y-4">
-                          <button onClick={() => {
-                            const newCtas = [...pdfSection.ctas]; newCtas.splice(idx, 1);
-                            updateSection(pdfSection.id, { ctas: newCtas });
-                          }} className="absolute top-2 right-2 p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded"><X className="w-4 h-4" /></button>
+                        <div key={cta.id || idx} className="bg-gray-50 border border-gray-200 rounded-xl shadow-sm relative group overflow-hidden">
                           
-                          <div className="grid grid-cols-1 gap-3 pt-2">
-                            <div>
-                              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Texto do Botão</label>
-                              <input value={cta.label} onChange={e => {
-                                  const newCtas = [...pdfSection.ctas]; newCtas[idx].label = e.target.value;
-                                  updateSection(pdfSection.id, { ctas: newCtas });
-                                }} className="w-full text-sm font-semibold border border-gray-200 rounded-md px-3 py-2 outline-none focus:border-orange-400 bg-white"
-                              />
+                          {/* Accordion Header */}
+                          <div
+                            className="p-4 flex items-center justify-between cursor-pointer hover:bg-gray-100 transition-colors"
+                            onClick={() => setExpandedCtaIndex(expandedCtaIndex === idx ? null : idx)}
+                          >
+                            <div className="flex items-center gap-2">
+                              <MousePointerClick className="w-4 h-4 text-gray-400" />
+                              <span className="font-bold text-sm text-gray-700">{cta.label || `Botão ${idx + 1}`}</span>
                             </div>
-                            <div>
-                              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Link de Destino</label>
-                              <input value={cta.link} onChange={e => {
-                                  const newCtas = [...pdfSection.ctas]; newCtas[idx].link = e.target.value;
-                                  updateSection(pdfSection.id, { ctas: newCtas });
-                                }} placeholder="https://..." className="w-full text-sm border border-gray-200 rounded-md px-3 py-2 outline-none focus:border-orange-400 bg-white"
-                              />
+                            <div className="flex items-center gap-2">
+                              <button onClick={(e) => {
+                                e.stopPropagation();
+                                const newCtas = [...pdfSection.ctas]; newCtas.splice(idx, 1);
+                                updateSection(pdfSection.id, { ctas: newCtas });
+                                if (expandedCtaIndex === idx) setExpandedCtaIndex(null);
+                              }} className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"><X className="w-4 h-4" /></button>
+                              <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${expandedCtaIndex === idx ? 'rotate-180' : ''}`} />
                             </div>
-                            
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Cor Fundo</label>
-                                <div className="flex gap-2">
-                                  <input type="color" value={cta.color || '#f97316'} onChange={e => {
-                                      const newCtas = [...pdfSection.ctas]; newCtas[idx].color = e.target.value;
+                          </div>
+
+                          {/* Accordion Body */}
+                          {expandedCtaIndex === idx && (
+                            <div className="p-4 pt-0 space-y-4 border-t border-gray-100 mt-2 animate-in fade-in slide-in-from-top-2">
+                              <div className="grid grid-cols-1 gap-3 pt-2">
+                                <div>
+                                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Texto do Botão</label>
+                                  <input value={cta.label} onChange={e => {
+                                      const newCtas = [...pdfSection.ctas]; newCtas[idx].label = e.target.value;
                                       updateSection(pdfSection.id, { ctas: newCtas });
-                                    }} className="w-8 h-8 rounded cursor-pointer border border-gray-300 p-0.5 bg-white"
+                                    }} className="w-full text-sm font-semibold border border-gray-200 rounded-md px-3 py-2 outline-none focus:border-orange-400 bg-white"
                                   />
                                 </div>
-                              </div>
-                              <div>
-                                <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Cor Texto</label>
-                                <div className="flex gap-2">
-                                  <input type="color" value={cta.textColor || '#ffffff'} onChange={e => {
-                                      const newCtas = [...pdfSection.ctas]; newCtas[idx].textColor = e.target.value;
+                                <div>
+                                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Link de Destino</label>
+                                  <input value={cta.link} onChange={e => {
+                                      const newCtas = [...pdfSection.ctas]; newCtas[idx].link = e.target.value;
                                       updateSection(pdfSection.id, { ctas: newCtas });
-                                    }} className="w-8 h-8 rounded cursor-pointer border border-gray-300 p-0.5 bg-white"
+                                    }} placeholder="https://..." className="w-full text-sm border border-gray-200 rounded-md px-3 py-2 outline-none focus:border-orange-400 bg-white"
                                   />
                                 </div>
-                              </div>
-                            </div>
-
-                            <div className="pt-2 border-t border-gray-100">
-                              <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-2">Estilo Visual</label>
-                              <div className="grid grid-cols-2 gap-2 mb-2">
-                                <label className="flex items-center gap-2 text-xs text-gray-700">
-                                  <input type="checkbox" checked={cta.isBold !== false} onChange={e => {
-                                    const newCtas = [...pdfSection.ctas]; newCtas[idx].isBold = e.target.checked;
-                                    updateSection(pdfSection.id, { ctas: newCtas });
-                                  }} className="rounded text-orange-500 focus:ring-orange-500" />
-                                  Negrito
-                                </label>
-                                <label className="flex items-center gap-2 text-xs text-gray-700">
-                                  <input type="checkbox" checked={cta.isUppercase || false} onChange={e => {
-                                    const newCtas = [...pdfSection.ctas]; newCtas[idx].isUppercase = e.target.checked;
-                                    updateSection(pdfSection.id, { ctas: newCtas });
-                                  }} className="rounded text-orange-500 focus:ring-orange-500" />
-                                  Maiúsculas
-                                </label>
-                              </div>
-                              
-                              <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                  <label className="text-[10px] text-gray-400 font-semibold">Arredondamento</label>
-                                  <select value={cta.borderRadius || '9999px'} onChange={e => {
-                                      const newCtas = [...pdfSection.ctas]; newCtas[idx].borderRadius = e.target.value;
-                                      updateSection(pdfSection.id, { ctas: newCtas });
-                                    }} className="w-full text-xs border border-gray-200 rounded-md p-1.5 focus:outline-none focus:border-orange-400 bg-white">
-                                    <option value="0px">Quadrado</option>
-                                    <option value="8px">Leve</option>
-                                    <option value="16px">Médio</option>
-                                    <option value="9999px">Pílula</option>
-                                  </select>
-                                </div>
-                                <div>
-                                  <label className="text-[10px] text-gray-400 font-semibold">Fonte</label>
-                                  <select value={cta.fontFamily || 'inherit'} onChange={e => {
-                                      const newCtas = [...pdfSection.ctas]; newCtas[idx].fontFamily = e.target.value;
-                                      updateSection(pdfSection.id, { ctas: newCtas });
-                                    }} className="w-full text-xs border border-gray-200 rounded-md p-1.5 focus:outline-none focus:border-orange-400 bg-white">
-                                    <option value="inherit">Padrão</option>
-                                    <option value="'Montserrat', sans-serif">Montserrat</option>
-                                    <option value="'Playfair Display', serif">Playfair</option>
-                                  </select>
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="pt-2 border-t border-gray-100">
-                              <label className="flex items-center gap-2 text-xs font-bold text-gray-700 mb-2">
-                                <input type="checkbox" checked={cta.isGrouped !== false} onChange={e => {
-                                  const newCtas = [...pdfSection.ctas]; newCtas[idx].isGrouped = e.target.checked;
-                                  updateSection(pdfSection.id, { ctas: newCtas });
-                                }} className="rounded text-orange-500 focus:ring-orange-500 w-4 h-4" />
-                                Agrupar botão na barra flutuante inferior?
-                              </label>
-                              
-                              {cta.isGrouped === false && (
-                                <div className="bg-orange-50 p-3 rounded-lg border border-orange-100">
-                                  <p className="text-[10px] text-orange-600 font-semibold mb-2 leading-tight">Posicionamento Livre: Arraste o botão livremente sobre o PDF ao lado para fixá-lo na posição desejada.</p>
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <div>
-                                      <label className="text-[10px] text-orange-700 font-bold">X (Esquerda %)</label>
-                                      <input type="text" value={cta.left || '50%'} onChange={e => {
-                                          const newCtas = [...pdfSection.ctas]; newCtas[idx].left = e.target.value;
+                                
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Cor Fundo</label>
+                                    <div className="flex gap-2">
+                                      <input type="color" value={cta.color || '#f97316'} onChange={e => {
+                                          const newCtas = [...pdfSection.ctas]; newCtas[idx].color = e.target.value;
                                           updateSection(pdfSection.id, { ctas: newCtas });
-                                        }} className="w-full text-xs border border-orange-200 rounded p-1 bg-white outline-none" />
+                                        }} className="w-8 h-8 rounded cursor-pointer border border-gray-300 p-0.5 bg-white"
+                                      />
                                     </div>
-                                    <div>
-                                      <label className="text-[10px] text-orange-700 font-bold">Y (Topo %)</label>
-                                      <input type="text" value={cta.top || '50%'} onChange={e => {
-                                          const newCtas = [...pdfSection.ctas]; newCtas[idx].top = e.target.value;
+                                  </div>
+                                  <div>
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Cor Texto</label>
+                                    <div className="flex gap-2">
+                                      <input type="color" value={cta.textColor || '#ffffff'} onChange={e => {
+                                          const newCtas = [...pdfSection.ctas]; newCtas[idx].textColor = e.target.value;
                                           updateSection(pdfSection.id, { ctas: newCtas });
-                                        }} className="w-full text-xs border border-orange-200 rounded p-1 bg-white outline-none" />
+                                        }} className="w-8 h-8 rounded cursor-pointer border border-gray-300 p-0.5 bg-white"
+                                      />
                                     </div>
                                   </div>
                                 </div>
-                              )}
-                            </div>
 
-                          </div>
+                                <div className="pt-2 border-t border-gray-100">
+                                  <label className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-2">Estilo Visual</label>
+                                  <div className="grid grid-cols-2 gap-2 mb-2">
+                                    <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                                      <input type="checkbox" checked={cta.isBold !== false} onChange={e => {
+                                        const newCtas = [...pdfSection.ctas]; newCtas[idx].isBold = e.target.checked;
+                                        updateSection(pdfSection.id, { ctas: newCtas });
+                                      }} className="rounded text-orange-500 focus:ring-orange-500" />
+                                      Negrito
+                                    </label>
+                                    <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer">
+                                      <input type="checkbox" checked={cta.isUppercase || false} onChange={e => {
+                                        const newCtas = [...pdfSection.ctas]; newCtas[idx].isUppercase = e.target.checked;
+                                        updateSection(pdfSection.id, { ctas: newCtas });
+                                      }} className="rounded text-orange-500 focus:ring-orange-500" />
+                                      Maiúsculas
+                                    </label>
+                                  </div>
+                                  
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                      <label className="text-[10px] text-gray-400 font-semibold">Arredondamento</label>
+                                      <select value={cta.borderRadius || '9999px'} onChange={e => {
+                                          const newCtas = [...pdfSection.ctas]; newCtas[idx].borderRadius = e.target.value;
+                                          updateSection(pdfSection.id, { ctas: newCtas });
+                                        }} className="w-full text-xs border border-gray-200 rounded-md p-1.5 focus:outline-none focus:border-orange-400 bg-white">
+                                        <option value="0px">Quadrado</option>
+                                        <option value="8px">Leve</option>
+                                        <option value="16px">Médio</option>
+                                        <option value="9999px">Pílula</option>
+                                      </select>
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] text-gray-400 font-semibold">Fonte</label>
+                                      <select value={cta.fontFamily || 'inherit'} onChange={e => {
+                                          const newCtas = [...pdfSection.ctas]; newCtas[idx].fontFamily = e.target.value;
+                                          updateSection(pdfSection.id, { ctas: newCtas });
+                                        }} className="w-full text-xs border border-gray-200 rounded-md p-1.5 focus:outline-none focus:border-orange-400 bg-white">
+                                        <option value="inherit">Padrão</option>
+                                        <option value="'Montserrat', sans-serif">Montserrat</option>
+                                        <option value="'Playfair Display', serif">Playfair</option>
+                                      </select>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="pt-2 border-t border-gray-100">
+                                  <label className="flex items-center gap-2 text-xs font-bold text-gray-700 mb-2 cursor-pointer">
+                                    <input type="checkbox" checked={cta.isGrouped !== false} onChange={e => {
+                                      const newCtas = [...pdfSection.ctas]; newCtas[idx].isGrouped = e.target.checked;
+                                      updateSection(pdfSection.id, { ctas: newCtas });
+                                    }} className="rounded text-orange-500 focus:ring-orange-500 w-4 h-4" />
+                                    Agrupar botão na barra flutuante inferior?
+                                  </label>
+                                  
+                                  {cta.isGrouped === false && (
+                                    <div className="bg-orange-50 p-3 rounded-lg border border-orange-100">
+                                      <p className="text-[10px] text-orange-600 font-semibold mb-2 leading-tight">Posicionamento Livre: Arraste o botão livremente sobre o PDF ao lado para fixá-lo na posição desejada.</p>
+                                      <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                          <label className="text-[10px] text-orange-700 font-bold">X (Esquerda %)</label>
+                                          <input type="text" value={cta.left || '50%'} onChange={e => {
+                                              const newCtas = [...pdfSection.ctas]; newCtas[idx].left = e.target.value;
+                                              updateSection(pdfSection.id, { ctas: newCtas });
+                                            }} className="w-full text-xs border border-orange-200 rounded p-1 bg-white outline-none" />
+                                        </div>
+                                        <div>
+                                          <label className="text-[10px] text-orange-700 font-bold">Y (Topo %)</label>
+                                          <input type="text" value={cta.top || '50%'} onChange={e => {
+                                              const newCtas = [...pdfSection.ctas]; newCtas[idx].top = e.target.value;
+                                              updateSection(pdfSection.id, { ctas: newCtas });
+                                            }} className="w-full text-xs border border-orange-200 rounded p-1 bg-white outline-none" />
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
