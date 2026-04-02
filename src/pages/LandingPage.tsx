@@ -62,14 +62,13 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto">
-            <Link to="/signup" className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white text-lg font-black px-8 py-4.5 rounded-2xl shadow-xl shadow-orange-500/25 transition-all hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2">
+            <Link to="/signup" className="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white text-lg font-black px-8 py-4 rounded-2xl shadow-xl shadow-orange-500/25 transition-all hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-2">
               COMEÇAR 14 DIAS GRÁTIS <ArrowRight className="w-5 h-5" />
             </Link>
             <Link to="#recursos" className="w-full sm:w-auto bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 text-lg font-bold px-8 py-4 rounded-2xl transition-all flex items-center justify-center">
               Ver recursos
             </Link>
           </div>
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-6">Sem necessidade de cartão de crédito</p>
         </div>
 
         {/* HERO IMAGE APP PREVIEW */}
@@ -307,9 +306,9 @@ export default function LandingPage() {
 
               <ul className="space-y-5 mb-10 flex-1 relative z-10">
                 {[
-                  "Integração WhatsApp (Evolution API)",
+                  "Integração WhatsApp",
                   "Sincronização Google Calendar",
-                  "Emissão de Boletos e Pix (PagHiper)",
+                  "Emissão de Boletos e Pix",
                   "Fluxo de Cadência Automático",
                   "Análise de Calor (Heatmaps) das propostas",
                   "Suporte prioritário via WhatsApp"
