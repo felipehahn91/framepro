@@ -760,6 +760,23 @@ export default function OrcamentoEditor() {
                       <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Botões de Ação (CTAs)</h3>
                       <button onClick={() => {
                         if (pdfSection) {
+                          // Calcula exatamente o meio do trecho do PDF que o usuário está enxergando agora
+                          const scrollArea = document.getElementById('pdf-scroll-area');
+                          const proposal = document.getElementById('proposal-container');
+                          let topPercent = 50;
+                          
+                          if (scrollArea && proposal) {
+                            const scrollRect = scrollArea.getBoundingClientRect();
+                            const propRect = proposal.getBoundingClientRect();
+                            
+                            const centerY = scrollRect.top + (scrollRect.height / 2);
+                            const relativeY = centerY - propRect.top;
+                            
+                            topPercent = (relativeY / propRect.height) * 100;
+                            // Garante que o botão não nasça grudado demais nas bordas do PDF
+                            topPercent = Math.max(2, Math.min(98, topPercent));
+                          }
+
                           const ctas = pdfSection.ctas || [];
                           updateSection(pdfSection.id, {
                             ctas: [...ctas, {
@@ -772,8 +789,8 @@ export default function OrcamentoEditor() {
                               fontFamily: 'inherit',
                               isBold: true,
                               isUppercase: false,
-                              isGrouped: true,
-                              top: '80%',
+                              isGrouped: false, // Agora vem como posicionamento livre por padrão
+                              top: `${topPercent.toFixed(2)}%`, // Nasce onde você está olhando
                               left: '50%'
                             }]
                           });
@@ -1443,6 +1460,7 @@ export default function OrcamentoEditor() {
 
           {/* CANVAS AREA (Centro - Preview da Folha) */}
           <div
+            id="pdf-scroll-area"
             className="flex-1 overflow-y-auto p-4 sm:p-8 flex flex-col items-center justify-start relative custom-scrollbar"
             style={{ backgroundColor: globalSettings.pageBackgroundColor || '#f3f4f6' }}
           >
