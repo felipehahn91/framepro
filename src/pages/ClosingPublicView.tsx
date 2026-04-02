@@ -523,10 +523,10 @@ export default function ClosingPublicView() {
               <h3 className="font-bold text-sm text-gray-400 uppercase tracking-widest mb-4">Resumo do Contrato</h3>
               
               <div className="space-y-3 mb-6 bg-white p-5 rounded-xl border border-gray-100 shadow-sm">
-                <p className="text-sm flex justify-between border-b border-gray-50 pb-2"><strong className="text-gray-900">Nome:</strong> <span className="text-gray-600">{opportunity.name}</span></p>
+                <p className="text-sm flex justify-between border-b border-gray-50 pb-2"><strong className="text-gray-900">Nome:</strong> <span className="text-gray-600">{opportunity?.name || 'Cliente'}</span></p>
                 <p className="text-sm flex justify-between border-b border-gray-50 pb-2"><strong className="text-gray-900">CPF:</strong> <span className="text-gray-600">{clientData.cpf}</span></p>
-                <p className="text-sm flex justify-between border-b border-gray-50 pb-2"><strong className="text-gray-900">Total:</strong> <span className="text-gray-600">{formatCurrency(linkData.value)} em {selectedInstallments}x</span></p>
-                {linkData.event_date && <p className="text-sm flex justify-between"><strong className="text-gray-900">Data do Evento:</strong> <span className="text-gray-600">{formatDate(linkData.event_date)}</span></p>}
+                <p className="text-sm flex justify-between border-b border-gray-50 pb-2"><strong className="text-gray-900">Total:</strong> <span className="text-gray-600">{formatCurrency(linkData?.value || 0)} em {selectedInstallments}x</span></p>
+                {linkData?.event_date && <p className="text-sm flex justify-between"><strong className="text-gray-900">Data do Evento:</strong> <span className="text-gray-600">{formatDate(linkData.event_date)}</span></p>}
               </div>
 
               <div className="mt-4">
@@ -548,7 +548,7 @@ export default function ClosingPublicView() {
                 <SignaturePad ref={sigCanvas} canvasProps={{ className: "w-full h-full absolute inset-0 cursor-crosshair" }} />
                 <div className="pointer-events-none opacity-20 w-full px-8 absolute bottom-8 flex flex-col items-center">
                   <div className="w-full border-b-2 border-gray-400"></div>
-                  <span className="text-xs uppercase font-bold mt-1 tracking-widest">{opportunity.name}</span>
+                  <span className="text-xs uppercase font-bold mt-1 tracking-widest">{opportunity?.name || 'Cliente'}</span>
                 </div>
               </div>
               <div className="flex justify-center mt-3">
