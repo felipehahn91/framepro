@@ -66,7 +66,6 @@ export default function Pricing() {
                 "14 dias de teste GRÁTIS",
                 "Gestão ilimitada de clientes (CRM)",
                 "Propostas e Orçamentos",
-                "Mapa de Calor dos Orçamentos",
                 "Contratos com assinatura digital",
                 "Gestão Financeira Básica",
                 "Suporte por e-mail"
@@ -133,6 +132,7 @@ export default function Pricing() {
                 "Sincronização Google Calendar",
                 "Emissão de Boletos e Pix (PagHiper)",
                 "Fluxo de Cadência Automático",
+                "Mapa de Calor dos Orçamentos",
                 "Suporte prioritário via WhatsApp"
               ].map((item, i) => (
                 <li key={i} className="flex items-start gap-3 text-gray-800 font-semibold text-sm">
