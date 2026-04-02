@@ -72,14 +72,14 @@ export default function FounderPack() {
             </div>
 
             <div className="bg-gray-50 rounded-3xl p-8 border border-gray-100">
-              <p className="text-sm font-black text-gray-400 uppercase tracking-widest mb-2">Pagamento Único Anual</p>
+              <p className="text-sm font-black text-gray-400 uppercase tracking-widest mb-2">Assinatura Anual</p>
               <div className="flex items-baseline gap-1 mb-2">
                 <span className="text-5xl font-black tracking-tight">R$ 804</span>
                 <span className="text-gray-400 font-bold">/ano</span>
               </div>
-              <p className="text-orange-600 font-bold text-sm mb-8">Equivalente a R$ 67 por mês</p>
+              <p className="text-orange-600 font-bold text-sm mb-8">Pague em até 10x de R$ 80,40 no cartão</p>
               
-              <button 
+              <button
                 onClick={handleSubscribe}
                 disabled={loading}
                 className="w-full py-5 bg-gray-900 text-white font-black rounded-2xl hover:bg-black transition-all flex items-center justify-center gap-3 shadow-xl active:scale-95 group"

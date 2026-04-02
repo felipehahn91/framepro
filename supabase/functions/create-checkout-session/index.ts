@@ -58,6 +58,15 @@ serve(async (req) => {
     // Adiciona 30 dias de trial apenas para novos planos mensais (se desejado)
     if (planType === 'starter' || planType === 'plus') {
       sessionParam.subscription_data = { trial_period_days: 30 }
+    } else if (planType === 'founder') {
+      // Habilita o parcelamento (installments) do cartão de crédito para a assinatura anual
+      sessionParam.payment_method_options = {
+        card: {
+          installments: {
+            enabled: true
+          }
+        }
+      }
     }
 
     const session = await stripe.checkout.sessions.create(sessionParam)
