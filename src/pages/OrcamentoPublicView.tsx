@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 import { initTracking } from "@/lib/tracking";
 import { PDFDocumentViewer } from "@/components/PDFDocumentViewer";
+import { useSEO } from "@/hooks/use-seo";
 
 const getDeviceType = () => {
   const width = window.innerWidth;
@@ -259,6 +260,11 @@ export default function OrcamentoPublicView() {
   const [loading, setLoading] = useState(true);
   const [orcamento, setOrcamento] = useState<any>(null);
 
+  useSEO({
+    title: orcamento ? orcamento.name : "Proposta Comercial",
+    description: "Acesse este link para visualizar a proposta comercial.",
+  });
+
   useEffect(() => {
     if (token) fetchOrcamento();
   }, [token]);
@@ -285,8 +291,6 @@ export default function OrcamentoPublicView() {
 
   useEffect(() => {
     if (!orcamento) return;
-    
-    document.title = `${orcamento.name} | Proposta Comercial`;
     
     const sessionId = generateSessionId();
     const deviceType = getDeviceType();
@@ -338,7 +342,7 @@ export default function OrcamentoPublicView() {
               <div className="flex-1 flex items-center justify-center p-20">O arquivo PDF não foi encontrado.</div>
             )}
 
-            {/* FREE CTAS (Presos dentro do container que estica e rola a tela) */}
+            {/* FREE CTAS */}
             {pdfSection?.ctas?.length > 0 && pdfSection?.fileUrl && (
               <>
                 {pdfSection.ctas.map((cta: any, i: number) => {
@@ -391,7 +395,7 @@ export default function OrcamentoPublicView() {
           </div>
         )}
 
-        {/* GROUPED CTAS (Fixo na viewport (tela), acompanhando o scroll) */}
+        {/* GROUPED CTAS */}
         {isPDFMode && pdfSection?.ctas?.length > 0 && pdfSection?.fileUrl && pdfSection.ctas.some((c: any) => c.isGrouped !== false) && (
           <div className="sticky bottom-6 left-0 right-0 flex justify-center z-50 px-4 pointer-events-none mt-auto pb-6 w-full">
             <div className="bg-white/90 backdrop-blur-md px-6 py-4 rounded-2xl shadow-2xl border border-gray-200 flex flex-wrap justify-center gap-4 pointer-events-auto max-w-2xl w-full">

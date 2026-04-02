@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2, CheckCircle2 } from 'lucide-react';
+import { useSEO } from "@/hooks/use-seo";
 
 export default function LinkFormPage() {
   const { id } = useParams();
@@ -15,11 +16,10 @@ export default function LinkFormPage() {
     name: '', email: '', phone: '', instagram: '', date: '', local: '', description: ''
   });
 
-  useEffect(() => {
-    if (formConfig) {
-      document.title = `${formConfig.name} | Frame Pro`;
-    }
-  }, [formConfig]);
+  useSEO({
+    title: formConfig ? formConfig.name : "Formulário de Contato",
+    description: "Preencha os dados para solicitar um orçamento ou contato.",
+  });
 
   useEffect(() => {
     const fetchForm = async () => {

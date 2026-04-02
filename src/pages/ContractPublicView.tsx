@@ -6,6 +6,7 @@ import { Loader2, Download, FileCheck, CheckCircle2, ShieldCheck, PenTool } from
 import jsPDF from "jspdf";
 import SignaturePad from "react-signature-canvas";
 import html2canvas from "html2canvas";
+import { useSEO } from "@/hooks/use-seo";
 
 export default function ContractPublicView() {
   const { token } = useParams();
@@ -16,15 +17,14 @@ export default function ContractPublicView() {
   const contractRef = useRef<HTMLDivElement>(null);
   const sigCanvas = useRef<SignaturePad>(null);
 
+  useSEO({
+    title: contract ? `Contrato - ${contract.opportunities?.name || 'Documento'}` : "Contrato",
+    description: "Acesse este link para visualizar e assinar o contrato digitalmente.",
+  });
+
   useEffect(() => {
     if (token) fetchContract();
   }, [token]);
-
-  useEffect(() => {
-    if (contract) {
-      document.title = `Contrato - ${contract.opportunities?.name || 'Documento'} | Frame Pro`;
-    }
-  }, [contract]);
 
   const fetchContract = async () => {
     try {

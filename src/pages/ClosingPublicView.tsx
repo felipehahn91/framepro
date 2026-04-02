@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, ShieldCheck, CheckCircle2, ArrowRight, User, CreditCard, PenTool, Calendar, DollarSign, PartyPopper, AlertCircle } from "lucide-react";
 import SignaturePad from "react-signature-canvas";
+import { useSEO } from "@/hooks/use-seo";
 
 const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
@@ -50,6 +51,11 @@ export default function ClosingPublicView() {
   // Legacy Fallback
   const [selectedInstallments, setSelectedInstallments] = useState(1);
   const [contractPreview, setContractPreview] = useState<string>("");
+
+  useSEO({
+    title: opportunity ? `Fechar Negócio - ${opportunity.name}` : "Plano de Pagamento",
+    description: "Acesse este link para visualizar o plano de pagamento e concluir a contratação.",
+  });
 
   useEffect(() => {
     if (token) fetchLinkData();
