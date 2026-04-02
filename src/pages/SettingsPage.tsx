@@ -356,8 +356,9 @@ export default function SettingsPage() {
 
   const getPlanName = () => {
     if (profile?.role === 'admin') return "Vitalício (Admin)";
-    if (profile?.plan_type === 'founder') return "Plano Founder (Anual)";
-    return "Plano Mensal";
+    if (profile?.plan_type === 'founder') return "Founder (Anual)";
+    if (profile?.plan_type === 'plus') return "Plus (Mensal)";
+    return "Starter (Mensal)";
   };
 
   const getStatusInfo = () => {
@@ -467,17 +468,43 @@ export default function SettingsPage() {
                   {profile?.stripe_customer_id || profile?.role === 'admin' ? (
                     <div className="flex flex-col md:flex-row items-start justify-between gap-8">
                       <div className="space-y-6 flex-1 w-full">
-                        <div>
-                          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Plano Atual</p>
-                          <div className="flex items-center gap-3">
-                            <span className="text-2xl font-black text-gray-900">{getPlanName()}</span>
-                            {profile?.role !== 'admin' && (
-                              <span className={`px-3 py-1 rounded-full text-xs font-bold border ${subStatus.color}`}>
-                                {subStatus.label}
-                              </span>
-                            )}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                          <div>
+                            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Plano Atual</p>
+                            <div className="flex items-center gap-3">
+                              <span className="text-2xl font-black text-gray-900">{getPlanName()}</span>
+                              {profile?.role !== 'admin' && (
+                                <span className={`px-3 py-1 rounded-full text-xs font-bold border ${subStatus.color}`}>
+                                  {subStatus.label}
+                                </span>
+                              )}
+                            </div>
                           </div>
+                          {isStarter && (
+                            <Button
+                              onClick={() => navigate('/precos')}
+                              className="bg-orange-500 hover:bg-orange-600 text-white font-bold"
+                            >
+                              Fazer Upgrade
+                            </Button>
+                          )}
                         </div>
+
+                        {isStarter && (
+                          <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5 space-y-4">
+                            <div className="flex items-start gap-4">
+                              <div className="w-10 h-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                                <Zap className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <h4 className="font-bold text-gray-900">Desbloqueie o poder do seu CRM!</h4>
+                                <p className="text-sm text-gray-700 mt-1 leading-relaxed">
+                                  Faça o upgrade para o plano <strong>Plus</strong> e tenha acesso a integrações exclusivas como <strong>WhatsApp (Evolution API)</strong>, <strong>Google Calendar</strong>, <strong>Emissão de Boletos e Pix</strong> e automações com <strong>Fluxo de Cadência</strong>.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
 
                         <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5 space-y-4">
                           <div className="flex items-start gap-4">
