@@ -47,7 +47,7 @@ export default function Pricing() {
       <div className="max-w-6xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">Escolha o plano ideal para você</h1>
-          <p className="text-lg text-gray-500 max-w-2xl mx-auto">Comece hoje mesmo com 30 dias de teste gratuito e cancele quando quiser.</p>
+          <p className="text-lg text-gray-500 max-w-2xl mx-auto">Comece hoje mesmo com 14 dias de teste gratuito e cancele quando quiser.</p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
@@ -63,7 +63,7 @@ export default function Pricing() {
 
             <ul className="space-y-4 mb-10 flex-1">
               {[
-                "30 dias de teste GRÁTIS",
+                "14 dias de teste GRÁTIS",
                 "Gestão ilimitada de clientes (CRM)",
                 "Propostas e Orçamentos",
                 "Contratos com assinatura digital",
@@ -149,7 +149,7 @@ export default function Pricing() {
               className="w-full py-4 bg-orange-500 text-white font-black rounded-2xl shadow-[0_8px_30px_rgb(249,115,22,0.3)] hover:bg-orange-600 hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
             >
               {loadingPlan === 'plus' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
-              ASSINAR PLUS GRÁTIS POR 30 DIAS
+              ASSINAR PLUS GRÁTIS POR 14 DIAS
             </button>
           </div>
         </div>
