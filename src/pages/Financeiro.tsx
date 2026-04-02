@@ -62,7 +62,7 @@ export default function Financeiro() {
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [upgradeFeature, setUpgradeFeature] = useState("");
   
-  const isStarter = profile?.plan_type === 'starter' || !profile?.plan_type;
+  const isStarter = profile?.role !== 'admin' && (profile?.plan_type === 'starter' || profile?.plan_type === 'monthly' || !profile?.plan_type);
 
   // --- FUNÇÕES AUXILIARES (MOVIDAS PARA O TOPO) ---
   const formatCurrency = (val: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);

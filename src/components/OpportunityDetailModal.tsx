@@ -7,6 +7,8 @@ import {
   Save, Send, X, Search, Link as LinkIcon
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { useAuth } from '@/contexts/AuthContext';
+import { UpgradeModal } from './UpgradeModal';
 
 interface Opportunity {
   id: string;
@@ -50,9 +52,12 @@ const getObservationString = (obs: string | null | undefined) => {
   }
 };
 
-export default function OpportunityDetailModal({ 
-  isOpen, onClose, opportunity, onSave, onDelete, onOpenCadence, onOpenClosingLink 
+export default function OpportunityDetailModal({
+  isOpen, onClose, opportunity, onSave, onDelete, onOpenCadence, onOpenClosingLink
 }: OpportunityDetailModalProps) {
+  const { profile } = useAuth();
+  const isStarter = profile?.role !== 'admin' && (profile?.plan_type === 'starter' || profile?.plan_type === 'monthly' || !profile?.plan_type);
+
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<Partial<Opportunity>>({});
   
@@ -61,6 +66,8 @@ export default function OpportunityDetailModal({
   const [documents, setDocuments] = useState<any[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [docSearch, setDocSearch] = useState('');
+  
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
 
   useEffect(() => {
     if (opportunity && isOpen) {
@@ -293,8 +300,12 @@ export default function OpportunityDetailModal({
                 <div className="space-y-3">
                   
                   {/* Novo Botão de Fechar Negócio (Link) */}
-                  <button 
+                  <button
                     onClick={() => {
+                      if (isStarter) {
+                        setUpgradeModalOpen(true);
+                        return;
+                      }
                       onClose();
                       if (onOpenClosingLink) onOpenClosingLink(opportunity);
                     }}
@@ -456,6 +467,12 @@ export default function OpportunityDetailModal({
           </DialogContent>
         </Dialog>
       )}
+      
+      <UpgradeModal
+        isOpen={upgradeModalOpen}
+        onClose={() => setUpgradeModalOpen(false)}
+        featureName="Link de Fechamento"
+      />
     </Dialog>
   );
 }

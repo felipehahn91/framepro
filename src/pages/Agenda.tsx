@@ -50,7 +50,7 @@ export default function Agenda() {
   
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [upgradeFeature, setUpgradeFeature] = useState("");
-  const isStarter = profile?.plan_type === 'starter' || !profile?.plan_type;
+  const isStarter = profile?.role !== 'admin' && (profile?.plan_type === 'starter' || profile?.plan_type === 'monthly' || !profile?.plan_type);
   
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());

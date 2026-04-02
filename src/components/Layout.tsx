@@ -30,7 +30,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const [upgradeFeature, setUpgradeFeature] = useState("");
   const logoImg = "/logo.png";
 
-  const isStarter = profile?.plan_type === 'starter' || !profile?.plan_type;
+  const isStarter = profile?.role !== 'admin' && (profile?.plan_type === 'starter' || profile?.plan_type === 'monthly' || !profile?.plan_type);
 
   const handleSignOut = async () => {
     await signOut();
