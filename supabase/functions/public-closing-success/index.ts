@@ -17,7 +17,7 @@ serve(async (req) => {
 
   try {
     const payload = await req.json();
-    const { link_token, transaction_id, installment_id, amount, payer_name, payer_cpf, due_date, client_phone, contract_id } = payload;
+    const { link_token, transaction_id, installment_id, amount, payer_name, payer_cpf, due_date, client_phone, contract_id, client_edited_installments } = payload;
 
     if (!link_token) {
       return new Response("Missing link_token", { status: 400, headers: corsHeaders });
@@ -101,8 +101,6 @@ serve(async (req) => {
       }
     }
 
-    // Removed duplicate opportunity fetch and contract creation since RPC handles it
-    
     // Notify user about contract signed
     if (payload.contract_id) {
       await supabaseAdmin.from('notifications').insert({
@@ -112,6 +110,18 @@ serve(async (req) => {
         type: 'success',
         related_entity_type: 'contract',
         related_entity_id: payload.contract_id
+      });
+    }
+
+    // Notify user about custom installments edit
+    if (client_edited_installments) {
+      await supabaseAdmin.from('notifications').insert({
+        user_id: link.user_id,
+        title: 'Plano de Pagamento Personalizado',
+        content: `O cliente ${payer_name || 'Cliente'} ajustou os valores ou datas das parcelas antes de assinar o contrato. Verifique seu financeiro.`,
+        type: 'info',
+        related_entity_type: 'transaction',
+        related_entity_id: transaction_id
       });
     }
 
@@ -137,10 +147,8 @@ serve(async (req) => {
           formattedPhone = `55${formattedPhone}`;
         }
         
-        // Evita mandar números errados para o WhatsApp
         if (formattedPhone.length < 12) {
           console.error("Número de telefone muito curto ou inválido:", formattedPhone);
-          // Podemos decidir não enviar em vez de falhar, mas vamos tentar
         }
 
         const firstName = payer_name ? payer_name.split(' ')[0] : 'Cliente';
@@ -191,7 +199,7 @@ serve(async (req) => {
             })
           });
 
-          // Send 3: Pix Copy and Paste (Alone to allow easy copying)
+          // Send 3: Pix Copy and Paste
           await fetch(`${evoUrl}/message/sendText/${waInstance.instance_name}`, {
             method: 'POST',
             headers: {

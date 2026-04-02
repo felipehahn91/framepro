@@ -171,6 +171,9 @@ export default function ClosingPublicView() {
       const count = isCustomPlan ? customInstallments.length : selectedInstallments;
       
       let finalInstallments = [];
+      
+      // Verifica se o cliente alterou alguma coisa
+      let hasEditedInstallments = false;
 
       if (isCustomPlan) {
         finalInstallments = customInstallments.map((inst, i) => ({
@@ -180,6 +183,17 @@ export default function ClosingPublicView() {
           status: 'Pendente',
           paidDate: null
         }));
+        
+        // Compara com os originais
+        if (clientCanEdit && linkData.installments) {
+          hasEditedInstallments = linkData.installments.some((origInst: any, i: number) => {
+            const currentInst = customInstallments[i];
+            if (!currentInst) return true;
+            if (Number(origInst.amount) !== Number(currentInst.amount)) return true;
+            if (origInst.dueDate !== currentInst.dueDate) return true;
+            return false;
+          });
+        }
       } else {
         const baseAmount = Math.floor((amount / count) * 100) / 100;
         const remainder = amount - (baseAmount * count);
@@ -228,7 +242,8 @@ export default function ClosingPublicView() {
             payer_name: opportunity_name,
             payer_cpf: clientData.cpf,
             due_date: finalInstallments.length > 0 ? finalInstallments[0].dueDate : new Date().toISOString(),
-            client_phone: opportunity_phone
+            client_phone: opportunity_phone,
+            client_edited_installments: hasEditedInstallments
           })
         }).catch(console.error);
       }
@@ -455,6 +470,12 @@ export default function ClosingPublicView() {
                     {clientCanEdit && <span className="text-[11px] bg-orange-100 text-orange-700 px-2 py-1 rounded-md font-bold uppercase tracking-wider">Você pode editar os dados</span>}
                 </div>
                 
+                {clientCanEdit && (
+                  <p className="text-xs text-gray-500 mb-4 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                    Ajuste os valores ou as datas como ficar melhor para você. <strong className="text-gray-700">Lembre-se que a soma total das parcelas precisa ser exatamente {formatCurrency(linkData.value)}.</strong>
+                  </p>
+                )}
+
                 <div className="space-y-3">
                     {customInstallments.map((inst, idx) => (
                         <div key={idx} className="flex flex-col sm:flex-row gap-3 items-start sm:items-center bg-gray-50 p-4 rounded-xl border border-gray-200">
@@ -504,10 +525,14 @@ export default function ClosingPublicView() {
 
                 {clientCanEdit && (
                     <div className={`mt-6 p-4 rounded-xl border flex justify-between items-center text-sm font-bold transition-colors ${isSumValid ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-600'}`}>
-                        <span>Soma Total: {formatCurrency(customInstSum)}</span>
-                        {!isSumValid && (
+                        <span>Soma das Parcelas: {formatCurrency(customInstSum)}</span>
+                        {!isSumValid ? (
                           <span className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-lg border border-red-100 shadow-sm">
-                            <AlertCircle className="w-4 h-4" /> Diferença: {formatCurrency(Number(linkData.value) - customInstSum)}
+                            <AlertCircle className="w-4 h-4" /> Diferença: {formatCurrency(Math.abs(Number(linkData.value) - customInstSum))}
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-lg border border-green-100 shadow-sm text-green-600">
+                            <CheckCircle2 className="w-4 h-4" /> Valores batem com o total
                           </span>
                         )}
                     </div>
