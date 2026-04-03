@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { 
   Trash2, UserMinus, UserPlus, FileText, Calculator, 
   MessageCircle, Mail, Phone, Instagram, MapPin, Loader2,
-  Save, Send, X, Search, Link as LinkIcon
+  Save, Send, X, Search, Link as LinkIcon, Zap
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { useAuth } from '@/contexts/AuthContext';
@@ -44,7 +44,7 @@ const getObservationString = (obs: string | null | undefined) => {
   try {
     const parsed = JSON.parse(obs);
     if (Array.isArray(parsed)) {
-      return parsed.map(n => n.content).join('\n\n');
+      return parsed.map((n: any) => n.content).join('\n\n');
     }
     return obs;
   } catch {
@@ -61,6 +61,9 @@ export default function OpportunityDetailModal({
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<Partial<Opportunity>>({});
   
+  // Status do Fluxo de Cadência
+  const [activeCadence, setActiveCadence] = useState<any>(null);
+
   // Estados para os modais de envio
   const [docType, setDocType] = useState<'contract' | 'orcamento' | null>(null);
   const [documents, setDocuments] = useState<any[]>([]);
@@ -85,8 +88,61 @@ export default function OpportunityDetailModal({
         value: formattedValue,
         observations: getObservationString(opportunity.observations)
       });
+
+      fetchCadenceStatus();
+    } else {
+      setActiveCadence(null);
     }
   }, [opportunity, isOpen]);
+
+  const fetchCadenceStatus = async () => {
+    if (!opportunity?.id) return;
+    const { data: queueData } = await supabase
+      .from('cadencia_queue')
+      .select('*')
+      .eq('opportunity_id', opportunity.id);
+
+    if (queueData && queueData.length > 0) {
+      const pending = queueData.filter((q: any) => q.status === 'pending');
+      if (pending.length > 0) {
+        const flowId = pending[0].flow_id;
+        const flowItems = queueData.filter((q: any) => q.flow_id === flowId);
+        const completedCount = flowItems.filter((q: any) => q.status === 'completed' || q.status === 'failed').length;
+        const totalCount = flowItems.length;
+        const nextItem = pending.sort((a:any, b:any) => new Date(a.scheduled_for).getTime() - new Date(b.scheduled_for).getTime())[0];
+
+        const { data: flowData } = await supabase.from('cadencia_flows').select('name').eq('id', flowId).maybeSingle();
+
+        setActiveCadence({
+           flowId,
+           flowName: flowData?.name || 'Fluxo Automático',
+           completedCount,
+           totalCount,
+           nextDate: nextItem.scheduled_for
+        });
+      } else {
+        setActiveCadence(null);
+      }
+    } else {
+      setActiveCadence(null);
+    }
+  };
+
+  const handleCancelCadence = async () => {
+    if (!confirm('Deseja realmente cancelar os envios automáticos para este lead?')) return;
+    try {
+      await supabase
+        .from('cadencia_queue')
+        .delete()
+        .eq('opportunity_id', opportunity!.id)
+        .eq('status', 'pending');
+      
+      toast.success('Fluxo de cadência cancelado.');
+      setActiveCadence(null);
+    } catch(e) {
+      toast.error('Erro ao cancelar fluxo.');
+    }
+  };
 
   const handleSave = async () => {
     setLoading(true);
@@ -295,6 +351,39 @@ export default function OpportunityDetailModal({
                 </button>
               </div>
 
+              {/* Status Cadência */}
+              {activeCadence && (
+                <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 shadow-sm">
+                  <h3 className="text-[11px] font-bold text-orange-600 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5" /> Cadência Ativa
+                  </h3>
+                  <p className="text-sm font-bold text-gray-900 mb-1">{activeCadence.flowName}</p>
+                  
+                  <div className="flex items-center justify-between text-xs text-gray-600 font-medium mb-3">
+                    <span>Etapa {activeCadence.completedCount + 1} de {activeCadence.totalCount}</span>
+                    <span>{activeCadence.totalCount - activeCadence.completedCount} pendentes</span>
+                  </div>
+                  
+                  <div className="w-full bg-orange-200/50 rounded-full h-1.5 mb-3 overflow-hidden">
+                    <div 
+                      className="bg-orange-500 h-full rounded-full transition-all" 
+                      style={{ width: `${(activeCadence.completedCount / activeCadence.totalCount) * 100}%` }}
+                    />
+                  </div>
+
+                  <p className="text-[10px] text-gray-500 mb-3 font-medium">
+                    Próximo envio: {new Date(activeCadence.nextDate).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                  </p>
+
+                  <button 
+                    onClick={handleCancelCadence}
+                    className="w-full py-2 bg-white border border-red-100 text-red-500 text-xs font-bold rounded-lg hover:bg-red-50 transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <X className="w-3.5 h-3.5" /> Cancelar Envios
+                  </button>
+                </div>
+              )}
+
               {/* Ações Rápidas */}
               <div>
                 <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">Ações Rápidas</h3>
@@ -343,20 +432,22 @@ export default function OpportunityDetailModal({
                     Enviar Contrato
                   </button>
 
-                  <button 
-                    onClick={() => {
-                      if (isStarter) {
-                        setUpgradeFeature("Fluxo de Cadência");
-                        setUpgradeModalOpen(true);
-                        return;
-                      }
-                      if (onOpenCadence) onOpenCadence(opportunity);
-                    }}
-                    className="w-full flex items-center gap-3 py-3.5 px-4 rounded-xl font-bold bg-white border border-gray-200 text-gray-700 hover:border-orange-300 hover:bg-orange-50 transition-all shadow-sm group"
-                  >
-                    <MessageCircle className="w-5 h-5 text-orange-400 group-hover:scale-110 transition-transform" />
-                    Fazer Follow Up
-                  </button>
+                  {!activeCadence && (
+                    <button 
+                      onClick={() => {
+                        if (isStarter) {
+                          setUpgradeFeature("Fluxo de Cadência");
+                          setUpgradeModalOpen(true);
+                          return;
+                        }
+                        if (onOpenCadence) onOpenCadence(opportunity);
+                      }}
+                      className="w-full flex items-center gap-3 py-3.5 px-4 rounded-xl font-bold bg-white border border-gray-200 text-gray-700 hover:border-orange-300 hover:bg-orange-50 transition-all shadow-sm group"
+                    >
+                      <MessageCircle className="w-5 h-5 text-orange-400 group-hover:scale-110 transition-transform" />
+                      Fazer Follow Up
+                    </button>
+                  )}
                 </div>
               </div>
 
