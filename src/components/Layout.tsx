@@ -20,6 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { InstallPWA } from "./InstallPWA";
 import { Notifications } from "./Notifications";
 import { UpgradeModal } from "./UpgradeModal";
+import { FeedbackButton } from "./FeedbackButton";
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
@@ -116,6 +117,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="flex h-screen bg-[#e6e6e64c] overflow-hidden font-sans text-gray-900">
       <InstallPWA />
+      <FeedbackButton />
 
       <aside className="w-64 bg-white border-r border-border flex-col hidden md:flex z-10">
         <div className="px-6 py-6 flex items-center justify-center">

@@ -5,11 +5,12 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   ShieldAlert, Users, Activity, Server,
   MessageSquare, DollarSign, Loader2, Mail, Phone, Save,
-  ExternalLink, Target, FileText, Calculator, CreditCard
+  ExternalLink, Target, FileText, Calculator, CreditCard,
+  Bug, Lightbulb, MessageSquarePlus, ChevronDown
 } from "lucide-react";
 import { toast } from "sonner";
-import { 
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
 import {
   Dialog,
@@ -17,6 +18,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const growthData = [
   { name: "Jan", users: 12 },
@@ -29,11 +36,17 @@ const growthData = [
 
 export default function AdminDashboard() {
   const { profile } = useAuth();
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'evolution' | 'notifications' | 'ai'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'feedbacks' | 'evolution' | 'notifications' | 'ai'>('overview');
   const [usersList, setUsersList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [totalOpps, setTotalOpps] = useState(0);
+
+  // Feedback States
+  const [feedbacks, setFeedbacks] = useState<any[]>([]);
+  const [feedbackFilter, setFeedbackFilter] = useState('Pendente');
+  const [selectedFeedback, setSelectedFeedback] = useState<any>(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   // Estados para Notification global
   const [globalNotifTitle, setGlobalNotifTitle] = useState("");
@@ -66,10 +79,42 @@ export default function AdminDashboard() {
 
     if (profile?.role === 'admin') {
       fetchUsersAndStats();
+      fetchFeedbacks();
     } else {
       setLoading(false);
     }
   }, [profile]);
+
+  const fetchFeedbacks = async () => {
+    const { data, error } = await supabase.from('feedback').select('*').order('created_at', { ascending: false });
+    if (error) toast.error("Erro ao buscar feedbacks.");
+    else setFeedbacks(data || []);
+  };
+
+  const filteredFeedbacks = feedbacks.filter(f => feedbackFilter === 'Todos' || f.status === feedbackFilter);
+
+  const handleUpdateStatus = async (newStatus: string) => {
+    if (!selectedFeedback) return;
+    setUpdatingStatus(true);
+    try {
+      const { error } = await supabase.from('feedback').update({ status: newStatus }).eq('id', selectedFeedback.id);
+      if (error) throw error;
+      
+      setFeedbacks(feedbacks.map(f => f.id === selectedFeedback.id ? { ...f, status: newStatus } : f));
+      setSelectedFeedback({ ...selectedFeedback, status: newStatus });
+      toast.success("Status do feedback atualizado!");
+    } catch (e) {
+      toast.error("Erro ao atualizar status.");
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const getFeedbackIcon = (type: string) => {
+    if (type === 'bug') return <Bug className="w-4 h-4 text-red-500" />;
+    if (type === 'suggestion') return <Lightbulb className="w-4 h-4 text-yellow-500" />;
+    return <MessageSquarePlus className="w-4 h-4 text-blue-500" />;
+  };
 
   const fetchUsersAndStats = async () => {
     try {
@@ -251,15 +296,16 @@ export default function AdminDashboard() {
             </div>
             
             <div className="flex flex-wrap gap-2 bg-gray-800/50 p-1.5 rounded-xl border border-gray-700 backdrop-blur-md">
-              {(['overview', 'users', 'evolution', 'notifications', 'ai'] as const).map((tab) => (
+              {(['overview', 'users', 'feedbacks', 'evolution', 'notifications', 'ai'] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
                   className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${activeTab === tab ? 'bg-white text-gray-900 shadow-md' : 'text-gray-400 hover:text-white'}`}
                 >
-                  {tab === 'overview' ? 'Visão Geral' : 
-                   tab === 'users' ? 'Usuários' : 
-                   tab === 'evolution' ? 'Evolution API' : 
+                  {tab === 'overview' ? 'Visão Geral' :
+                   tab === 'users' ? 'Usuários' :
+                   tab === 'feedbacks' ? 'Feedbacks' :
+                   tab === 'evolution' ? 'Evolution API' :
                    tab === 'notifications' ? 'Notificações' : 'OpenAI'}
                 </button>
               ))}
@@ -372,6 +418,73 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {activeTab === 'feedbacks' && (
+            <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden animate-in fade-in slide-in-from-bottom-4">
+              <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                <h2 className="text-lg font-bold text-gray-900">Caixa de Feedbacks</h2>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm font-semibold hover:bg-gray-50">
+                      Filtrar: {feedbackFilter} <ChevronDown className="w-4 h-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {['Todos', 'Pendente', 'Em Análise', 'Concluído'].map(status => (
+                      <DropdownMenuItem key={status} onSelect={() => setFeedbackFilter(status)}>
+                        {status}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50/80 border-b border-gray-100">
+                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Tipo</th>
+                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Usuário</th>
+                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Feedback</th>
+                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase">Status</th>
+                      <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase text-right">Data</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredFeedbacks.map((fb) => (
+                      <tr key={fb.id} onClick={() => setSelectedFeedback(fb)} className="hover:bg-orange-50 cursor-pointer transition-colors">
+                        <td className="px-6 py-4">
+                          <span className="flex items-center gap-2 text-sm font-semibold">
+                            {getFeedbackIcon(fb.type)} {fb.type}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">{fb.user_email}</td>
+                        <td className="px-6 py-4 text-sm text-gray-600 truncate max-w-xs">{fb.content}</td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2.5 py-1 text-[10px] font-bold rounded-full border ${
+                            fb.status === 'Concluído' ? 'bg-green-50 text-green-700' :
+                            fb.status === 'Em Análise' ? 'bg-blue-50 text-blue-700' :
+                            'bg-yellow-50 text-yellow-700'
+                          }`}>
+                            {fb.status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right text-sm text-gray-500">
+                          {new Date(fb.created_at).toLocaleDateString('pt-BR')}
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredFeedbacks.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                          Nenhum feedback encontrado.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'evolution' && (
             <div className="max-w-4xl space-y-6 animate-in fade-in slide-in-from-bottom-4">
               <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-8 text-white shadow-lg">
@@ -458,6 +571,41 @@ export default function AdminDashboard() {
           )}
         </div>
       </div>
+
+      {/* Modal Detalhes Feedback */}
+      <Dialog open={!!selectedFeedback} onOpenChange={() => setSelectedFeedback(null)}>
+        <DialogContent className="sm:max-w-2xl bg-white rounded-2xl p-0">
+          <DialogHeader className="p-6 pb-4 border-b">
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              {getFeedbackIcon(selectedFeedback?.type)} Detalhes do Feedback
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+            <p><strong>De:</strong> {selectedFeedback?.user_email}</p>
+            <p><strong>Página:</strong> <a href={selectedFeedback?.page_url} target="_blank" rel="noreferrer" className="text-blue-500 underline">{selectedFeedback?.page_url}</a></p>
+            <div className="bg-gray-50 p-4 rounded-lg border">
+              <p className="whitespace-pre-wrap">{selectedFeedback?.content}</p>
+            </div>
+          </div>
+          <div className="p-6 bg-gray-50 rounded-b-2xl flex justify-between items-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-semibold hover:bg-gray-50 disabled:opacity-50" disabled={updatingStatus}>
+                  {updatingStatus ? <Loader2 className="w-4 h-4 animate-spin" /> : `Status: ${selectedFeedback?.status}`} <ChevronDown className="w-4 h-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {['Pendente', 'Em Análise', 'Concluído'].map(status => (
+                  <DropdownMenuItem key={status} onSelect={() => handleUpdateStatus(status)}>
+                    {status}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <button onClick={() => setSelectedFeedback(null)} className="px-4 py-2 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-black">Fechar</button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal Detalhes Usuário */}
       <Dialog open={!!selectedUser} onOpenChange={() => setSelectedUser(null)}>
