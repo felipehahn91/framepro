@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 
@@ -65,11 +66,16 @@ serve(async (req) => {
         }
 
         const instanceName = instanceData.instance_name;
-        const phone = item.opportunities?.phone?.replace(/\D/g, '');
+        let phone = item.opportunities?.phone?.replace(/\D/g, '');
         const payload = item.payload; // esperado: { type: 'text'|'audio'|'image', content: '...' }
 
         if (!phone) {
           throw new Error("Oportunidade sem número de telefone.");
+        }
+
+        // Garante que o número tenha o DDI 55 (Brasil) se não tiver
+        if (!phone.startsWith('55') && phone.length >= 10) {
+          phone = `55${phone}`;
         }
 
         let endpoint = '';
@@ -108,7 +114,8 @@ serve(async (req) => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'apikey': evoKey
+            'apikey': evoKey,
+            'Authorization': `Bearer ${evoKey}`
           },
           body: JSON.stringify(body)
         });
