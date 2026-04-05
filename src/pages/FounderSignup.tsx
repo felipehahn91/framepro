@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 export default function FounderSignup() {
   const { session, refreshProfile } = useAuth();
   const navigate = useNavigate();
-  const logoImg = "/logo.png";
+  const logoImg = "/logo.webp";
   
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');

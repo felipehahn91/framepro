@@ -11,7 +11,7 @@ export default function UpdatePassword() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const logoImg = "/logo.png";
+  const logoImg = "/logo.webp";
 
   useEffect(() => {
     // O Supabase Auth lida com o token automaticamente no cliente

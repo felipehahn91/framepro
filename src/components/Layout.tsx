@@ -29,7 +29,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [upgradeFeature, setUpgradeFeature] = useState("");
-  const logoImg = "/logo.png";
+  const logoImg = "/logo.webp";
 
   const isStarter = profile?.role !== 'admin' && (profile?.plan_type === 'starter' || profile?.plan_type === 'monthly' || !profile?.plan_type);
   const isFounderOrAdmin = profile?.plan_type === 'founder' || profile?.role === 'admin';

@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 export default function FounderPack() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
-  const logoImg = "/logo.png";
+  const logoImg = "/logo.webp";
 
   const handleSubscribe = async () => {
     setLoading(true);

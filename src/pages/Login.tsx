@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 const Login = () => {
   const { session } = useAuth();
   const navigate = useNavigate();
-  const logoImg = "/logo.png";
+  const logoImg = "/logo.webp";
   
   const [isLogin, setIsLogin] = useState(true);
   const [isRecovering, setIsRecovering] = useState(false);
