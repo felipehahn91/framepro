@@ -121,17 +121,17 @@ export default function LandingPage() {
         </motion.div>
 
         {/* HERO IMAGE APP PREVIEW */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 100 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1.2, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
           className="max-w-6xl mx-auto mt-16 w-full px-4 sm:px-0 relative z-10 flex justify-center"
         >
-          <motion.img 
+          <motion.img
             animate={{ y: [0, -10, 0] }}
             transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-            src="/hero-mockup.webp" 
-            alt="Dashboard Frame Pro" 
+            src="/mockup-notebook-framepro.webp"
+            alt="Dashboard Frame Pro"
             className="rounded-3xl shadow-2xl w-full max-w-5xl object-cover border border-gray-200/50"
           />
         </motion.div>
