@@ -1,12 +1,13 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, Variants } from 'framer-motion';
-import { 
-  Camera, Video, LayoutTemplate, PenTool, CheckCircle2, 
-  MessageSquare, Zap, Target, ArrowRight, ShieldCheck, 
+import {
+  Camera, Video, LayoutTemplate, PenTool, CheckCircle2,
+  MessageSquare, Zap, Target, ArrowRight, ShieldCheck,
   Star, DollarSign, BarChart3, Users, Check, Eye,
   Instagram, Youtube, Twitter, X
 } from 'lucide-react';
+import cadenciaFlowImg from '@/assets/cadencia-flow.webp';
 
 const fadeInUp: Variants = {
   hidden: { opacity: 0, y: 40 },
@@ -204,7 +205,7 @@ export default function LandingPage() {
                 <p className="text-gray-600 font-medium leading-relaxed">Crie "Fluxos de Cadência" para enviar mensagens de follow-up, lembretes e cobranças automaticamente para o WhatsApp do cliente.</p>
               </div>
               <img
-                src="/cadencia-flow.webp" alt="Fluxo de Cadência WhatsApp"
+                src={cadenciaFlowImg} alt="Fluxo de Cadência WhatsApp"
                 className="absolute -right-12 md:-right-4 top-1/2 -translate-y-1/2 w-[120%] md:w-3/5 rounded-2xl shadow-lg opacity-60 group-hover:opacity-100 group-hover:-translate-x-4 transition-all duration-500 border border-orange-200/50"
               />
             </motion.div>
