@@ -59,6 +59,43 @@ export default function Agenda() {
   
   const [rightPanelMode, setRightPanelMode] = useState<'day' | 'upcoming'>('day');
   
+  // Largura do painel direito (Desktop)
+  const [rightPanelWidth, setRightPanelWidth] = useState(() => {
+    const saved = localStorage.getItem('framepro_agenda_panel_width');
+    return saved ? parseInt(saved, 10) : 320;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('framepro_agenda_panel_width', rightPanelWidth.toString());
+  }, [rightPanelWidth]);
+
+  const startResizing = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = rightPanelWidth;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      requestAnimationFrame(() => {
+        // Movendo para a esquerda aumenta o painel (pois a alça está na esquerda do painel)
+        const deltaX = startX - moveEvent.clientX;
+        const newWidth = Math.max(280, Math.min(800, startWidth + deltaX));
+        setRightPanelWidth(newWidth);
+      });
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
+
   // Google Calendar Integration State
   const isGoogleEnabledInDB = user?.user_metadata?.google_calendar_enabled === true;
   
@@ -595,7 +632,20 @@ export default function Agenda() {
           </div>
 
           {/* Painel Lateral/Inferior (Eventos) */}
-          <div className="flex-1 lg:w-[320px] bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col lg:overflow-hidden">
+          <style>{`
+            @media (min-width: 1024px) {
+              .resizable-agenda-panel { width: ${rightPanelWidth}px !important; flex: none !important; }
+            }
+          `}</style>
+          <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col lg:overflow-hidden relative resizable-agenda-panel">
+            {/* Alça de Redimensionamento (Desktop) */}
+            <div
+              onMouseDown={startResizing}
+              className="hidden lg:flex absolute top-1/2 -left-3 w-6 h-16 -mt-8 cursor-col-resize z-20 bg-white hover:bg-orange-50 rounded-full shadow-md border border-gray-200 items-center justify-center group"
+              title="Arraste para redimensionar"
+            >
+              <div className="w-0.5 h-6 bg-gray-300 group-hover:bg-orange-400 rounded-full transition-colors"></div>
+            </div>
             <div className="p-4 border-b border-gray-100 shrink-0 bg-gray-50/50">
               
               <div className="flex bg-gray-100/80 p-1 rounded-xl w-full mb-4">
