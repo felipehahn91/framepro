@@ -492,10 +492,10 @@ export default function Agenda() {
         </div>
 
         {/* Corpo da Agenda */}
-        <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
+        <div className="flex flex-col lg:flex-row gap-4 lg:gap-6 flex-1 min-h-0">
           
           {/* Calendário Grid */}
-          <div className="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden h-full">
+          <div className="shrink-0 lg:flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
             <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
               <div className="flex items-center gap-2">
                 <CalendarIcon className="w-5 h-5 text-orange-500" />
@@ -533,11 +533,11 @@ export default function Agenda() {
                   const dayEvents = allEvents.filter(e => isSameDay(e.date, day));
 
                   return (
-                    <div 
-                      key={day.toString()} 
+                    <div
+                      key={day.toString()}
                       onClick={() => handleDayClick(day)}
-                      className={`min-h-[60px] sm:min-h-[100px] border-r border-b border-gray-100 p-1 sm:p-2 transition-colors cursor-pointer group relative 
-                        ${!isCurrentMonth ? 'bg-gray-50/30' : 'bg-white'} 
+                      className={`h-14 sm:h-auto sm:min-h-[100px] border-r border-b border-gray-100 p-1 sm:p-2 transition-colors cursor-pointer group relative
+                        ${!isCurrentMonth ? 'bg-gray-50/30' : 'bg-white'}
                         ${isSelected ? 'bg-orange-50/50 ring-inset ring-2 ring-orange-400/20' : 'hover:bg-gray-50/50'}
                       `}
                     >
@@ -597,7 +597,7 @@ export default function Agenda() {
           </div>
 
           {/* Painel Lateral/Inferior (Eventos) */}
-          <div className="w-full lg:w-[320px] bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col shrink-0 lg:h-auto min-h-[400px]">
+          <div className="flex-1 lg:w-[320px] bg-white rounded-2xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
             <div className="p-4 border-b border-gray-100 shrink-0 bg-gray-50/50">
               
               <div className="flex bg-gray-100/80 p-1 rounded-xl w-full mb-4">
@@ -804,88 +804,89 @@ export default function Agenda() {
       </Dialog>
 
       {/* Modal de Detalhes do Evento Existente */}
-      {selectedEvent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSelectedEvent(null)} />
-          <div className="relative bg-white rounded-3xl w-full max-w-md shadow-2xl animate-in zoom-in-95 overflow-hidden">
-            <div className={`px-6 py-6 border-b border-gray-100 flex items-start justify-between ${selectedEvent.bgClass}`}>
-              <div className="flex gap-4">
-                <div className={`mt-1 p-2 rounded-xl bg-white/50 backdrop-blur-sm shadow-sm ${selectedEvent.colorClass.split(' ')[0]}`}>
-                  {selectedEvent.icon}
-                </div>
-                <div>
-                  <h2 className={`text-lg font-bold leading-tight pr-4 ${selectedEvent.colorClass.split(' ')[0]}`}>
-                    {selectedEvent.title}
-                  </h2>
-                  <p className="text-xs font-bold uppercase tracking-wider opacity-70 mt-1">{selectedEvent.type}</p>
-                </div>
-              </div>
-              <button onClick={() => setSelectedEvent(null)} className="p-2 bg-white/50 hover:bg-white rounded-full transition-colors shrink-0 shadow-sm">
-                <X className="w-4 h-4 text-gray-700" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Data e Hora</p>
-                  <p className="text-sm font-bold text-gray-900">
-                    {format(selectedEvent.date, "dd/MM/yyyy")}
-                    {selectedEvent.type === 'Google' && selectedEvent.originalData.start.dateTime && (
-                      <span className="block text-xs font-semibold text-gray-500 mt-0.5">
-                        {format(new Date(selectedEvent.originalData.start.dateTime), "HH:mm")}
-                      </span>
-                    )}
-                  </p>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status</p>
-                  <p className="text-sm font-bold text-gray-900">{selectedEvent.status}</p>
-                </div>
-              </div>
-
-              {selectedEvent.amount !== undefined && (
-                <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Valor Financeiro</p>
-                  <p className="text-xl font-black text-green-600">{formatCurrency(selectedEvent.amount)}</p>
-                </div>
-              )}
-
-              {selectedEvent.description && (
-                <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Detalhes / Notas</p>
-                  <div className="text-sm text-gray-700 bg-gray-50 p-4 rounded-xl border border-gray-100 whitespace-pre-wrap leading-relaxed max-h-40 overflow-y-auto custom-scrollbar">
-                    {selectedEvent.description}
+      <Dialog open={!!selectedEvent} onOpenChange={(open) => !open && setSelectedEvent(null)}>
+        <DialogContent className="w-[95vw] sm:max-w-md bg-white rounded-3xl shadow-2xl p-0 overflow-hidden">
+          {selectedEvent && (
+            <>
+              <div className={`px-6 py-6 border-b border-gray-100 flex items-start justify-between ${selectedEvent.bgClass}`}>
+                <div className="flex gap-4">
+                  <div className={`mt-1 p-2 rounded-xl bg-white/50 backdrop-blur-sm shadow-sm ${selectedEvent.colorClass.split(' ')[0]}`}>
+                    {selectedEvent.icon}
+                  </div>
+                  <div>
+                    <h2 className={`text-lg font-bold leading-tight pr-4 ${selectedEvent.colorClass.split(' ')[0]}`}>
+                      {selectedEvent.title}
+                    </h2>
+                    <p className="text-xs font-bold uppercase tracking-wider opacity-70 mt-1">{selectedEvent.type}</p>
                   </div>
                 </div>
-              )}
+                <button onClick={() => setSelectedEvent(null)} className="p-2 bg-white/50 hover:bg-white rounded-full transition-colors shrink-0 shadow-sm">
+                  <X className="w-4 h-4 text-gray-700" />
+                </button>
+              </div>
 
-              {selectedEvent.type === 'Google' && (
-                <div className="pt-4 space-y-3">
-                   {selectedEvent.originalData.hangoutLink && (
-                     <a 
-                      href={selectedEvent.originalData.hangoutLink} 
-                      target="_blank" 
-                      rel="noreferrer"
-                      className="w-full py-3 bg-blue-50 text-blue-600 border border-blue-200 font-bold rounded-xl hover:bg-blue-100 transition-colors flex items-center justify-center gap-2 text-sm shadow-sm"
-                     >
-                       <Video className="w-5 h-5" /> Entrar na Chamada (Meet)
-                     </a>
-                   )}
-                   <a 
-                    href={selectedEvent.originalData.htmlLink} 
-                    target="_blank" 
-                    rel="noreferrer"
-                    className="w-full py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 text-sm shadow-sm"
-                   >
-                     <ExternalLink className="w-4 h-4" /> Ver no Google Calendar
-                   </a>
+              <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Data e Hora</p>
+                    <p className="text-sm font-bold text-gray-900">
+                      {format(selectedEvent.date, "dd/MM/yyyy")}
+                      {selectedEvent.type === 'Google' && selectedEvent.originalData.start.dateTime && (
+                        <span className="block text-xs font-semibold text-gray-500 mt-0.5">
+                          {format(new Date(selectedEvent.originalData.start.dateTime), "HH:mm")}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status</p>
+                    <p className="text-sm font-bold text-gray-900">{selectedEvent.status}</p>
+                  </div>
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+
+                {selectedEvent.amount !== undefined && (
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Valor Financeiro</p>
+                    <p className="text-xl font-black text-green-600">{formatCurrency(selectedEvent.amount)}</p>
+                  </div>
+                )}
+
+                {selectedEvent.description && (
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Detalhes / Notas</p>
+                    <div className="text-sm text-gray-700 bg-gray-50 p-4 rounded-xl border border-gray-100 whitespace-pre-wrap leading-relaxed">
+                      {selectedEvent.description}
+                    </div>
+                  </div>
+                )}
+
+                {selectedEvent.type === 'Google' && (
+                  <div className="pt-4 space-y-3">
+                      {selectedEvent.originalData.hangoutLink && (
+                        <a
+                        href={selectedEvent.originalData.hangoutLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="w-full py-3 bg-blue-50 text-blue-600 border border-blue-200 font-bold rounded-xl hover:bg-blue-100 transition-colors flex items-center justify-center gap-2 text-sm shadow-sm"
+                        >
+                          <Video className="w-5 h-5" /> Entrar na Chamada (Meet)
+                        </a>
+                      )}
+                      <a
+                      href={selectedEvent.originalData.htmlLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="w-full py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 text-sm shadow-sm"
+                      >
+                        <ExternalLink className="w-4 h-4" /> Ver no Google Calendar
+                      </a>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
       
       <UpgradeModal
         isOpen={upgradeModalOpen}
