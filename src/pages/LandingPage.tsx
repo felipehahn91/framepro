@@ -555,10 +555,7 @@ export default function LandingPage() {
             {/* Logo & Brand Info */}
             <div className="lg:col-span-2">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/20">
-                  <span className="text-white font-black text-xl">F</span>
-                </div>
-                <span className="font-black text-2xl tracking-tight text-white">Frame Pro</span>
+                <img src="/logo.webp" alt="Frame Pro" className="h-10 w-auto object-contain brightness-0 invert opacity-90" />
               </div>
               <p className="text-gray-400 font-medium text-sm max-w-sm mb-8 leading-relaxed">
                 O CRM definitivo para fotógrafos e filmmakers. Organize sua agenda, crie propostas irresistíveis e feche contratos digitalmente sem dor de cabeça.
