@@ -292,7 +292,7 @@ export default function LandingPage() {
             ></motion.div>
             <div className="bg-white rounded-[3rem] p-10 border border-gray-100 relative shadow-xl flex flex-col items-center text-center z-10">
                <div className="w-full max-w-sm border-b-2 border-gray-800 pb-2 mb-6">
-                 <img src="/assinatura-joao.webp" alt="Assinatura" className="h-24 mx-auto opacity-80 mix-blend-multiply" />
+                 <img src="/assinatura-joao.webp" alt="Assinatura" className="h-24 mx-auto opacity-80 mix-blend-multiply invert grayscale" />
                </div>
                <p className="font-bold text-gray-900 text-lg">João da Silva</p>
                <p className="text-xs text-gray-500 uppercase tracking-widest mt-1 font-bold">Contratante / Noivo</p>
