@@ -43,10 +43,7 @@ export default function LandingPage() {
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/20">
-              <span className="text-white font-black text-xl">F</span>
-            </div>
-            <span className="font-black text-xl tracking-tight text-gray-900">Frame Pro</span>
+            <img src="/logo.webp" alt="Frame Pro" className="h-8 w-auto object-contain" />
           </div>
           
           <div className="hidden md:flex items-center gap-8 font-bold text-sm text-gray-500">
