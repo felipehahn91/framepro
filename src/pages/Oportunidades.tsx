@@ -319,20 +319,25 @@ export default function Oportunidades() {
     e.preventDefault();
     e.stopPropagation();
     
-    const startX = e.pageX;
+    const startX = e.clientX;
     const startWidth = columnWidths[colId] || 320;
 
     const onMouseMove = (moveEvent: MouseEvent) => {
-      // Limita a largura entre 260px e 800px
-      const newWidth = Math.max(260, Math.min(800, startWidth + (moveEvent.pageX - startX)));
-      setColumnWidths(prev => ({ ...prev, [colId]: newWidth }));
+      requestAnimationFrame(() => {
+        const newWidth = Math.max(260, Math.min(800, startWidth + (moveEvent.clientX - startX)));
+        setColumnWidths(prev => ({ ...prev, [colId]: newWidth }));
+      });
     };
 
     const onMouseUp = () => {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
     };
 
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
   };
@@ -1022,13 +1027,15 @@ export default function Oportunidades() {
                               style={{
                                 ...provided.draggableProps.style,
                                 width: columnWidths[col.id] ? `${columnWidths[col.id]}px` : undefined,
+                                minWidth: columnWidths[col.id] ? `${columnWidths[col.id]}px` : undefined,
+                                maxWidth: columnWidths[col.id] ? `${columnWidths[col.id]}px` : undefined,
                               }}
-                              className="shrink-0 w-[85vw] sm:w-[320px] sm:min-w-[260px] sm:max-w-[800px] snap-center bg-gray-100/50 rounded-2xl sm:rounded-xl border border-gray-200 flex flex-col h-full max-h-full shadow-sm relative group/column"
+                              className="shrink-0 w-[85vw] sm:w-[320px] snap-center bg-gray-100/50 rounded-2xl sm:rounded-xl border border-gray-200 flex flex-col h-full max-h-full shadow-sm relative group/column"
                             >
                               {/* Alça de Redimensionamento (Apenas Desktop) */}
                               <div
                                 onMouseDown={(e) => startResizing(col.id, e)}
-                                className="hidden sm:block absolute top-0 right-0 w-2 h-full cursor-col-resize z-20 hover:bg-orange-400/50 active:bg-orange-500 transition-colors"
+                                className="hidden sm:block absolute top-0 -right-2 w-4 h-full cursor-col-resize z-30 hover:bg-orange-400/50 active:bg-orange-500 transition-colors"
                                 title="Arraste para redimensionar"
                               />
 
