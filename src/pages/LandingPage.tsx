@@ -203,11 +203,11 @@ export default function LandingPage() {
                 <h3 className="text-2xl font-black text-gray-900 mb-2">Processos Automatizados</h3>
                 <p className="text-gray-600 font-medium leading-relaxed">Crie "Fluxos de Cadência" para enviar mensagens de follow-up, lembretes e cobranças automaticamente para o WhatsApp do cliente.</p>
               </div>
-              <motion.img 
+              <motion.img
                 whileHover={{ scale: 1.05 }}
                 transition={{ duration: 0.5 }}
-                src="https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=800&auto=format&fit=crop" alt="Automação" 
-                className="absolute -right-10 top-1/2 -translate-y-1/2 w-1/2 rounded-l-3xl shadow-2xl opacity-50 group-hover:opacity-100 transition-opacity" 
+                src="https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?q=80&w=800&auto=format&fit=crop" alt="Automação WhatsApp"
+                className="absolute -right-10 top-1/2 -translate-y-1/2 w-1/2 rounded-l-3xl shadow-2xl opacity-50 group-hover:opacity-100 transition-opacity"
               />
             </motion.div>
           </motion.div>
