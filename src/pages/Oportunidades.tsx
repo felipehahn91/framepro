@@ -85,6 +85,16 @@ export default function Oportunidades() {
   // Lazy Load no Kanban
   const [visibleCounts, setVisibleCounts] = useState<Record<string, number>>({});
 
+  // Largura customizada das colunas
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
+    const saved = localStorage.getItem('framepro_column_widths');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  useEffect(() => {
+    localStorage.setItem('framepro_column_widths', JSON.stringify(columnWidths));
+  }, [columnWidths]);
+
   // Filtros e Pesquisa
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -303,6 +313,28 @@ export default function Oportunidades() {
         [colId]: currentVisible + 10
       }));
     }
+  };
+
+  const startResizing = (colId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const startX = e.pageX;
+    const startWidth = columnWidths[colId] || 320;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      // Limita a largura entre 260px e 800px
+      const newWidth = Math.max(260, Math.min(800, startWidth + (moveEvent.pageX - startX)));
+      setColumnWidths(prev => ({ ...prev, [colId]: newWidth }));
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
   };
 
   const activeColumns = columns.filter(c => c.pipeline_id === activePipelineId).sort((a, b) => a.order_index - b.order_index);
@@ -985,9 +1017,21 @@ export default function Oportunidades() {
                         <Draggable key={col.id} draggableId={col.id} index={index}>
                           {(provided) => (
                             <div
-                              ref={provided.innerRef} {...provided.draggableProps}
-                              className="flex-1 min-w-[85vw] sm:min-w-[300px] max-w-[85vw] sm:max-w-[320px] snap-center bg-gray-100/50 rounded-2xl sm:rounded-xl border border-gray-200 flex flex-col h-full max-h-full shadow-sm"
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              style={{
+                                ...provided.draggableProps.style,
+                                width: columnWidths[col.id] ? `${columnWidths[col.id]}px` : undefined,
+                              }}
+                              className="shrink-0 w-[85vw] sm:w-[320px] sm:min-w-[260px] sm:max-w-[800px] snap-center bg-gray-100/50 rounded-2xl sm:rounded-xl border border-gray-200 flex flex-col h-full max-h-full shadow-sm relative group/column"
                             >
+                              {/* Alça de Redimensionamento (Apenas Desktop) */}
+                              <div
+                                onMouseDown={(e) => startResizing(col.id, e)}
+                                className="hidden sm:block absolute top-0 right-0 w-2 h-full cursor-col-resize z-20 hover:bg-orange-400/50 active:bg-orange-500 transition-colors"
+                                title="Arraste para redimensionar"
+                              />
+
                               <div className="p-3 border-b border-gray-200 rounded-t-xl bg-white" {...provided.dragHandleProps}>
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -1174,9 +1218,9 @@ export default function Oportunidades() {
                     })}
                     {provided.placeholder}
                     
-                    <button 
-                      onClick={() => setIsNewColOpen(true)} 
-                      className="min-w-[85vw] sm:min-w-[300px] max-w-[85vw] sm:max-w-[300px] snap-center bg-white/50 border-2 border-dashed border-gray-300 rounded-2xl sm:rounded-xl flex items-center justify-center text-gray-500 hover:text-orange-500 hover:border-orange-300 hover:bg-orange-50/50 h-[50px] font-bold text-sm transition-all"
+                    <button
+                      onClick={() => setIsNewColOpen(true)}
+                      className="shrink-0 w-[85vw] sm:w-[320px] snap-center bg-white/50 border-2 border-dashed border-gray-300 rounded-2xl sm:rounded-xl flex items-center justify-center text-gray-500 hover:text-orange-500 hover:border-orange-300 hover:bg-orange-50/50 h-[50px] font-bold text-sm transition-all"
                     >
                       <Plus className="w-4 h-4 mr-2" /> Adicionar Coluna
                     </button>
