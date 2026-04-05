@@ -93,19 +93,19 @@ export default function LandingPage() {
           </motion.div>
 
           <motion.h1 variants={fadeInUp} className="text-5xl sm:text-6xl md:text-7xl font-black text-gray-900 tracking-tight leading-[1.05] mb-6">
-            Pare de perder datas na agenda para fotógrafos com <span className="text-orange-500 relative">
-              menos talento
-              <motion.span 
+            Fotógrafo que cresce não conta com a sorte. Conta com o <span className="text-orange-500 relative">
+              FramePro.
+              <motion.span
                 initial={{ width: 0 }}
                 animate={{ width: "100%" }}
                 transition={{ duration: 1, delay: 0.5, ease: "easeOut" }}
                 className="absolute -bottom-2 left-0 h-2 bg-orange-200/50 rounded-full -z-10"
               />
-            </span> que você.
+            </span>
           </motion.h1>
           
           <motion.p variants={fadeInUp} className="text-lg sm:text-xl text-gray-500 font-medium mb-10 max-w-2xl leading-relaxed">
-            Transforme noivas apenas "curiosas" em clientes apaixonadas. Envie orçamentos de cair o queixo, acompanhe seus leads e assine contratos digitalmente em minutos.
+            Enquanto você tenta vender no WhatsApp bagunçado, o FramePro organiza, automatiza e faz você fechar mais contratos todo dia. A organização é o que separa o amador do profissional.
           </motion.p>
 
           <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto">
@@ -145,12 +145,12 @@ export default function LandingPage() {
             className="mb-16 md:flex md:items-end md:justify-between"
           >
             <div className="max-w-2xl">
-              <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">Feito para a rotina do fotógrafo.</h2>
-              <p className="text-xl text-gray-500 font-medium">Livre-se de planilhas desorganizadas e PDFs esquecidos. Tenha total controle do seu estúdio de fotografia.</p>
+              <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">Não é só um CRM. É o seu estúdio no piloto automático.</h2>
+              <p className="text-xl text-gray-500 font-medium">Todas as conversas, tarefas e oportunidades em um só lugar, sem perder prazos, leads ou dinheiro.</p>
             </div>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-50px" }} variants={staggerContainer}
             className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[300px]"
           >
@@ -160,14 +160,14 @@ export default function LandingPage() {
                 <div className="w-12 h-12 bg-white rounded-xl shadow-sm border border-gray-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <Target className="w-6 h-6 text-orange-500" />
                 </div>
-                <h3 className="text-2xl font-black text-gray-900 mb-2">Pipeline Visual (Kanban)</h3>
-                <p className="text-gray-500 font-medium leading-relaxed">Saiba exatamente em que etapa cada noivo, debutante ou empresa está. Nunca mais perca o timing de um follow-up para fechar o evento.</p>
+                <h3 className="text-2xl font-black text-gray-900 mb-2">Leads Organizados</h3>
+                <p className="text-gray-500 font-medium leading-relaxed">Saiba exatamente em que etapa cada cliente está no seu Pipeline Visual. Nunca mais perca dinheiro por esquecer de fazer um follow-up.</p>
               </div>
-              <motion.img 
+              <motion.img
                 whileHover={{ scale: 1.05, rotate: 10 }}
                 transition={{ duration: 0.5 }}
-                src="https://images.unsplash.com/photo-1512314889357-e157c22f938d?q=80&w=800&auto=format&fit=crop" alt="Kanban" 
-                className="absolute -bottom-20 -right-20 w-2/3 rounded-tl-3xl shadow-2xl opacity-40 group-hover:opacity-90 transition-opacity rotate-12" 
+                src="https://images.unsplash.com/photo-1512314889357-e157c22f938d?q=80&w=800&auto=format&fit=crop" alt="Kanban"
+                className="absolute -bottom-20 -right-20 w-2/3 rounded-tl-3xl shadow-2xl opacity-40 group-hover:opacity-90 transition-opacity rotate-12"
               />
             </motion.div>
 
@@ -178,8 +178,8 @@ export default function LandingPage() {
                 <div className="w-12 h-12 bg-gray-800 rounded-xl flex items-center justify-center mb-6 border border-gray-700 group-hover:scale-110 transition-transform">
                   <DollarSign className="w-6 h-6 text-green-400" />
                 </div>
-                <h3 className="text-2xl font-black text-white mb-2">Previsibilidade de Caixa</h3>
-                <p className="text-gray-400 font-medium leading-relaxed">Chega de calotes. Controle parcelamentos pré-evento, envie cobranças via PIX e saiba exatamente o que tem a receber.</p>
+                <h3 className="text-2xl font-black text-white mb-2">Mais Resultados Todo Mês</h3>
+                <p className="text-gray-400 font-medium leading-relaxed">Chega de contar com a sorte. Controle parcelamentos, envie cobranças via PIX e tenha previsibilidade exata do seu caixa.</p>
               </div>
             </motion.div>
 
@@ -189,8 +189,8 @@ export default function LandingPage() {
                 <div className="w-12 h-12 bg-white rounded-xl shadow-sm border border-blue-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <PenTool className="w-6 h-6 text-blue-500" />
                 </div>
-                <h3 className="text-2xl font-black text-gray-900 mb-2">Contratos sem Cartório</h3>
-                <p className="text-gray-500 font-medium leading-relaxed">Contratos preenchidos sozinhos. O casal assina com o dedo na tela do celular e você recebe o PDF com validade jurídica.</p>
+                <h3 className="text-2xl font-black text-gray-900 mb-2">Contratos Profissionais</h3>
+                <p className="text-gray-500 font-medium leading-relaxed">Profissionalize seu fechamento. O cliente assina com o dedo na tela do celular e você recebe o PDF com validade jurídica na hora.</p>
               </div>
             </motion.div>
 
@@ -200,8 +200,8 @@ export default function LandingPage() {
                 <div className="w-12 h-12 bg-white rounded-xl shadow-sm border border-orange-100 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <MessageSquare className="w-6 h-6 text-green-500" />
                 </div>
-                <h3 className="text-2xl font-black text-gray-900 mb-2">WhatsApp no Piloto Automático</h3>
-                <p className="text-gray-600 font-medium leading-relaxed">Crie "Fluxos de Cadência" para enviar mensagens de follow-up, lembretes de ensaio e boletos automaticamente para o WhatsApp do cliente.</p>
+                <h3 className="text-2xl font-black text-gray-900 mb-2">Processos Automatizados</h3>
+                <p className="text-gray-600 font-medium leading-relaxed">Crie "Fluxos de Cadência" para enviar mensagens de follow-up, lembretes e cobranças automaticamente para o WhatsApp do cliente.</p>
               </div>
               <motion.img 
                 whileHover={{ scale: 1.05 }}
@@ -231,10 +231,10 @@ export default function LandingPage() {
                 <LayoutTemplate className="w-4 h-4 text-orange-500" /> Landing Pages de Vendas
               </div>
               <h2 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
-                Seus orçamentos em formato de experiência.
+                Apresentações que separam o amador do profissional.
               </h2>
               <p className="text-gray-400 text-xl leading-relaxed font-medium">
-                Abandone os PDFs frios. Crie propostas ricas com galerias, vídeos e tabelas de preço interativas. Seu cliente pode aprovar a proposta e fechar negócio com um clique.
+                Abandone os PDFs frios e sem graça. Crie propostas ricas com galerias, vídeos e tabelas de preço interativas que fazem o cliente dizer "UAU" antes mesmo de ver o preço.
               </p>
               
               <ul className="space-y-5 pt-4">
@@ -317,10 +317,10 @@ export default function LandingPage() {
               <ShieldCheck className="w-4 h-4" /> Fechamento Imediato
             </div>
             <h2 className="text-4xl md:text-5xl font-black text-gray-900 leading-tight tracking-tight">
-              Contrato e pagamento fechados na mesma tela.
+              Mais resultados todo mês com fechamento sem atrito.
             </h2>
             <p className="text-gray-500 text-xl leading-relaxed font-medium">
-              Ao invés de mandar um documento no WhatsApp e pedir os dados do casal, você envia nosso "Link de Fechamento". O cliente preenche o CPF, escolhe como vai parcelar o pagamento e o seu contrato de fotografia é preenchido automaticamente com as "variáveis mágicas".
+              Ao invés de mandar um documento no WhatsApp bagunçado, você envia nosso "Link de Fechamento". O cliente preenche os dados, escolhe como vai parcelar, assina o contrato e recebe o PIX da entrada direto no WhatsApp. Tudo automático.
             </p>
             <ul className="space-y-5 pt-2">
               {[
@@ -346,17 +346,17 @@ export default function LandingPage() {
       <section id="planos" className="py-32 px-4 sm:px-6 bg-white relative">
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="text-center mb-20 max-w-3xl mx-auto">
-            <motion.h2 
+            <motion.h2
               initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
               className="text-4xl md:text-5xl font-black text-gray-900 mb-6 tracking-tight"
             >
-              Um investimento que se paga com um único ensaio.
+              O CRM do fotógrafo exigente.
             </motion.h2>
-            <motion.p 
+            <motion.p
               initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }}
               className="text-xl text-gray-500 font-medium"
             >
-              Comece hoje mesmo com 14 dias de teste gratuito. Cancele quando quiser.
+              Um investimento que se paga com um único contrato fechado. Comece hoje com 14 dias grátis.
             </motion.p>
           </div>
 
@@ -531,10 +531,10 @@ export default function LandingPage() {
           
           <div className="relative z-10">
             <h2 className="text-5xl md:text-7xl font-black text-white mb-8 leading-tight tracking-tight">
-              A sua fotografia merece um negócio organizado.
+              A organização é o que separa o amador do profissional.
             </h2>
             <p className="text-2xl font-medium mb-12 text-orange-100 max-w-3xl mx-auto leading-relaxed">
-              Leve exatamente 2 minutos para criar sua conta e configurar o seu primeiro orçamento interativo. O primeiro ensaio que o sistema te ajudar a fechar já paga o ano inteiro.
+              Leve exatamente 2 minutos para criar sua conta e transformar a gestão do seu negócio. Pare de vender no WhatsApp bagunçado hoje mesmo.
             </p>
             <Link to="/signup" className="inline-flex items-center justify-center gap-3 bg-gray-900 hover:bg-black text-white text-xl font-black px-12 py-6 rounded-2xl shadow-2xl transition-all hover:-translate-y-1 active:scale-95 w-full sm:w-auto group">
               CRIAR MINHA CONTA AGORA <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
