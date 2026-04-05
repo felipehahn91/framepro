@@ -453,31 +453,29 @@ export default function Agenda() {
           
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             {isGoogleEnabledInDB ? (
-              <div className="flex flex-col sm:flex-row items-center gap-2 bg-white px-3 py-2 rounded-xl shadow-sm border border-gray-200 w-full sm:w-auto">
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <Globe className="w-4 h-4 text-purple-500" />
-                  <select 
+              <div className="flex items-center justify-between gap-3 bg-white px-3 py-2 rounded-xl shadow-sm border border-gray-200 w-full sm:w-auto">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <Globe className="w-4 h-4 text-purple-500 shrink-0" />
+                  <select
                     value={selectedGoogleCalendarId}
                     onChange={(e) => setSelectedGoogleCalendarId(e.target.value)}
-                    className="bg-transparent text-sm font-bold text-gray-700 focus:outline-none cursor-pointer pr-2 max-w-full sm:max-w-[200px] truncate"
+                    className="bg-transparent text-sm font-bold text-gray-700 focus:outline-none cursor-pointer w-full sm:max-w-[200px] truncate"
                   >
                     <option value="">Nenhuma agenda selecionada</option>
                     {googleCalendars.map(cal => (
                       <option key={cal.id} value={cal.id}>{cal.summary}</option>
                     ))}
                   </select>
-                  {loadingGoogle && <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-500" />}
+                  {loadingGoogle && <Loader2 className="w-3.5 h-3.5 animate-spin text-purple-500 shrink-0" />}
                 </div>
                 
-                <div className="w-full sm:w-auto flex justify-end">
-                  <button 
-                    onClick={handleDisconnectGoogle}
-                    className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors border border-red-100"
-                    title="Desconectar Google Calendar Permanentemente"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
+                <button
+                  onClick={handleDisconnectGoogle}
+                  className="p-1.5 bg-red-50 text-red-500 rounded-lg hover:bg-red-100 transition-colors border border-red-100 shrink-0"
+                  title="Desconectar Google Calendar Permanentemente"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
             ) : (
               <button 
