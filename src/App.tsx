@@ -25,6 +25,7 @@ import FluxoCadencia from "./pages/FluxoCadencia";
 import AdminDashboard from "./pages/AdminDashboard";
 import SettingsPage from "./pages/SettingsPage";
 import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 import FounderSignup from "./pages/FounderSignup";
 import LinkFormPage from "./pages/LinkFormPage";
 import ClosingPublicView from "./pages/ClosingPublicView";
@@ -58,7 +59,7 @@ const App = () => (
               {/* Páginas Públicas */}
               <Route path="/landing" element={<LandingPage />} />
               <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
               <Route path="/update-password" element={<UpdatePassword />} />
               <Route path="/founder-signup" element={<FounderSignup />} />
               
