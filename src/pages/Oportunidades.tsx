@@ -5,7 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Trash2, Plus, UserPlus, MessageSquare, MessageCircle, Link as LinkIcon,
-  Upload, Loader2, Copy, ExternalLink, X, UserMinus, Search, Inbox, ArrowUp, ArrowDown, Clock, Tag as TagIcon, Zap, Filter, ChevronDown, LayoutGrid, MoreVertical, MoveRight, Settings, Edit2, Lock
+  Upload, Loader2, Copy, ExternalLink, X, UserMinus, Search, Inbox, ArrowUp, ArrowDown, Clock, Tag as TagIcon, Zap, Filter, ChevronDown, LayoutGrid, MoreVertical, MoveRight, Settings, Edit2, Lock, Webhook
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import LeadImportModal from "@/components/LeadImportModal";
 import OpportunityDetailModal from "@/components/OpportunityDetailModal";
 import ClosingLinkModal from "@/components/ClosingLinkModal";
+import WebhookIntegrationModal from "@/components/WebhookIntegrationModal";
 import { UpgradeModal } from "@/components/UpgradeModal";
 import {
   DropdownMenu,
@@ -120,6 +121,10 @@ export default function Oportunidades() {
   // Modal de Ferramentas (Link Forms e Gatilhos)
   const [isAutomationsOpen, setIsAutomationsOpen] = useState(false);
   const [newTriggerData, setNewTriggerData] = useState({ phrase: '', column_id: '', tag: '' });
+
+  // Modal Webhook
+  const [isWebhookModalOpen, setIsWebhookModalOpen] = useState(false);
+  const [selectedFormForWebhook, setSelectedFormForWebhook] = useState<{id: string, name: string} | null>(null);
 
   // Modal de Upgrade
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
@@ -862,6 +867,9 @@ export default function Oportunidades() {
 
   if (loading) return <Layout><div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div></Layout>;
 
+  const activeColumns = columns.filter(c => c.pipeline_id === activePipelineId).sort((a, b) => a.order_index - b.order_index);
+  const targetColumnsForMove = columns.filter(c => c.pipeline_id === (moveTargetPipeline || activePipelineId)).sort((a, b) => a.order_index - b.order_index);
+
   return (
     <Layout>
       <div className="max-w-full mx-auto flex flex-col h-full bg-[#FAFAFA]">
@@ -914,7 +922,7 @@ export default function Oportunidades() {
                     <DropdownMenuItem 
                       key={p.id} 
                       onClick={() => setActivePipelineId(p.id)}
-                      className={`font-semibold cursor-pointer py-3 md:py-2 ${activePipelineId === p.id ? 'text-orange-500 bg-orange-50' : ''}`}
+                      className<think>Continuing the code generation for `src/pages/Oportunidades.tsx` exactly where it left off.</think>`font-semibold cursor-pointer py-3 md:py-2 ${activePipelineId === p.id ? 'text-orange-500 bg-orange-50' : ''}`}
                     >
                       {p.name}
                     </DropdownMenuItem>
@@ -1267,6 +1275,16 @@ export default function Oportunidades() {
         opportunity={oppForClosingLink}
       />
 
+      <WebhookIntegrationModal
+        isOpen={isWebhookModalOpen}
+        onClose={() => {
+          setIsWebhookModalOpen(false);
+          setSelectedFormForWebhook(null);
+        }}
+        formId={selectedFormForWebhook?.id || null}
+        formName={selectedFormForWebhook?.name || ''}
+      />
+
       {/* MODAL: Gerenciar Pipelines */}
       <Dialog open={isManagePipelinesOpen} onOpenChange={setIsManagePipelinesOpen}>
         <DialogContent className="w-[95vw] sm:max-w-md bg-white rounded-2xl p-4 sm:p-6">
@@ -1333,6 +1351,16 @@ export default function Oportunidades() {
                       <p className="text-xs font-medium text-gray-500 mt-0.5 truncate">{form.tag || 'Geral'}</p>
                     </div>
                     <div className="flex gap-2 shrink-0">
+                      <button 
+                        onClick={() => {
+                          setSelectedFormForWebhook({ id: form.id, name: form.name });
+                          setIsWebhookModalOpen(true);
+                        }} 
+                        className="p-2 text-blue-500 bg-white border border-gray-200 hover:bg-blue-50 rounded-lg shadow-sm transition-colors"
+                        title="Integração via Webhook (Meta Ads, Zapier, etc)"
+                      >
+                        <Webhook className="w-4 h-4"/>
+                      </button>
                       <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/link-form/${form.id}`); toast.success("Copiado!"); }} className="p-2 text-gray-500 bg-white border border-gray-200 hover:text-orange-500 rounded-lg shadow-sm transition-colors"><Copy className="w-4 h-4"/></button>
                       <button onClick={() => handleDeleteLinkForm(form.id)} className="p-2 text-red-500 bg-white border border-gray-200 hover:bg-red-50 rounded-lg shadow-sm transition-colors"><Trash2 className="w-4 h-4"/></button>
                     </div>
