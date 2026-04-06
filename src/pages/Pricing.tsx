@@ -4,14 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Check, Loader2, Zap, Star, X, ShieldCheck, Building2, ArrowRight } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from 'sonner';
-import<think>**Initiating Component Repair**
-
-\n\n
-
-My current focus is on `Pricing.tsx`. I am methodically removing the harmful `<think>` tag, which is the source of the errors. I'll make sure all the code functions correctly and that all necessary imports are present. Afterwards, I will verify the code compiles without errors.
-
-
-</think> { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 export default function Pricing() {
   const { user, refreshProfile } = useAuth();
