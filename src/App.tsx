@@ -36,6 +36,7 @@ import BillingCancel from "./pages/BillingCancel";
 import UpdatePassword from "./pages/UpdatePassword";
 import NotFound from "./pages/NotFound";
 import LandingPage from "./pages/LandingPage";
+import SecurityPage from "./pages/SecurityPage";
 
 applyTheme(getActiveTheme());
 
@@ -58,6 +59,7 @@ const App = () => (
             <Routes>
               {/* Páginas Públicas */}
               <Route path="/landing" element={<LandingPage />} />
+              <Route path="/seguranca" element={<SecurityPage />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/update-password" element={<UpdatePassword />} />

@@ -50,6 +50,9 @@ export default function LandingPage() {
             <a href="#recursos" className="hover:text-gray-900 transition-colors">Como Funciona</a>
             <a href="#propostas" className="hover:text-gray-900 transition-colors">Propostas</a>
             <a href="#planos" className="hover:text-gray-900 transition-colors">Planos</a>
+            <Link to="/seguranca" className="hover:text-gray-900 transition-colors flex items-center gap-1">
+              <ShieldCheck className="w-4 h-4" /> Segurança
+            </Link>
           </div>
 
           <div className="flex items-center gap-4">
