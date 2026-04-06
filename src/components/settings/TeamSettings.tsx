@@ -100,10 +100,7 @@ export function TeamSettings() {
     
     setLoading(true);
     try {
-      // 1. Create company and update profile via RPC
-      const { data: newCompanyId, error: rpcError } = await supabase
-        .rpc('create_company', { company_name: companyName });
-
+      const { error: rpcError } = await supabase.rpc('create_company', { company_name: companyName });
       if (rpcError) throw rpcError;
 
       await refreshProfile();
@@ -121,25 +118,30 @@ export function TeamSettings() {
 
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('company_invites')
-        .insert({
-          company_id: profile.company_id,
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch('https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/invite-to-company', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({
           email: inviteEmail.toLowerCase(),
-          created_by: user?.id
-        });
+          company_id: profile.company_id,
+          role: 'member'
+        })
+      });
 
-      if (error) {
-        if (error.code === '23505') {
-          toast.error('Este e-mail já foi convidado.');
-        } else {
-          throw error;
-        }
-      } else {
-        toast.success('Convite enviado com sucesso!');
-        setInviteEmail('');
-        fetchCompanyData();
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Erro ao enviar convite');
       }
+
+      toast.success('Convite enviado com sucesso!');
+      setInviteEmail('');
+      fetchCompanyData();
     } catch (error: any) {
       toast.error('Erro ao enviar convite: ' + error.message);
     } finally {
