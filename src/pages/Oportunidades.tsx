@@ -867,9 +867,6 @@ export default function Oportunidades() {
 
   if (loading) return <Layout><div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-orange-400" /></div></Layout>;
 
-  const activeColumns = columns.filter(c => c.pipeline_id === activePipelineId).sort((a, b) => a.order_index - b.order_index);
-  const targetColumnsForMove = columns.filter(c => c.pipeline_id === (moveTargetPipeline || activePipelineId)).sort((a, b) => a.order_index - b.order_index);
-
   return (
     <Layout>
       <div className="max-w-full mx-auto flex flex-col h-full bg-[#FAFAFA]">
@@ -922,7 +919,7 @@ export default function Oportunidades() {
                     <DropdownMenuItem 
                       key={p.id} 
                       onClick={() => setActivePipelineId(p.id)}
-                      className<think>Continuing the code generation for `src/pages/Oportunidades.tsx` exactly where it left off.</think>`font-semibold cursor-pointer py-3 md:py-2 ${activePipelineId === p.id ? 'text-orange-500 bg-orange-50' : ''}`}
+                      className={`font-semibold cursor-pointer py-3 md:py-2 ${activePipelineId === p.id ? 'text-orange-500 bg-orange-50' : ''}`}
                     >
                       {p.name}
                     </DropdownMenuItem>
@@ -965,7 +962,7 @@ export default function Oportunidades() {
               
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className={`flex items-center justify-center p-2 border rounded-xl transition-all ${selectedTags.length > 0 ? 'bg-orange-50 border-orange-200 text-orange-600' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                  <button className={`flex items-center justify-center p-2 border rounded-xl transition-all ${selectedTags.length > 0 ? 'bg-orange-50 border-orange-200 text-orange-600' : 'bg-white border-gray-200 text-gray-50 hover:bg-gray-50'}`}>
                     <Filter className="w-4 h-4" />
                   </button>
                 </DropdownMenuTrigger>
