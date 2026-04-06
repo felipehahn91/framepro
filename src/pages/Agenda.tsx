@@ -97,7 +97,7 @@ export default function Agenda() {
   };
 
   // Google Calendar Integration State
-  const isGoogleEnabledInDB = user?.user_metadata?.google_calendar_enabled === true;
+  const [isGoogleConnected, setIsGoogleConnected] = useState(false);
   
   const [googleCalendars, setGoogleCalendars] = useState<any[]>([]);
   const [selectedGoogleCalendarId, setSelectedGoogleCalendarId] = useState<string>("");
@@ -117,6 +117,13 @@ export default function Agenda() {
     saveToCRM: true,
   });
 
+  // Atualiza o estado local baseado no banco de dados quando o usuário carrega
+  useEffect(() => {
+    if (user) {
+      setIsGoogleConnected(user.user_metadata?.google_calendar_enabled === true);
+    }
+  }, [user]);
+
   // Salva o Refresh Token no banco se ele vier do OAuth
   useEffect(() => {
     if (session?.provider_refresh_token && user) {
@@ -131,19 +138,19 @@ export default function Agenda() {
   useEffect(() => {
     if (user) {
       fetchAllData();
-      if (isGoogleEnabledInDB) {
+      if (isGoogleConnected) {
         fetchGoogleCalendars();
       }
     }
-  }, [user, isGoogleEnabledInDB]);
+  }, [user, isGoogleConnected]);
 
   useEffect(() => {
-    if (isGoogleEnabledInDB && selectedGoogleCalendarId) {
+    if (isGoogleConnected && selectedGoogleCalendarId) {
       fetchGoogleEventsForPeriod();
     } else {
       setGoogleEvents([]);
     }
-  }, [selectedGoogleCalendarId, currentDate, isGoogleEnabledInDB]);
+  }, [selectedGoogleCalendarId, currentDate, isGoogleConnected]);
 
   const fetchGoogleCalendars = async () => {
     try {
@@ -156,6 +163,7 @@ export default function Agenda() {
     } catch (error) {
       console.error("Erro ao buscar calendários do Google:", error);
       toast.error("Conexão com Google Expirada. Clique em reconectar.");
+      setIsGoogleConnected(false); // Força a mostrar o botão de reconectar se o token expirou
     }
   };
 
@@ -305,6 +313,7 @@ export default function Agenda() {
     }
     
     try {
+      setIsGoogleConnected(true); // Atualização otimista
       await supabase.auth.updateUser({
         data: { google_calendar_enabled: true }
       });
@@ -312,10 +321,9 @@ export default function Agenda() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          // Escopos restritos conforme solicitado
           scopes: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.calendarlist.readonly',
           queryParams: {
-            access_type: 'offline', // Fundamental para gerar o Refresh Token
+            access_type: 'offline',
             prompt: 'consent',
           },
           redirectTo: window.location.origin + '/agenda'
@@ -323,12 +331,15 @@ export default function Agenda() {
       });
       if (error) throw error;
     } catch (error) {
+      setIsGoogleConnected(false); // Reverte em caso de erro
       toast.error('Erro ao conectar com Google.');
     }
   };
 
   const handleDisconnectGoogle = async () => {
     try {
+      setIsGoogleConnected(false); // Atualização imediata da UI
+      
       await supabase.auth.updateUser({
         data: { google_calendar_enabled: false }
       });
@@ -340,6 +351,7 @@ export default function Agenda() {
       setSelectedGoogleCalendarId("");
       toast.success("Google Calendar desconectado permanentemente.");
     } catch (error) {
+      setIsGoogleConnected(true); // Reverte em caso de erro
       toast.error("Erro ao desativar integração.");
     }
   };
@@ -406,7 +418,7 @@ export default function Agenda() {
     try {
       let googleEventRes = null;
 
-      if (isGoogleEnabledInDB && selectedGoogleCalendarId) {
+      if (isGoogleConnected && selectedGoogleCalendarId) {
         googleEventRes = await createGoogleCalendarEvent(
           selectedGoogleCalendarId,
           {
@@ -490,7 +502,7 @@ export default function Agenda() {
           </div>
           
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            {isGoogleEnabledInDB ? (
+            {isGoogleConnected ? (
               <div className="flex items-center justify-between gap-3 bg-white px-3 py-2 rounded-xl shadow-sm border border-gray-200 w-full sm:w-auto">
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   <Globe className="w-4 h-4 text-purple-500 shrink-0" />
@@ -789,11 +801,11 @@ export default function Agenda() {
             <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-4 mt-2">
               <label className="flex items-center justify-between cursor-pointer group">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${isGoogleEnabledInDB ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-400'}`}>
+                  <div className={`p-2 rounded-lg ${isGoogleConnected ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-400'}`}>
                     <Video className="w-4 h-4" />
                   </div>
                   <div>
-                    <span className={`text-sm font-bold block ${isGoogleEnabledInDB ? 'text-gray-900' : 'text-gray-400'}`}>Gerar Link do Meet</span>
+                    <span className={`text-sm font-bold block ${isGoogleConnected ? 'text-gray-900' : 'text-gray-400'}`}>Gerar Link do Meet</span>
                     <span className="text-[10px] text-gray-500 font-medium">Reunião em vídeo automática</span>
                   </div>
                 </div>
@@ -801,12 +813,12 @@ export default function Agenda() {
                   type="checkbox" 
                   checked={newEventData.createMeet}
                   onChange={e => setNewEventData({...newEventData, createMeet: e.target.checked})}
-                  disabled={!selectedGoogleCalendarId || !isGoogleEnabledInDB}
+                  disabled={!selectedGoogleCalendarId || !isGoogleConnected}
                   className="w-5 h-5 rounded border-gray-300 accent-blue-500 cursor-pointer disabled:opacity-50"
                 />
               </label>
 
-              {(!selectedGoogleCalendarId || !isGoogleEnabledInDB) && (
+              {(!selectedGoogleCalendarId || !isGoogleConnected) && (
                 <div className="bg-orange-50 text-orange-700 p-2.5 rounded-lg text-xs font-medium border border-orange-100">
                   A conexão com o Google está inativa. Conecte acima para usar o Meet.
                 </div>
