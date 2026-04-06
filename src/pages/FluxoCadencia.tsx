@@ -202,7 +202,6 @@ export default function FluxoCadencia() {
       const { data, error } = await supabase
         .from('cadencia_flows')
         .select('*')
-        .eq('user_id', user?.id)
         .order('created_at', { ascending: true });
 
       if (error) {

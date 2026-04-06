@@ -63,7 +63,6 @@ export default function ContractEditor() {
       const { data: clientsData } = await supabase
         .from('opportunities')
         .select('id, name')
-        .eq('user_id', user?.id)
         .eq('is_client', true);
         
       setClients(clientsData || []);

@@ -18,6 +18,7 @@ import { useNavigate } from 'react-router-dom';
 import * as evolutionApi from '@/lib/evolution';
 import { THEMES, applyTheme, getActiveTheme } from '@/lib/theme';
 import { UpgradeModal } from '@/components/UpgradeModal';
+import { TeamSettings } from '@/components/settings/TeamSettings';
 
 export default function SettingsPage() {
   const { user, profile, refreshProfile } = useAuth();
@@ -93,8 +94,8 @@ export default function SettingsPage() {
       const { data, error } = await supabase
         .from('whatsapp_instances')
         .select('*')
-        .eq('user_id', user?.id)
-        .single();
+        .limit(1)
+        .maybeSingle();
       
       if (error && error.code !== 'PGRST116' && error.code !== '42P01') throw error; 
 
@@ -391,8 +392,9 @@ export default function SettingsPage() {
         </div>
 
         <Tabs defaultValue="profile" className="w-full flex-1 flex flex-col">
-          <TabsList className="grid w-full max-w-[800px] grid-cols-2 sm:grid-cols-5 mb-4 bg-gray-100 p-1 h-auto sm:h-12">
+          <TabsList className="grid w-full max-w-[900px] grid-cols-2 sm:grid-cols-6 mb-4 bg-gray-100 p-1 h-auto sm:h-12">
             <TabsTrigger value="profile" className="py-2 sm:py-1.5">Perfil</TabsTrigger>
+            <TabsTrigger value="team" className="py-2 sm:py-1.5">Equipe</TabsTrigger>
             <TabsTrigger value="appearance" className="py-2 sm:py-1.5">Aparência</TabsTrigger>
             <TabsTrigger value="subscription" className="py-2 sm:py-1.5">Assinatura</TabsTrigger>
             <TabsTrigger value="whatsapp" className="py-2 sm:py-1.5">WhatsApp</TabsTrigger>
@@ -401,6 +403,11 @@ export default function SettingsPage() {
 
           <div className="flex-1 overflow-y-auto pb-6">
             
+            {/* ABA EQUIPE */}
+            <TabsContent value="team" className="mt-0">
+              <TeamSettings />
+            </TabsContent>
+
             {/* ABA PERFIL */}
             <TabsContent value="profile" className="mt-0">
               <Card className="border-gray-200 shadow-sm">

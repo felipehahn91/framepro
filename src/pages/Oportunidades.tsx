@@ -211,7 +211,7 @@ export default function Oportunidades() {
         supabase.from('pipelines').select('*').order('order_index', { ascending: true, nullsFirst: false }).order('created_at', { ascending: true }),
         supabase.from('columns').select('*').order('order_index', { ascending: true }),
         supabase.from('link_forms').select('*'),
-        supabase.from('cadencia_queue').select('opportunity_id').eq('user_id', user?.id).eq('status', 'pending'),
+        supabase.from('cadencia_queue').select('opportunity_id').eq('status', 'pending'),
         supabase.from('whatsapp_triggers').select('*')
       ]);
 
@@ -617,7 +617,6 @@ export default function Oportunidades() {
       supabase
         .from('cadencia_flows')
         .select('id, name, messages')
-        .eq('user_id', user.id)
         .then(({ data }) => setCadenciaFlows(data || []));
     }
   }, [isCadenciaModalOpen, user]);

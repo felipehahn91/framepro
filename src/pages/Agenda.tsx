@@ -197,9 +197,9 @@ export default function Agenda() {
     setLoading(true);
     try {
       const [tasksRes, contractsRes, txRes] = await Promise.all([
-        supabase.from('tasks').select('*').eq('user_id', user?.id),
-        supabase.from('contracts').select('*, opportunities(name)').eq('user_id', user?.id),
-        supabase.from('transactions').select('*, clients:client_id(name)').eq('user_id', user?.id)
+        supabase.from('tasks').select('*'),
+        supabase.from('contracts').select('*, opportunities(name)'),
+        supabase.from('transactions').select('*, clients:client_id(name)')
       ]);
 
       const tasks = tasksRes.data || [];

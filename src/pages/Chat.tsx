@@ -89,7 +89,7 @@ export default function Chat() {
 
   const loadInstance = async () => {
     try {
-      const { data } = await supabase.from('whatsapp_instances').select('*').eq('user_id', user?.id).eq('status', 'connected').single();
+      const { data } = await supabase.from('whatsapp_instances').select('*').eq('status', 'connected').limit(1).maybeSingle();
       if (data) setWaInstance(data);
     } catch (error) {
       console.error(error);
@@ -100,7 +100,7 @@ export default function Chat() {
 
   const loadChatsFromDb = async () => {
     try {
-      const { data, error } = await supabase.from('whatsapp_chats').select('*').eq('user_id', user?.id).order('last_message_time', { ascending: false });
+      const { data, error } = await supabase.from('whatsapp_chats').select('*').order('last_message_time', { ascending: false });
       if (error && error.code !== '42P01') throw error;
       setChats(data || []);
     } catch (error) {

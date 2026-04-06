@@ -70,7 +70,6 @@ const Index = () => {
         const { data } = await supabase
           .from('transactions')
           .select('*')
-          .eq('user_id', user?.id)
           .range(txFrom, txFrom + step - 1);
 
         if (data && data.length > 0) {
@@ -158,7 +157,6 @@ const Index = () => {
         const { data, error } = await supabase
           .from('opportunities')
           .select('id, is_client, column_id, columns:column_id(name)')
-          .eq('user_id', user?.id)
           .range(opsFrom, opsFrom + step - 1);
 
         if (error) {
@@ -203,7 +201,6 @@ const Index = () => {
       const { count: contractsCount } = await supabase
         .from('contracts')
         .select('id', { count: 'exact', head: true })
-        .eq('user_id', user?.id)
         .in('status', ['active', 'Ativo']);
         
       if (contractsCount !== null) setActiveContracts(contractsCount);
@@ -212,7 +209,6 @@ const Index = () => {
       const { data: tasksData } = await supabase
         .from('tasks')
         .select('id, title, status, created_at')
-        .eq('user_id', user?.id)
         .order('created_at', { ascending: false })
         .limit(5);
 

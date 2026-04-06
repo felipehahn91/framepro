@@ -62,8 +62,8 @@ export default function Orcamentos() {
     setLoading(true);
     try {
       const [orcRes, oppRes] = await Promise.all([
-        supabase.from('orcamentos').select('*, opportunities(name, email)').eq('user_id', user?.id).order('updated_at', { ascending: false }),
-        supabase.from('opportunities').select('id, name').eq('user_id', user?.id).order('name')
+        supabase.from('orcamentos').select('*, opportunities(name, email)').order('updated_at', { ascending: false }),
+        supabase.from('opportunities').select('id, name').order('name')
       ]);
 
       if (orcRes.error && orcRes.error.code !== '42P01') throw orcRes.error;

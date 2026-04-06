@@ -211,7 +211,6 @@ export default function OpportunityDetailModal({
         const { data, error } = await supabase
           .from('orcamentos')
           .select('id, name, share_token')
-          .eq('user_id', currentUserId)
           .order('updated_at', { ascending: false });
           
         if (error) throw error;
@@ -220,7 +219,6 @@ export default function OpportunityDetailModal({
         const { data, error } = await supabase
           .from('contracts')
           .select('id, share_token, opportunities(name)')
-          .eq('user_id', currentUserId)
           .order('updated_at', { ascending: false });
           
         if (error) throw error;

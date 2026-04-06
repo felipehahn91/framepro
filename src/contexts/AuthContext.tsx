@@ -12,6 +12,8 @@ export type UserProfile = {
   subscription_status?: string;
   stripe_customer_id?: string;
   plan_type?: string;
+  company_id?: string;
+  company_role?: string;
 };
 
 type AuthContextType = {

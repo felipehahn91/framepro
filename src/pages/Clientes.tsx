@@ -65,7 +65,6 @@ export default function Clientes() {
         const { data, error } = await supabase
           .from('opportunities')
           .select('*')
-          .eq('user_id', user?.id)
           .eq('is_client', true)
           .order('created_at', { ascending: false })
           .range(from, from + step - 1);

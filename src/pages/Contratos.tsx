@@ -56,7 +56,6 @@ export default function Contratos() {
       const { data, error } = await supabase
         .from('contracts')
         .select('*, opportunities(name)')
-        .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
 
       if (error && error.code !== '42P01') throw error;

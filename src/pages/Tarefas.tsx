@@ -74,7 +74,6 @@ export default function Tarefas() {
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
-        .eq('user_id', user?.id)
         .order('created_at', { ascending: false });
 
       if (error && error.code !== '42P01') throw error;

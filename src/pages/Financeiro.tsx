@@ -152,8 +152,8 @@ export default function Financeiro() {
     setLoading(true);
     try {
       const [txRes, clientsRes] = await Promise.all([
-        supabase.from('transactions').select('*, clients:client_id(name)').eq('user_id', user?.id).order('date', { ascending: false }),
-        supabase.from('opportunities').select('id, name').eq('user_id', user?.id).eq('is_client', true)
+        supabase.from('transactions').select('*, clients:client_id(name)').order('date', { ascending: false }),
+        supabase.from('opportunities').select('id, name').eq('is_client', true)
       ]);
 
       if (txRes.error && txRes.error.code !== '42P01') throw txRes.error;
@@ -584,7 +584,7 @@ export default function Financeiro() {
         if (data?.phone) phone = data.phone;
       }
       if (!phone) return toast.error("Este cliente não possui telefone cadastrado.");
-      const { data: instanceData } = await supabase.from('whatsapp_instances').select('instance_name').eq('user_id', user?.id).eq('status', 'connected').single();
+      const { data: instanceData } = await supabase.from('whatsapp_instances').select('instance_name').eq('status', 'connected').limit(1).maybeSingle();
       if (!instanceData) return toast.error("WhatsApp não conectado.");
       const amount = inst ? inst.amount : tx.amount;
       const pixCode = inst ? inst.pix_code : tx.pix_code;

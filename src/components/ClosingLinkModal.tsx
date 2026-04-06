@@ -64,7 +64,6 @@ export default function ClosingLinkModal({ isOpen, onClose, opportunity }: Closi
     const { data } = await supabase
       .from('contracts')
       .select('id, title')
-      .eq('user_id', session.session.user.id)
       .is('client_id', null)
       .not('title', 'is', null)
       .neq('title', '')
@@ -152,7 +151,6 @@ export default function ClosingLinkModal({ isOpen, onClose, opportunity }: Closi
           const { data: waInstance } = await supabase
             .from('whatsapp_instances')
             .select('instance_name')
-            .eq('user_id', userId)
             .eq('status', 'connected')
             .order('updated_at', { ascending: false })
             .limit(1)
