@@ -271,17 +271,13 @@ export default function OrcamentoPublicView() {
 
   const fetchOrcamento = async () => {
     try {
-      const { data, error } = await supabase
-        .from('orcamentos')
-        .select('*')
-        .eq('share_token', token)
-        .single();
+      const { data, error } = await supabase.rpc('get_public_orcamento', { p_token: token });
 
-      if (error) throw error;
+      if (error || !data) throw error || new Error("Not found");
       setOrcamento(data);
 
       // Atualizar views
-      supabase.from('orcamentos').update({ view_count: (data.view_count || 0) + 1 }).eq('id', data.id).then();
+      supabase.rpc('increment_orcamento_view', { p_id: data.id }).then();
     } catch (error) {
       toast.error("Proposta não encontrada.");
     } finally {

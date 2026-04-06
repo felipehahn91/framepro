@@ -24,8 +24,8 @@ export default function LinkFormPage() {
   useEffect(() => {
     const fetchForm = async () => {
       try {
-        const { data, error } = await supabase.from('link_forms').select('*').eq('id', id).single();
-        if (error) throw error;
+        const { data, error } = await supabase.rpc('get_public_link_form', { p_id: id });
+        if (error || !data) throw error || new Error("Not found");
         setFormConfig(data);
       } catch (error) {
         toast.error('Formulário não encontrado ou indisponível.');

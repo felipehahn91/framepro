@@ -28,13 +28,9 @@ export default function ContractPublicView() {
 
   const fetchContract = async () => {
     try {
-      const { data, error } = await supabase
-        .from('contracts')
-        .select('*, opportunities(name)')
-        .eq('share_token', token)
-        .single();
+      const { data, error } = await supabase.rpc('get_public_contract', { p_token: token });
 
-      if (error) throw error;
+      if (error || !data) throw error || new Error("Not found");
       setContract(data);
     } catch (error) {
       toast.error("Contrato não encontrado ou indisponível.");
@@ -101,10 +97,12 @@ export default function ContractPublicView() {
         updates.signature_status = contract.supplier_signature ? 'Assinado 2/2' : 'Assinado 1/2';
       }
 
-      const { error } = await supabase
-        .from('contracts')
-        .update(updates)
-        .eq('share_token', token);
+      const { error } = await supabase.rpc('update_public_contract_signature', {
+        p_token: token,
+        p_client_sig: updates.client_signature || null,
+        p_supplier_sig: null,
+        p_status: updates.signature_status || contract.signature_status
+      });
 
       if (error) throw error;
       
