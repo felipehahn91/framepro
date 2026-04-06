@@ -312,7 +312,8 @@ export default function Agenda() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          scopes: 'https://www.googleapis.com/auth/calendar',
+          // Escopos restritos conforme solicitado
+          scopes: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.calendarlist.readonly',
           queryParams: {
             access_type: 'offline', // Fundamental para gerar o Refresh Token
             prompt: 'consent',
