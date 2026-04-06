@@ -1,14 +1,45 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Layout } from "@/components/Layout";
 import { useAuth } from "@/contexts/AuthContext";
-import { Check, Loader2, Zap, Star, X, ShieldCheck } from 'lucide-react';
+import { Check, Loader2, Zap, Star, X, ShieldCheck, Building2, ArrowRight } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from 'sonner';
+import<think>**Initiating Component Repair**
+
+\n\n
+
+My current focus is on `Pricing.tsx`. I am methodically removing the harmful `<think>` tag, which is the source of the errors. I'll make sure all the code functions correctly and that all necessary imports are present. Afterwards, I will verify the code compiles without errors.
+
+
+</think> { useNavigate } from 'react-router-dom';
 
 export default function Pricing() {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [pendingInvites, setPendingInvites] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user?.email) {
+      supabase.from('company_invites').select('*, companies(name)').eq('email', user.email)
+        .then(({ data }) => {
+          if (data) setPendingInvites(data);
+        });
+    }
+  }, [user]);
+
+  const handleAcceptInvite = async (inviteId: string) => {
+    try {
+      const { error } = await supabase.rpc('accept_company_invite', { invite_id: inviteId });
+      if (error) throw error;
+      toast.success('Convite aceito com sucesso!');
+      await refreshProfile();
+      navigate('/');
+    } catch (e) {
+      toast.error('Erro ao aceitar convite.');
+    }
+  };
 
   const handleSubscribe = async (plan: string) => {
     setLoading(true);
@@ -45,6 +76,37 @@ export default function Pricing() {
   return (
     <Layout>
       <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8 pb-32">
+        
+        {pendingInvites.length > 0 && (
+          <div className="max-w-3xl mx-auto mb-12 bg-blue-50 border border-blue-200 rounded-3xl p-6 sm:p-8 shadow-sm animate-in fade-in slide-in-from-top-4">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center shrink-0">
+                <Building2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-blue-900">Você tem convites pendentes!</h3>
+                <p className="text-sm text-blue-700 font-medium mt-1">Aceite um convite para pular a assinatura e acessar o CRM da sua equipe.</p>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {pendingInvites.map(invite => (
+                <div key={invite.id} className="flex flex-col sm:flex-row sm:items-center justify-between bg-white p-4 rounded-2xl border border-blue-100 shadow-sm gap-4">
+                  <div>
+                    <p className="font-bold text-gray-900 text-lg">{invite.companies?.name || 'Empresa'}</p>
+                    <p className="text-sm text-gray-500 font-medium">Convite para {invite.role === 'admin' ? 'Administrador' : 'Membro'}</p>
+                  </div>
+                  <button 
+                    onClick={() => handleAcceptInvite(invite.id)}
+                    className="w-full sm:w-auto px-6 py-3 bg-blue-600 text-white text-sm font-bold rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 shadow-sm"
+                  >
+                    Aceitar Convite <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="text-center mb-16">
           <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">Escolha o plano ideal para você</h1>
           <p className="text-lg text-gray-500 max-w-2xl mx-auto">Comece hoje mesmo com 14 dias de teste gratuito e cancele quando quiser.</p>

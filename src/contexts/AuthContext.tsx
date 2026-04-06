@@ -49,7 +49,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .single();
 
       if (error) throw error;
-      if (data) setProfile(data);
+      
+      if (data) {
+        // Se for membro de uma empresa, herda o plano e status do administrador
+        if (data.company_id && data.company_role === 'member') {
+          const { data: adminData } = await supabase
+            .from('profiles')
+            .select('plan_type, subscription_status')
+            .eq('company_id', data.company_id)
+            .eq('company_role', 'admin')
+            .single();
+            
+          if (adminData) {
+            data.plan_type = adminData.plan_type;
+            data.subscription_status = adminData.subscription_status;
+          }
+        }
+        setProfile(data);
+      }
     } catch (error) {
       console.error('Erro ao buscar perfil:', error);
     } finally {

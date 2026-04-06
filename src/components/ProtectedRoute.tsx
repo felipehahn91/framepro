@@ -19,26 +19,30 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     return <Navigate to="/login" replace />;
   }
 
-  // Define quais páginas são do fluxo de pagamento
   const isPaymentPage = 
     location.pathname === '/precos' || 
     location.pathname === '/founders' || 
     location.pathname === '/billing-success' || 
     location.pathname === '/billing-cancel';
 
-  // Se não for admin e não estiver na página de pagamento, verificamos a assinatura
   if (!isPaymentPage && profile?.role !== 'admin') {
     const isSubscribed = profile?.subscription_status === 'active' || profile?.subscription_status === 'trialing';
     const hasStripeId = !!profile?.stripe_customer_id;
+    const isCompanyMember = !!profile?.company_id && profile?.company_role === 'member';
 
-    // Se o usuário não passou pelo Stripe ou não tem status ativo/trial, bloqueia.
-    if (!hasStripeId || !isSubscribed) {
-      // Se for um usuário Founder que ainda não pagou, manda para a página de Founders
-      if (profile?.plan_type === 'founder') {
-        return <Navigate to="/founders" replace />;
+    if (isCompanyMember) {
+      // Membros herdam o status da empresa. Só bloqueia se a empresa estiver inativa.
+      if (!isSubscribed) {
+        return <Navigate to="/precos" replace />;
       }
-      // Se for usuário comum, manda para a página de preços padrão
-      return <Navigate to="/precos" replace />;
+    } else {
+      // Donos de empresa ou usuários individuais precisam ter Stripe ID e status ativo
+      if (!hasStripeId || !isSubscribed) {
+        if (profile?.plan_type === 'founder') {
+          return <Navigate to="/founders" replace />;
+        }
+        return <Navigate to="/precos" replace />;
+      }
     }
   }
 
