@@ -47,18 +47,9 @@ export function TeamSettings() {
   const handleAcceptInvite = async (invite: any) => {
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          company_id: invite.company_id,
-          company_role: invite.role
-        })
-        .eq('id', user?.id);
-
+      const { error } = await supabase.rpc('accept_company_invite', { invite_id: invite.id });
       if (error) throw error;
 
-      await supabase.from('company_invites').delete().eq('id', invite.id);
-      
       await refreshProfile();
       toast.success('Convite aceito com sucesso!');
     } catch (error: any) {
@@ -109,25 +100,11 @@ export function TeamSettings() {
     
     setLoading(true);
     try {
-      // 1. Create company
-      const { data: newCompany, error: companyError } = await supabase
-        .from('companies')
-        .insert({ name: companyName })
-        .select()
-        .single();
+      // 1. Create company and update profile via RPC
+      const { data: newCompanyId, error: rpcError } = await supabase
+        .rpc('create_company', { company_name: companyName });
 
-      if (companyError) throw companyError;
-
-      // 2. Update user profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ 
-          company_id: newCompany.id,
-          company_role: 'admin'
-        })
-        .eq('id', user?.id);
-
-      if (profileError) throw profileError;
+      if (rpcError) throw rpcError;
 
       await refreshProfile();
       toast.success('Empresa criada com sucesso!');
@@ -188,15 +165,13 @@ export function TeamSettings() {
     if (!confirm('Tem certeza que deseja remover este usuário da empresa?')) return;
 
     try {
-      await supabase
-        .from('profiles')
-        .update({ company_id: null, company_role: 'member' })
-        .eq('id', id);
+      const { error } = await supabase.rpc('remove_company_member', { member_id: id });
+      if (error) throw error;
       
       setMembers(members.filter(m => m.id !== id));
       toast.success('Usuário removido da empresa.');
-    } catch (error) {
-      toast.error('Erro ao remover usuário.');
+    } catch (error: any) {
+      toast.error('Erro ao remover usuário: ' + error.message);
     }
   };
 
