@@ -98,7 +98,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          setLoading(true);
+          // Apenas seta loading como true se ainda não tivermos o perfil carregado.
+          // Isso evita que a página inteira "pisque" e recarregue ao mudar de aba (TOKEN_REFRESHED).
+          setProfile((prev) => {
+            if (!prev) setLoading(true);
+            return prev;
+          });
           fetchProfile(session.user.id);
         } else {
           setProfile(null);
