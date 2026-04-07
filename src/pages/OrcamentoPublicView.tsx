@@ -259,6 +259,7 @@ export default function OrcamentoPublicView() {
   const { token } = useParams();
   const [loading, setLoading] = useState(true);
   const [orcamento, setOrcamento] = useState<any>(null);
+  const [pdfLoaded, setPdfLoaded] = useState(false);
 
   useSEO({
     title: orcamento ? orcamento.name : "Proposta Comercial",
@@ -271,9 +272,7 @@ export default function OrcamentoPublicView() {
 
   const fetchOrcamento = async () => {
     try {
-      console.log("Fetching orcamento with token:", token);
       const { data, error } = await supabase.rpc('get_public_orcamento', { p_token: token });
-      console.log("RPC response:", { data, error });
 
       if (error || !data) throw error || new Error("Not found");
       setOrcamento(data);
@@ -332,18 +331,21 @@ export default function OrcamentoPublicView() {
             style={{
               maxWidth: globalSettings.maxWidth || '900px',
               backgroundColor: globalSettings.backgroundColor || '#ffffff',
-              minHeight: pdfSection?.fileUrl ? 'auto' : '1000px'
+              minHeight: pdfSection?.fileUrl && pdfLoaded ? 'auto' : '1000px'
             }}
           >
             {pdfSection?.fileUrl ? (
-              <PDFDocumentViewer url={pdfSection.fileUrl} />
+              <PDFDocumentViewer 
+                url={pdfSection.fileUrl} 
+                onLoadSuccessCallback={() => setPdfLoaded(true)}
+              />
             ) : (
               <div className="flex-1 flex items-center justify-center p-20">O arquivo PDF não foi encontrado.</div>
             )}
 
-            {/* FREE CTAS */}
-            {pdfSection?.ctas?.length > 0 && pdfSection?.fileUrl && (
-              <>
+            {/* FREE CTAS (Mostra apenas após carregar o PDF) */}
+            {pdfLoaded && pdfSection?.ctas?.length > 0 && pdfSection?.fileUrl && (
+              <div className="animate-in fade-in duration-500 delay-300">
                 {pdfSection.ctas.map((cta: any, i: number) => {
                   if (cta.isGrouped !== false) return null;
                   return (
@@ -374,7 +376,7 @@ export default function OrcamentoPublicView() {
                     </button>
                   );
                 })}
-              </>
+              </div>
             )}
           </div>
         ) : (
@@ -394,9 +396,9 @@ export default function OrcamentoPublicView() {
           </div>
         )}
 
-        {/* GROUPED CTAS */}
-        {isPDFMode && pdfSection?.ctas?.length > 0 && pdfSection?.fileUrl && pdfSection.ctas.some((c: any) => c.isGrouped !== false) && (
-          <div className="sticky bottom-6 left-0 right-0 flex justify-center z-50 px-4 pointer-events-none mt-auto pb-6 w-full">
+        {/* GROUPED CTAS (Mostra apenas após carregar o PDF se for modo PDF) */}
+        {((!isPDFMode) || (isPDFMode && pdfLoaded)) && isPDFMode && pdfSection?.ctas?.length > 0 && pdfSection?.fileUrl && pdfSection.ctas.some((c: any) => c.isGrouped !== false) && (
+          <div className="sticky bottom-6 left-0 right-0 flex justify-center z-50 px-4 pointer-events-none mt-auto pb-6 w-full animate-in slide-in-from-bottom-10 fade-in duration-500 delay-300">
             <div className="bg-white/90 backdrop-blur-md px-6 py-4 rounded-2xl shadow-2xl border border-gray-200 flex flex-wrap justify-center gap-4 pointer-events-auto max-w-2xl w-full">
               {pdfSection.ctas.filter((c: any) => c.isGrouped !== false).map((cta: any, i: number) => (
                 <button

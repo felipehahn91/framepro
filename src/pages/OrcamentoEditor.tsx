@@ -306,6 +306,7 @@ export default function OrcamentoEditor() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [orcamento, setOrcamento] = useState<any>(null);
+  const [pdfLoaded, setPdfLoaded] = useState(false);
   
   const [globalSettings, setGlobalSettings] = useState({ pageBackgroundColor: '#f3f4f6', backgroundColor: '#ffffff', maxWidth: '900px' });
   const [sections, setSections] = useState<any[]>([]);
@@ -521,6 +522,7 @@ export default function OrcamentoEditor() {
       const { data: { publicUrl } } = supabase.storage.from('contract_images').getPublicUrl(filePath);
       
       if (pdfSection) {
+        setPdfLoaded(false); // Reseta o estado ao subir um novo PDF
         updateSection(pdfSection.id, { fileUrl: publicUrl });
       }
       toast.success("PDF carregado!");
@@ -1494,7 +1496,10 @@ export default function OrcamentoEditor() {
                 >
                   {pdfSection?.fileUrl ? (
                     <>
-                      <PDFDocumentViewer url={pdfSection.fileUrl} />
+                      <PDFDocumentViewer 
+                        url={pdfSection.fileUrl} 
+                        onLoadSuccessCallback={() => setPdfLoaded(true)}
+                      />
                       {/* Invisible overlay to capture mouse events while dragging */}
                       {draggingCtaIndex !== null && (
                         <div className="absolute inset-0 z-40 cursor-grabbing bg-transparent" />
@@ -1507,9 +1512,9 @@ export default function OrcamentoEditor() {
                     </div>
                   )}
 
-                  {/* FREE CTAS */}
-                  {pdfSection?.ctas?.length > 0 && pdfSection?.fileUrl && (
-                    <>
+                  {/* FREE CTAS (Apenas após carregar PDF) */}
+                  {pdfLoaded && pdfSection?.ctas?.length > 0 && pdfSection?.fileUrl && (
+                    <div className="animate-in fade-in duration-500 delay-300">
                       {pdfSection.ctas.map((cta: any, i: number) => {
                         if (cta.isGrouped !== false) return null;
                         return (
@@ -1536,7 +1541,7 @@ export default function OrcamentoEditor() {
                           </div>
                         );
                       })}
-                    </>
+                    </div>
                   )}
                 </div>
               ) : (
@@ -1612,8 +1617,8 @@ export default function OrcamentoEditor() {
             </div>
             
             {/* GROUPED CTAS NO RODAPÉ DA ROLAGEM */}
-            {isPDFMode && pdfSection?.ctas?.length > 0 && pdfSection?.fileUrl && pdfSection.ctas.some((c: any) => c.isGrouped !== false) && (
-              <div className="sticky bottom-6 left-0 right-0 flex justify-center z-50 px-4 pointer-events-none w-full mt-auto shrink-0 pb-2">
+            {((!isPDFMode) || (isPDFMode && pdfLoaded)) && isPDFMode && pdfSection?.ctas?.length > 0 && pdfSection?.fileUrl && pdfSection.ctas.some((c: any) => c.isGrouped !== false) && (
+              <div className="sticky bottom-6 left-0 right-0 flex justify-center z-50 px-4 pointer-events-none w-full mt-auto shrink-0 pb-2 animate-in slide-in-from-bottom-10 fade-in duration-500 delay-300">
                 <div className="bg-white/90 backdrop-blur-md px-6 py-4 rounded-2xl shadow-2xl border border-gray-200 flex gap-4 pointer-events-auto">
                   {pdfSection.ctas.filter((c: any) => c.isGrouped !== false).map((cta: any, i: number) => (
                     <div
