@@ -28,11 +28,14 @@ export default function ContractPublicView() {
 
   const fetchContract = async () => {
     try {
+      console.log("Fetching contract with token:", token);
       const { data, error } = await supabase.rpc('get_public_contract', { p_token: token });
+      console.log("RPC response:", { data, error });
 
       if (error || !data) throw error || new Error("Not found");
       setContract(data);
     } catch (error) {
+      console.error("Error fetching contract:", error);
       toast.error("Contrato não encontrado ou indisponível.");
     } finally {
       setLoading(false);

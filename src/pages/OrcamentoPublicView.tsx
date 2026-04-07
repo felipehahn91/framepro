@@ -271,7 +271,9 @@ export default function OrcamentoPublicView() {
 
   const fetchOrcamento = async () => {
     try {
+      console.log("Fetching orcamento with token:", token);
       const { data, error } = await supabase.rpc('get_public_orcamento', { p_token: token });
+      console.log("RPC response:", { data, error });
 
       if (error || !data) throw error || new Error("Not found");
       setOrcamento(data);
@@ -279,6 +281,7 @@ export default function OrcamentoPublicView() {
       // Atualizar views
       supabase.rpc('increment_orcamento_view', { p_id: data.id }).then();
     } catch (error) {
+      console.error("Error fetching orcamento:", error);
       toast.error("Proposta não encontrada.");
     } finally {
       setLoading(false);
