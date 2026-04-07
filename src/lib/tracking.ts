@@ -1,22 +1,20 @@
 import { supabase } from "@/integrations/supabase/client";
 
-let isTracking = false;
-let trackingInterval: any;
-
 export const initTracking = (orcamentoId: string, sessionId: string, device: string) => {
-  if (isTracking) return () => {};
-  isTracking = true;
-  
   let pendingEvents: any[] = [];
   const startTime = Date.now();
+  let trackingInterval: any;
 
   // 1. Cria a sessão inicial (INSERT é permitido pelo banco)
+  console.log("Iniciando tracking para:", orcamentoId, sessionId);
   supabase.from('orcamento_analytics').insert({
     orcamento_id: orcamentoId,
     session_id: sessionId,
     device: device,
     replay_data: { device, events: [] }
-  }).then();
+  }).then(({ error }) => {
+    if (error) console.error("Erro ao inserir analytics inicial:", error);
+  });
 
   const getRelativeCoords = (clientX: number, clientY: number) => {
     const container = document.getElementById('proposal-container');
@@ -102,7 +100,6 @@ export const initTracking = (orcamentoId: string, sessionId: string, device: str
   trackingInterval = setInterval(syncData, 3000);
 
   return () => {
-    isTracking = false;
     window.removeEventListener('mousemove', onMouseMove);
     window.removeEventListener('touchmove', onTouchMove);
     window.removeEventListener('click', onClick);
