@@ -80,7 +80,9 @@ export default function Oportunidades() {
   const [whatsappTriggers, setWhatsappTriggers] = useState<WhatsappTrigger[]>([]);
   const [activeCadences, setActiveCadences] = useState<Record<string, number>>({});
   
-  const [activePipelineId, setActivePipelineId] = useState<string>("");
+  const [activePipelineId, setActivePipelineId] = useState<string>(() => {
+    return localStorage.getItem('framepro_last_pipeline_id') || "";
+  });
   const [selectedOpps, setSelectedOpps] = useState<string[]>([]);
   
   // Lazy Load no Kanban
@@ -95,6 +97,12 @@ export default function Oportunidades() {
   useEffect(() => {
     localStorage.setItem('framepro_column_widths', JSON.stringify(columnWidths));
   }, [columnWidths]);
+
+  useEffect(() => {
+    if (activePipelineId) {
+      localStorage.setItem('framepro_last_pipeline_id', activePipelineId);
+    }
+  }, [activePipelineId]);
 
   // Filtros e Pesquisa
   const [searchQuery, setSearchQuery] = useState("");
@@ -254,9 +262,14 @@ export default function Oportunidades() {
       if (forcePipelineId) {
         setActivePipelineId(forcePipelineId);
         setFormData(prev => ({ ...prev, pipeline_id: forcePipelineId }));
-      } else if (pipes.length > 0 && !activePipelineId) {
-        setActivePipelineId(pipes[0].id);
-        setFormData(prev => ({ ...prev, pipeline_id: pipes[0].id }));
+      } else if (pipes.length > 0) {
+        // Verifica se o pipeline salvo no localStorage ainda existe
+        const savedPipelineId = localStorage.getItem('framepro_last_pipeline_id');
+        const pipelineExists = pipes.some(p => p.id === savedPipelineId);
+        
+        const finalPipelineId = (pipelineExists && savedPipelineId) ? savedPipelineId : pipes[0].id;
+        setActivePipelineId(finalPipelineId);
+        setFormData(prev => ({ ...prev, pipeline_id: finalPipelineId }));
       }
     } catch (error) {
       toast.error("Erro ao carregar dados base.");
