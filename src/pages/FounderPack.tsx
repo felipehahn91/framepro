@@ -1,13 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from "@/contexts/AuthContext";
 import { Check, Loader2, Star, ShieldCheck, ArrowRight } from 'lucide-react';
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 export default function FounderPack() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const logoImg = "/logo.webp";
+
+  // Redireciona automaticamente se o usuário já estiver ativo (ex: ativado pelo admin)
+  useEffect(() => {
+    if (profile?.role === 'admin') {
+      navigate('/');
+      return;
+    }
+    
+    const isSubscribed = profile?.subscription_status === 'active' || profile?.subscription_status === 'trialing';
+    if (isSubscribed) {
+      navigate('/');
+    }
+  }, [profile, navigate]);
 
   const handleSubscribe = async () => {
     setLoading(true);

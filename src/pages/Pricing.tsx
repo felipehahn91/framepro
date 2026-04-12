@@ -22,6 +22,20 @@ export default function Pricing() {
     }
   }, [user]);
 
+  // Redireciona automaticamente se o usuário já estiver ativo (ex: ativado pelo admin)
+  useEffect(() => {
+    const { profile } = useAuth();
+    if (profile?.role === 'admin') {
+      navigate('/');
+      return;
+    }
+    
+    const isSubscribed = profile?.subscription_status === 'active' || profile?.subscription_status === 'trialing';
+    if (isSubscribed) {
+      navigate('/');
+    }
+  }, [useAuth().profile, navigate]);
+
   const handleAcceptInvite = async (inviteId: string) => {
     try {
       const { error } = await supabase.rpc('accept_company_invite', { invite_id: inviteId });
