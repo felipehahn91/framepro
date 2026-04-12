@@ -27,7 +27,6 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   if (!isPaymentPage && profile?.role !== 'admin') {
     const isSubscribed = profile?.subscription_status === 'active' || profile?.subscription_status === 'trialing';
-    const hasStripeId = !!profile?.stripe_customer_id;
     const isCompanyMember = !!profile?.company_id && profile?.company_role === 'member';
 
     if (isCompanyMember) {
@@ -36,8 +35,9 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
         return <Navigate to="/precos" replace />;
       }
     } else {
-      // Donos de empresa ou usuários individuais precisam ter Stripe ID e status ativo
-      if (!hasStripeId || !isSubscribed) {
+      // Donos de empresa ou usuários individuais precisam ter status ativo
+      // (Se o admin ativou manualmente, o usuário pode não ter Stripe ID, então confiamos no status)
+      if (!isSubscribed) {
         if (profile?.plan_type === 'founder') {
           return <Navigate to="/founders" replace />;
         }
