@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 
 export default function Pricing() {
-  const { user, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
@@ -24,7 +24,6 @@ export default function Pricing() {
 
   // Redireciona automaticamente se o usuário já estiver ativo (ex: ativado pelo admin)
   useEffect(() => {
-    const { profile } = useAuth();
     if (profile?.role === 'admin') {
       navigate('/');
       return;
@@ -34,7 +33,7 @@ export default function Pricing() {
     if (isSubscribed) {
       navigate('/');
     }
-  }, [useAuth().profile, navigate]);
+  }, [profile, navigate]);
 
   const handleAcceptInvite = async (inviteId: string) => {
     try {
