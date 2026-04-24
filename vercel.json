@@ -2,19 +2,16 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
+      "source": "/test-bot",
+      "destination": "https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/og-proxy?type=orcamento&id=test"
+    },
+    {
       "source": "/orcamento/:id",
       "has": [
         {
           "type": "header",
           "key": "user-agent",
-          "value": "(?i).*(whatsapp|facebookexternalhit|twitterbot|linkedinbot|slackbot|telegrambot|bot|crawler|spider).*"
-        }
-      ],
-      "missing": [
-        {
-          "type": "query",
-          "key": "bot",
-          "value": "false"
+          "value": ".*(WhatsApp|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|TelegramBot|bot|crawler|spider).*"
         }
       ],
       "destination": "https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/og-proxy?type=orcamento&id=:id"
@@ -25,14 +22,7 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": "(?i).*(whatsapp|facebookexternalhit|twitterbot|linkedinbot|slackbot|telegrambot|bot|crawler|spider).*"
-        }
-      ],
-      "missing": [
-        {
-          "type": "query",
-          "key": "bot",
-          "value": "false"
+          "value": ".*(WhatsApp|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|TelegramBot|bot|crawler|spider).*"
         }
       ],
       "destination": "https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/og-proxy?type=contract&id=:id"
@@ -43,14 +33,7 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": "(?i).*(whatsapp|facebookexternalhit|twitterbot|linkedinbot|slackbot|telegrambot|bot|crawler|spider).*"
-        }
-      ],
-      "missing": [
-        {
-          "type": "query",
-          "key": "bot",
-          "value": "false"
+          "value": ".*(WhatsApp|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|TelegramBot|bot|crawler|spider).*"
         }
       ],
       "destination": "https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/og-proxy?type=link&id=:id"
