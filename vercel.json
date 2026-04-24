@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
-      "source": "/orcamento/:id",
+      "source": "/orcamentos/public/:id",
       "has": [
         {
           "type": "header",
@@ -13,7 +13,7 @@
       "destination": "https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/og-proxy?type=orcamento&id=:id"
     },
     {
-      "source": "/contract/:id",
+      "source": "/contratos/public/:id",
       "has": [
         {
           "type": "header",
@@ -24,7 +24,7 @@
       "destination": "https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/og-proxy?type=contract&id=:id"
     },
     {
-      "source": "/link/:id",
+      "source": "/link-form/:id",
       "has": [
         {
           "type": "header",

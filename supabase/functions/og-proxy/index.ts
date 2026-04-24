@@ -72,7 +72,8 @@ serve(async (req) => {
 
     // Generate HTML with robust OpenGraph tags
     const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'app.framepro.click';
-    const canonicalUrl = `https://${host}/${type === 'orcamento' ? 'orcamento' : type === 'contract' ? 'contract' : 'link'}/${id}`;
+    const path = type === 'orcamento' ? 'orcamentos/public' : type === 'contract' ? 'contratos/public' : 'link-form';
+    const canonicalUrl = `https://${host}/${path}/${id}`;
 
     const html = `
 <!DOCTYPE html>
