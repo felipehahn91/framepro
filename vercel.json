@@ -7,7 +7,7 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": "(?i).*(whatsapp|facebookexternalhit|twitterbot|linkedinbot|slackbot|telegrambot|bot|crawler|spider).*"
+          "value": ".*(WhatsApp|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|TelegramBot|bot|crawler|spider).*"
         }
       ],
       "destination": "https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/og-proxy?type=orcamento&id=:id"
@@ -18,7 +18,7 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": "(?i).*(whatsapp|facebookexternalhit|twitterbot|linkedinbot|slackbot|telegrambot|bot|crawler|spider).*"
+          "value": ".*(WhatsApp|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|TelegramBot|bot|crawler|spider).*"
         }
       ],
       "destination": "https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/og-proxy?type=contract&id=:id"
@@ -29,7 +29,7 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": "(?i).*(whatsapp|facebookexternalhit|twitterbot|linkedinbot|slackbot|telegrambot|bot|crawler|spider).*"
+          "value": ".*(WhatsApp|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|TelegramBot|bot|crawler|spider).*"
         }
       ],
       "destination": "https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/og-proxy?type=link&id=:id"

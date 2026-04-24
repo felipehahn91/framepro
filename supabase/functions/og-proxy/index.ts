@@ -16,11 +16,10 @@ serve(async (req) => {
   const id = url.searchParams.get('id')
   const userAgent = req.headers.get('user-agent') || ''
 
-  console.log(`[og-proxy] Request received: type=${type}, id=${id}, UA=${userAgent}`)
+  console.log(`[og-proxy] Request: type=${type}, id=${id}, UA=${userAgent}`)
 
   try {
     if (!type || !id) {
-      console.error(`[og-proxy] Missing type or id`)
       return new Response('Missing type or id', { status: 400, headers: corsHeaders })
     }
 
@@ -33,49 +32,45 @@ serve(async (req) => {
     let image = 'https://app.framepro.click/pwa-icon.png'
 
     if (type === 'orcamento') {
-      if (id === 'test') {
-        title = 'Teste de SEO - Frame Pro'
-        description = 'Se você está vendo isso, o proxy está funcionando!'
-      } else {
-        const { data, error } = await supabase.rpc('get_public_orcamento', { p_token: id })
-        if (!error && data) {
-          const sections = data.sections || []
-          const globalSec = sections.find((s: any) => s.type === 'global-settings')
-          const globalSettings = globalSec?.styles || {}
-          
-          title = globalSettings.seoTitle || data.name || title
-          description = globalSettings.seoDescription || 'Acesse este link para visualizar a proposta comercial.'
-          if (globalSettings.seoImage) image = globalSettings.seoImage
-        } else {
-          console.error(`[og-proxy] Error fetching orcamento:`, error)
-        }
+      const { data, error } = await supabase.rpc('get_public_orcamento', { p_token: id })
+      if (error) {
+        console.error(`[og-proxy] RPC Error (orcamento):`, error)
+        title = `Erro ao carregar orçamento`
+      } else if (data) {
+        const sections = data.sections || []
+        const globalSec = sections.find((s: any) => s.type === 'global-settings')
+        const globalSettings = globalSec?.styles || {}
+        
+        title = globalSettings.seoTitle || data.name || title
+        description = globalSettings.seoDescription || 'Acesse este link para visualizar a proposta comercial.'
+        if (globalSettings.seoImage) image = globalSettings.seoImage
       }
     } else if (type === 'contract') {
       const { data, error } = await supabase.rpc('get_public_contract', { p_token: id })
-      if (!error && data) {
+      if (error) {
+        console.error(`[og-proxy] RPC Error (contract):`, error)
+        title = `Erro ao carregar contrato`
+      } else if (data) {
         title = data.seo_title || data.title || 'Contrato'
         description = data.seo_description || 'Acesse este link para visualizar o contrato.'
         if (data.seo_image) image = data.seo_image
-      } else {
-        console.error(`[og-proxy] Error fetching contract:`, error)
       }
     } else if (type === 'link') {
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (uuidRegex.test(id)) {
         const { data, error } = await supabase.rpc('get_public_link_form', { p_id: id })
-        if (!error && data) {
+        if (error) {
+          console.error(`[og-proxy] RPC Error (link):`, error)
+          title = `Erro ao carregar formulário`
+        } else if (data) {
           title = data.seo_title || data.name || 'Formulário de Contato'
           description = data.seo_description || 'Preencha os dados para solicitar um orçamento ou contato.'
           if (data.seo_image) image = data.seo_image
-        } else {
-          console.error(`[og-proxy] Error fetching link form:`, error)
         }
       }
     }
 
-    console.log(`[og-proxy] Serving OG tags: title="${title}", image="${image}"`)
-
-    // Generate HTML with robust OpenGraph tags for WhatsApp
+    // Generate HTML with robust OpenGraph tags
     const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'app.framepro.click';
     const canonicalUrl = `https://${host}/${type === 'orcamento' ? 'orcamento' : type === 'contract' ? 'contract' : 'link'}/${id}`;
 
@@ -108,7 +103,7 @@ serve(async (req) => {
   <meta name="robots" content="noindex">
 </head>
 <body>
-  <p>Redirecionando para ${canonicalUrl}...</p>
+  <p>Redirecionando...</p>
   <script>
     window.location.href = "${canonicalUrl}${canonicalUrl.includes('?') ? '&' : '?'}bot=false";
   </script>
@@ -124,7 +119,6 @@ serve(async (req) => {
       },
     })
   } catch (error) {
-    console.error(`[og-proxy] Critical error:`, error)
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
