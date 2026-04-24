@@ -2,6 +2,60 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
+      "source": "/orcamento/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i).*(whatsapp|facebookexternalhit|twitterbot|linkedinbot|slackbot|telegrambot|bot|crawler|spider).*"
+        }
+      ],
+      "missing": [
+        {
+          "type": "query",
+          "key": "bot",
+          "value": "false"
+        }
+      ],
+      "destination": "https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/og-proxy?type=orcamento&id=:id"
+    },
+    {
+      "source": "/contract/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i).*(whatsapp|facebookexternalhit|twitterbot|linkedinbot|slackbot|telegrambot|bot|crawler|spider).*"
+        }
+      ],
+      "missing": [
+        {
+          "type": "query",
+          "key": "bot",
+          "value": "false"
+        }
+      ],
+      "destination": "https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/og-proxy?type=contract&id=:id"
+    },
+    {
+      "source": "/link/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i).*(whatsapp|facebookexternalhit|twitterbot|linkedinbot|slackbot|telegrambot|bot|crawler|spider).*"
+        }
+      ],
+      "missing": [
+        {
+          "type": "query",
+          "key": "bot",
+          "value": "false"
+        }
+      ],
+      "destination": "https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/og-proxy?type=link&id=:id"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
