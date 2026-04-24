@@ -3,35 +3,14 @@
   "rewrites": [
     {
       "source": "/orcamentos/public/:id",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": ".*(WhatsApp|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|TelegramBot|bot|crawler|spider).*"
-        }
-      ],
       "destination": "https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/og-proxy?type=orcamento&id=:id"
     },
     {
       "source": "/contratos/public/:id",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": ".*(WhatsApp|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|TelegramBot|bot|crawler|spider).*"
-        }
-      ],
       "destination": "https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/og-proxy?type=contract&id=:id"
     },
     {
       "source": "/link-form/:id",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": ".*(WhatsApp|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|TelegramBot|bot|crawler|spider).*"
-        }
-      ],
       "destination": "https://wsytmrzgvkvbufpqqxwi.supabase.co/functions/v1/og-proxy?type=link&id=:id"
     },
     {

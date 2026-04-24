@@ -16,10 +16,11 @@ serve(async (req) => {
   const id = url.searchParams.get('id')
   const userAgent = req.headers.get('user-agent') || ''
 
-  console.log(`[og-proxy] Request: type=${type}, id=${id}, UA=${userAgent}`)
+  console.log(`[og-proxy] Request received: type=${type}, id=${id}, UA=${userAgent}`)
 
   try {
     if (!type || !id) {
+      console.error(`[og-proxy] Missing type or id`)
       return new Response('Missing type or id', { status: 400, headers: corsHeaders })
     }
 
@@ -33,10 +34,7 @@ serve(async (req) => {
 
     if (type === 'orcamento') {
       const { data, error } = await supabase.rpc('get_public_orcamento', { p_token: id })
-      if (error) {
-        console.error(`[og-proxy] RPC Error (orcamento):`, error)
-        title = `Erro ao carregar orçamento`
-      } else if (data) {
+      if (!error && data) {
         const sections = data.sections || []
         const globalSec = sections.find((s: any) => s.type === 'global-settings')
         const globalSettings = globalSec?.styles || {}
@@ -44,38 +42,44 @@ serve(async (req) => {
         title = globalSettings.seoTitle || data.name || title
         description = globalSettings.seoDescription || 'Acesse este link para visualizar a proposta comercial.'
         if (globalSettings.seoImage) image = globalSettings.seoImage
+      } else {
+        console.error(`[og-proxy] Error fetching orcamento:`, error)
       }
     } else if (type === 'contract') {
       const { data, error } = await supabase.rpc('get_public_contract', { p_token: id })
-      if (error) {
-        console.error(`[og-proxy] RPC Error (contract):`, error)
-        title = `Erro ao carregar contrato`
-      } else if (data) {
+      if (!error && data) {
         title = data.seo_title || data.title || 'Contrato'
         description = data.seo_description || 'Acesse este link para visualizar o contrato.'
         if (data.seo_image) image = data.seo_image
+      } else {
+        console.error(`[og-proxy] Error fetching contract:`, error)
       }
     } else if (type === 'link') {
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (uuidRegex.test(id)) {
         const { data, error } = await supabase.rpc('get_public_link_form', { p_id: id })
-        if (error) {
-          console.error(`[og-proxy] RPC Error (link):`, error)
-          title = `Erro ao carregar formulário`
-        } else if (data) {
+        if (!error && data) {
           title = data.seo_title || data.name || 'Formulário de Contato'
           description = data.seo_description || 'Preencha os dados para solicitar um orçamento ou contato.'
           if (data.seo_image) image = data.seo_image
+        } else {
+          console.error(`[og-proxy] Error fetching link form:`, error)
         }
       }
     }
 
-    // Generate HTML with robust OpenGraph tags
+    console.log(`[og-proxy] Serving OG tags: title="${title}", image="${image}"`)
+
     const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'app.framepro.click';
     const path = type === 'orcamento' ? 'orcamentos/public' : type === 'contract' ? 'contratos/public' : 'link-form';
     const canonicalUrl = `https://${host}/${path}/${id}`;
 
-    const html = `
+    // Check if it's a bot
+    const isBot = /whatsapp|facebook|bot|crawler|spider|twitter|linkedin|slack/i.test(userAgent)
+    
+    if (isBot) {
+      // Serve lightweight HTML for bots
+      const html = `
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -104,22 +108,55 @@ serve(async (req) => {
   <meta name="robots" content="noindex">
 </head>
 <body>
-  <p>Redirecionando...</p>
-  <script>
-    window.location.href = "${canonicalUrl}${canonicalUrl.includes('?') ? '&' : '?'}bot=false";
-  </script>
+  <p>Redirecionando para ${canonicalUrl}...</p>
 </body>
 </html>
-    `.trim()
+      `.trim()
 
-    return new Response(html, {
-      headers: {
-        ...corsHeaders,
-        'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'public, max-age=60' 
-      },
-    })
+      return new Response(html, {
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'text/html; charset=utf-8',
+          'Cache-Control': 'public, max-age=60' 
+        },
+      })
+    } else {
+      // Serve the actual React app for normal users, but inject the OG tags
+      try {
+        const response = await fetch(`https://${host}/index.html`);
+        let html = await response.text();
+        
+        // Replace default title
+        html = html.replace(/<title>.*?<\/title>/i, `<title>${title}</title>`);
+        
+        // Replace default description
+        html = html.replace(/<meta name="description" content=".*?">/i, `<meta name="description" content="${description}">`);
+        
+        // Replace OG tags
+        html = html.replace(/<meta property="og:title" content=".*?">/i, `<meta property="og:title" content="${title}">`);
+        html = html.replace(/<meta property="og:description" content=".*?">/i, `<meta property="og:description" content="${description}">`);
+        html = html.replace(/<meta property="og:image" content=".*?">/i, `<meta property="og:image" content="${image}">`);
+        html = html.replace(/<meta property="og:image:secure_url" content=".*?">/i, `<meta property="og:image:secure_url" content="${image}">`);
+        
+        // Replace Twitter tags
+        html = html.replace(/<meta name="twitter:title" content=".*?">/i, `<meta name="twitter:title" content="${title}">`);
+        html = html.replace(/<meta name="twitter:description" content=".*?">/i, `<meta name="twitter:description" content="${description}">`);
+        html = html.replace(/<meta name="twitter:image" content=".*?">/i, `<meta name="twitter:image" content="${image}">`);
+
+        return new Response(html, {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'text/html; charset=utf-8',
+            'Cache-Control': 'public, max-age=0, must-revalidate'
+          },
+        })
+      } catch (e) {
+        console.error(`[og-proxy] Error fetching index.html:`, e)
+        return Response.redirect(`https://${host}/${path}/${id}?bot=false`, 302)
+      }
+    }
   } catch (error) {
+    console.error(`[og-proxy] Critical error:`, error)
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
