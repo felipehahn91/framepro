@@ -160,9 +160,12 @@ export default function Oportunidades() {
 
   // Formulário Modal
   const [formData, setFormData] = useState({
-    pipeline_id: '', tag: '', name: '', value: '', email: '', phone: '', 
-    instagram: '', date: '', local: '', description: '', whatsapp_number: '', whatsapp_text: ''
+    pipeline_id: '', tag: '', name: '', value: '', email: '', phone: '',
+    instagram: '', date: '', local: '', description: '', whatsapp_number: '', whatsapp_text: '',
+    seo_title: '', seo_description: '', seo_image: ''
   });
+  const [seoImageFile, setSeoImageFile] = useState<File | null>(null);
+  const [seoImagePreview, setSeoImagePreview] = useState<string | null>(null);
   const [formFields, setFormFields] = useState({
     email: true, phone: true, instagram: true, date: false, local: false, description: false
   });
@@ -781,6 +784,25 @@ export default function Oportunidades() {
         if (data && (formData.pipeline_id || activePipelineId) === activePipelineId) setOpportunities(prev => [...prev, data as Opportunity]);
         toast.success("Oportunidade criada!");
       } else if (activeTab === 'link') {
+        let seoImageUrl = formData.seo_image;
+
+        if (seoImageFile && user) {
+          const fileExt = seoImageFile.name.split('.').pop();
+          const fileName = `seo_${Math.random()}.${fileExt}`;
+          const filePath = `${user.id}/${fileName}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from('contract_images')
+            .upload(filePath, seoImageFile);
+
+          if (!uploadError) {
+            const { data: { publicUrl } } = supabase.storage
+              .from('contract_images')
+              .getPublicUrl(filePath);
+            seoImageUrl = publicUrl;
+          }
+        }
+
         const { data } = await supabase.from('link_forms').insert({
           user_id: user?.id,
           pipeline_id: formData.pipeline_id || activePipelineId,
@@ -789,13 +811,18 @@ export default function Oportunidades() {
           tag: formData.tag,
           whatsapp_number: formData.whatsapp_number,
           whatsapp_text: formData.whatsapp_text,
-          fields: formFields
+          fields: formFields,
+          seo_title: formData.seo_title,
+          seo_description: formData.seo_description,
+          seo_image: seoImageUrl
         }).select().single();
         if (data) setLinkForms(prev => [...prev, data]);
         toast.success("Link Form gerado!");
       }
       setIsModalOpen(false);
-      setFormData({ pipeline_id: activePipelineId, tag: '', name: '', value: '', email: '', phone: '', instagram: '', date: '', local: '', description: '', whatsapp_number: '', whatsapp_text: '' });
+      setFormData({ pipeline_id: activePipelineId, tag: '', name: '', value: '', email: '', phone: '', instagram: '', date: '', local: '', description: '', whatsapp_number: '', whatsapp_text: '', seo_title: '', seo_description: '', seo_image: '' });
+      setSeoImageFile(null);
+      setSeoImagePreview(null);
     } catch (error) {
       toast.error("Erro ao salvar.");
     }
@@ -1684,6 +1711,47 @@ export default function Oportunidades() {
                     <label className="text-sm font-bold text-gray-700">Texto da Mensagem</label>
                     <input type="text" value={formData.whatsapp_text} onChange={e => setFormData({...formData, whatsapp_text: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-orange-400 text-sm" placeholder="Ex: Olá, gostaria de um orçamento" />
                     <p className="text-xs text-gray-500">Texto pré-definido para o WhatsApp</p>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-gray-100 space-y-4">
+                  <h4 className="text-sm font-bold text-gray-900">SEO e Compartilhamento</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-bold text-gray-700">Título (Aba do Navegador)</label>
+                      <input type="text" value={formData.seo_title} onChange={e => setFormData({...formData, seo_title: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-orange-400 text-sm" placeholder="Ex: Formulário de Contato" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-bold text-gray-700">Descrição (WhatsApp/Google)</label>
+                      <input type="text" value={formData.seo_description} onChange={e => setFormData({...formData, seo_description: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg outline-none focus:ring-2 focus:ring-orange-400 text-sm" placeholder="Ex: Preencha os dados para solicitar um orçamento." />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-gray-700">Imagem de Compartilhamento (OpenGraph)</label>
+                    {seoImagePreview ? (
+                      <div className="relative rounded-xl overflow-hidden border border-gray-200 group h-32 w-full sm:w-1/2">
+                        <img src={seoImagePreview} alt="SEO Preview" className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <button onClick={() => { setSeoImagePreview(null); setSeoImageFile(null); setFormData({...formData, seo_image: ''}); }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold flex items-center gap-2">
+                            <X className="w-4 h-4" /> Remover
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <label className="border-2 border-dashed border-gray-300 rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 hover:border-orange-300 transition-colors w-full sm:w-1/2">
+                        <Upload className="w-6 h-6 text-gray-400 mb-2" />
+                        <p className="font-bold text-gray-900 text-xs mb-1">Upload de Imagem (1200x630px)</p>
+                        <input type="file" accept="image/*" className="hidden" onChange={e => {
+                          if (e.target.files && e.target.files[0]) {
+                            const file = e.target.files[0];
+                            if (!file.type.startsWith('image/')) return toast.error("Apenas imagens são permitidas.");
+                            if (file.size > 5 * 1024 * 1024) return toast.error("Máximo de 5MB.");
+                            setSeoImageFile(file);
+                            setSeoImagePreview(URL.createObjectURL(file));
+                          }
+                        }} />
+                      </label>
+                    )}
                   </div>
                 </div>
               </div>

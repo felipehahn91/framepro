@@ -5,11 +5,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
-import { 
-  ArrowLeft, Save, Loader2, Image as ImageIcon, Type, DollarSign, 
+import {
+  ArrowLeft, Save, Loader2, Image as ImageIcon, Type, DollarSign,
   Trash2, Plus, FileUp, Settings, Link as LinkIcon, ArrowUp, ArrowDown,
   LayoutTemplate, Video, Minus, Columns, ChevronDown, Palette, AlignLeft, X, Layers,
-  UploadCloud, ExternalLink, CheckCircle2, MousePointerClick
+  UploadCloud, ExternalLink, CheckCircle2, MousePointerClick, Globe
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -308,7 +308,14 @@ export default function OrcamentoEditor() {
   const [orcamento, setOrcamento] = useState<any>(null);
   const [pdfLoaded, setPdfLoaded] = useState(false);
   
-  const [globalSettings, setGlobalSettings] = useState({ pageBackgroundColor: '#f3f4f6', backgroundColor: '#ffffff', maxWidth: '900px' });
+  const [globalSettings, setGlobalSettings] = useState({
+    pageBackgroundColor: '#f3f4f6',
+    backgroundColor: '#ffffff',
+    maxWidth: '900px',
+    seoTitle: '',
+    seoDescription: '',
+    seoImage: ''
+  });
   const [sections, setSections] = useState<any[]>([]);
   
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -335,10 +342,25 @@ export default function OrcamentoEditor() {
       const globalSec = loadedSections.find((s: any) => s.type === 'global-settings');
       
       if (globalSec) {
-        setGlobalSettings(globalSec.styles || { pageBackgroundColor: '#f3f4f6', backgroundColor: '#ffffff', maxWidth: '900px' });
+        setGlobalSettings({
+          pageBackgroundColor: '#f3f4f6',
+          backgroundColor: '#ffffff',
+          maxWidth: '900px',
+          seoTitle: '',
+          seoDescription: '',
+          seoImage: '',
+          ...globalSec.styles
+        });
         setSections(loadedSections.filter((s: any) => s.type !== 'global-settings'));
       } else {
-        setGlobalSettings({ pageBackgroundColor: '#f3f4f6', backgroundColor: '#ffffff', maxWidth: '900px' });
+        setGlobalSettings({
+          pageBackgroundColor: '#f3f4f6',
+          backgroundColor: '#ffffff',
+          maxWidth: '900px',
+          seoTitle: '',
+          seoDescription: '',
+          seoImage: ''
+        });
         setSections(loadedSections);
       }
 
@@ -667,6 +689,49 @@ export default function OrcamentoEditor() {
                         <option value="1100px">Largo (1100px)</option>
                         <option value="100%">Tela Cheia (100%)</option>
                       </select>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                    <h4 className="text-[11px] font-bold uppercase text-gray-400 tracking-wider mb-2 flex items-center gap-1.5">
+                      <Globe className="w-3.5 h-3.5" /> SEO e Compartilhamento
+                    </h4>
+                    <div>
+                      <label className="text-xs font-bold text-gray-700 mb-1.5 block">Título (Aba do Navegador)</label>
+                      <input
+                        type="text"
+                        value={globalSettings.seoTitle || ''}
+                        onChange={e => setGlobalSettings({...globalSettings, seoTitle: e.target.value})}
+                        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-orange-400 bg-white"
+                        placeholder="Ex: Proposta Comercial"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-700 mb-1.5 block">Descrição (WhatsApp/Google)</label>
+                      <textarea
+                        value={globalSettings.seoDescription || ''}
+                        onChange={e => setGlobalSettings({...globalSettings, seoDescription: e.target.value})}
+                        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-orange-400 bg-white resize-none h-16"
+                        placeholder="Ex: Acesse sua proposta comercial."
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-700 mb-1.5 block">Imagem de Compartilhamento</label>
+                      {globalSettings.seoImage ? (
+                        <div className="relative rounded-lg overflow-hidden border border-gray-200 group h-24">
+                          <img src={globalSettings.seoImage} alt="SEO Preview" className="w-full h-full object-cover" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <button onClick={() => setGlobalSettings({...globalSettings, seoImage: ''})} className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-bold flex items-center gap-1">
+                              <X className="w-3 h-3" /> Remover
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <label className="border-2 border-dashed border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 hover:border-orange-300 transition-colors">
+                          <UploadCloud className="w-5 h-5 text-gray-400 mb-1" />
+                          <span className="text-[10px] font-bold text-gray-600">Upload de Imagem (1200x630px)</span>
+                          <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files && handleImageUpload(e.target.files[0], url => setGlobalSettings({...globalSettings, seoImage: url}))} />
+                        </label>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -18,8 +18,9 @@ export default function ContractPublicView() {
   const sigCanvas = useRef<SignaturePad>(null);
 
   useSEO({
-    title: contract ? `Contrato - ${contract.opportunities?.name || 'Documento'}` : "Contrato",
-    description: "Acesse este link para visualizar e assinar o contrato digitalmente.",
+    title: contract?.seo_title || (contract ? `Contrato - ${contract.opportunities?.name || 'Documento'}` : "Contrato"),
+    description: contract?.seo_description || "Acesse este link para visualizar e assinar o contrato digitalmente.",
+    image: contract?.seo_image || contract?.contract_image || undefined,
   });
 
   useEffect(() => {

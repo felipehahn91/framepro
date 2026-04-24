@@ -261,9 +261,17 @@ export default function OrcamentoPublicView() {
   const [orcamento, setOrcamento] = useState<any>(null);
   const [pdfLoaded, setPdfLoaded] = useState(false);
 
+  const loadedSections = orcamento?.sections || [];
+  const globalSec = loadedSections.find((s: any) => s.type === 'global-settings');
+  const globalSettings = globalSec?.styles || { pageBackgroundColor: '#f3f4f6', backgroundColor: '#ffffff', maxWidth: '900px' };
+  const renderSections = loadedSections.filter((s: any) => s.type !== 'global-settings');
+  
+  const pdfSection = loadedSections.find((s: any) => s.type === 'pdf');
+
   useSEO({
-    title: orcamento ? orcamento.name : "Proposta Comercial",
-    description: "Acesse este link para visualizar a proposta comercial.",
+    title: globalSettings.seoTitle || (orcamento ? orcamento.name : "Proposta Comercial"),
+    description: globalSettings.seoDescription || "Acesse este link para visualizar a proposta comercial.",
+    image: globalSettings.seoImage || undefined,
   });
 
   useEffect(() => {
@@ -305,13 +313,6 @@ export default function OrcamentoPublicView() {
   if (!orcamento) return <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50"><AlertCircle className="w-16 h-16 text-gray-300 mb-4" /><h2 className="text-2xl font-bold">Proposta Indisponível</h2><p className="text-gray-500">O link acessado é inválido ou expirou.</p></div>;
 
   const isPDFMode = orcamento.type === 'pdf';
-  
-  const loadedSections = orcamento.sections || [];
-  const globalSec = loadedSections.find((s: any) => s.type === 'global-settings');
-  const globalSettings = globalSec?.styles || { pageBackgroundColor: '#f3f4f6', backgroundColor: '#ffffff', maxWidth: '900px' };
-  const renderSections = loadedSections.filter((s: any) => s.type !== 'global-settings');
-  
-  const pdfSection = loadedSections.find((s: any) => s.type === 'pdf');
 
   return (
     <>

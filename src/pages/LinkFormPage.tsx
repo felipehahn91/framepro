@@ -17,8 +17,9 @@ export default function LinkFormPage() {
   });
 
   useSEO({
-    title: formConfig ? formConfig.name : "Formulário de Contato",
-    description: "Preencha os dados para solicitar um orçamento ou contato.",
+    title: formConfig?.seo_title || (formConfig ? formConfig.name : "Formulário de Contato"),
+    description: formConfig?.seo_description || "Preencha os dados para solicitar um orçamento ou contato.",
+    image: formConfig?.seo_image || undefined,
   });
 
   useEffect(() => {

@@ -6,9 +6,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import SignaturePad from "react-signature-canvas";
-import { 
-  ArrowLeft, Save, UploadCloud, X, Loader2, Image as ImageIcon, PenTool, 
-  Wand2, Info, Copy, DollarSign
+import {
+  ArrowLeft, Save, UploadCloud, X, Loader2, Image as ImageIcon, PenTool,
+  Wand2, Info, Copy, DollarSign, Globe
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,11 +37,16 @@ export default function ContractEditor() {
     contract_image: "",
     supplier_signature: "",
     client_signature: "",
-    signature_status: "Pendente"
+    signature_status: "Pendente",
+    seo_title: "",
+    seo_description: "",
+    seo_image: ""
   });
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [seoImageFile, setSeoImageFile] = useState<File | null>(null);
+  const [seoImagePreview, setSeoImagePreview] = useState<string | null>(null);
 
   const availableVariables = [
     { tag: '{{nome}}', desc: 'Nome do Cliente' },
@@ -88,10 +93,14 @@ export default function ContractEditor() {
           contract_image: contract.contract_image || "",
           supplier_signature: contract.supplier_signature || "",
           client_signature: contract.client_signature || "",
-          signature_status: contract.signature_status || "Pendente"
+          signature_status: contract.signature_status || "Pendente",
+          seo_title: contract.seo_title || "",
+          seo_description: contract.seo_description || "",
+          seo_image: contract.seo_image || ""
         });
 
         if (contract.contract_image) setImagePreview(contract.contract_image);
+        if (contract.seo_image) setSeoImagePreview(contract.seo_image);
 
         if (clientId !== "template") {
           const { data: tx } = await supabase
@@ -120,6 +129,14 @@ export default function ContractEditor() {
     
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleSeoImageUpload = async (file: File) => {
+    if (!file.type.startsWith('image/')) return toast.error("Apenas imagens são permitidas.");
+    if (file.size > 5 * 1024 * 1024) return toast.error("Máximo de 5MB.");
+    
+    setSeoImageFile(file);
+    setSeoImagePreview(URL.createObjectURL(file));
   };
 
   const loadDefaultTemplate = () => {
@@ -173,6 +190,7 @@ export default function ContractEditor() {
     setSaving(true);
     try {
       let imageUrl = formData.contract_image;
+      let seoImageUrl = formData.seo_image;
 
       if (imageFile && user) {
         const fileExt = imageFile.name.split('.').pop();
@@ -191,6 +209,23 @@ export default function ContractEditor() {
         }
       }
 
+      if (seoImageFile && user) {
+        const fileExt = seoImageFile.name.split('.').pop();
+        const fileName = `seo_${Math.random()}.${fileExt}`;
+        const filePath = `${user.id}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('contract_images')
+          .upload(filePath, seoImageFile);
+
+        if (!uploadError) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('contract_images')
+            .getPublicUrl(filePath);
+          seoImageUrl = publicUrl;
+        }
+      }
+
       const payload = {
         user_id: user?.id,
         client_id: isTemplate ? null : formData.client_id,
@@ -201,7 +236,10 @@ export default function ContractEditor() {
         description: formData.description,
         contract_image: imageUrl,
         supplier_signature: formData.supplier_signature,
-        signature_status: formData.signature_status
+        signature_status: formData.signature_status,
+        seo_title: formData.seo_title,
+        seo_description: formData.seo_description,
+        seo_image: seoImageUrl
       };
 
       if (isNew) {
@@ -439,6 +477,49 @@ export default function ContractEditor() {
                     <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files && handleImageUpload(e.target.files[0])} />
                   </label>
                 )}
+              </div>
+            </div>
+            <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
+              <div className="p-4 border-b border-gray-100 flex items-center gap-2">
+                <Globe className="w-5 h-5 text-orange-400" />
+                <h3 className="font-bold text-gray-900">SEO e Compartilhamento</h3>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Título (Aba do Navegador)</label>
+                  <input
+                    type="text" placeholder="Ex: Contrato de Prestação de Serviços"
+                    value={formData.seo_title} onChange={e => setFormData({...formData, seo_title: e.target.value})}
+                    className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 text-gray-700"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Descrição (WhatsApp/Google)</label>
+                  <textarea
+                    placeholder="Ex: Acesse seu contrato para assinatura digital."
+                    value={formData.seo_description} onChange={e => setFormData({...formData, seo_description: e.target.value})}
+                    className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 text-gray-700 resize-none h-20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-900 mb-1.5">Imagem de Compartilhamento (OpenGraph)</label>
+                  {seoImagePreview ? (
+                    <div className="relative rounded-xl overflow-hidden border border-gray-200 group">
+                      <img src={seoImagePreview} alt="SEO Preview" className="w-full h-32 object-cover" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <button onClick={() => { setSeoImagePreview(null); setSeoImageFile(null); setFormData({...formData, seo_image: ''}); }} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold flex items-center gap-2">
+                          <X className="w-4 h-4" /> Remover
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <label className="border-2 border-dashed border-gray-300 rounded-xl p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50 hover:border-orange-300 transition-colors">
+                      <UploadCloud className="w-8 h-8 text-gray-400 mb-2" />
+                      <p className="font-bold text-gray-900 text-xs mb-1">Upload de Imagem (1200x630px)</p>
+                      <input type="file" accept="image/*" className="hidden" onChange={e => e.target.files && handleSeoImageUpload(e.target.files[0])} />
+                    </label>
+                  )}
+                </div>
               </div>
             </div>
           </div>
